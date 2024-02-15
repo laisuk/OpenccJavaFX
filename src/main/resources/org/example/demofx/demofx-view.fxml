@@ -154,10 +154,13 @@
                                  <Insets right="115.0" />
                               </GridPane.margin>
                            </Label>
-                           <Button fx:id="btnSaveAs" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" text="Save As" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                           <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" text="💾" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                               <GridPane.margin>
                                  <Insets right="65.0" top="5.0" />
                               </GridPane.margin>
+                              <font>
+                                 <Font name="System Bold" size="12.0" />
+                              </font>
                            </Button>
                            <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" text="🔄" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                               <GridPane.margin>
