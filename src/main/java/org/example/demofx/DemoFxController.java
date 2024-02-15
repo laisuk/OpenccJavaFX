@@ -416,4 +416,33 @@ public class DemoFxController {
         String fileExtension = getFileExtension(file.getName());
         return file.isFile() && FILE_EXTENSIONS.contains(fileExtension != null ? fileExtension.toLowerCase() : null);
     }
+
+    public void onLivSourceDragOver(DragEvent dragEvent) {
+        if (dragEvent.getGestureSource() != listViewSource && dragEvent.getDragboard().hasFiles()) {
+            dragEvent.acceptTransferModes(TransferMode.COPY);
+        }
+        dragEvent.consume();
+    }
+
+    public void onLvDragDropped(DragEvent dragEvent) {
+        Dragboard dragboard = dragEvent.getDragboard();
+        boolean success = false;
+        if (dragboard.hasFiles()) {
+            ObservableList<String> fileList = listViewSource.getItems();
+            List<File> files = dragboard.getFiles();
+            int count = 0;
+            for (File file : files) {
+                if (isTextFile(file) && !fileList.contains(file.getAbsolutePath())) {
+                    fileList.add(file.getAbsolutePath());
+                    count++;
+                    success = true;
+                }
+            }
+            FXCollections.sort(fileList, null);
+            listViewSource.setItems(fileList);
+            lblStatus.setText(String.format("No of file added: %d", count));
+        }
+        dragEvent.setDropCompleted(success);
+        dragEvent.consume();
+    }
 } // class DemoFxController

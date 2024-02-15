@@ -179,7 +179,7 @@
                            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
                        </rowConstraints>
                         <children>
-                           <ListView fx:id="listViewSource" prefHeight="200.0" prefWidth="200.0">
+                           <ListView fx:id="listViewSource" onDragDropped="#onLvDragDropped" onDragOver="#onLivSourceDragOver" prefHeight="200.0" prefWidth="200.0">
                               <padding>
                                  <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                               </padding>
