@@ -31,6 +31,10 @@ tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
 
+tasks.withType<JavaExec> {
+    args("-Dfile.encoding=UTF8")
+}
+
 application {
     mainModule.set("org.example.demofx")
     mainClass.set("org.example.demofx.DemoFxApplication")

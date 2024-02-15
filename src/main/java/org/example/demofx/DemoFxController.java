@@ -23,7 +23,6 @@ import java.util.List;
 import static org.example.demofx.ZhoConverter.*;
 
 public class DemoFxController {
-    // List of desired file extensions
     private static final List<String> FILE_EXTENSIONS = Arrays.asList(".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2", ".csv");
     @FXML
     private TextArea textAreaSource;
@@ -440,9 +439,13 @@ public class DemoFxController {
             }
             FXCollections.sort(fileList, null);
             listViewSource.setItems(fileList);
-            lblStatus.setText(String.format("No of file added: %d", count));
+            lblStatus.setText(String.format("Total file added: %d", count));
         }
         dragEvent.setDropCompleted(success);
         dragEvent.consume();
+    }
+
+    public void onBthRefreshClicked() {
+        updateSourceInfo(zhoCheck(textAreaSource.getText()));
     }
 } // class DemoFxController
