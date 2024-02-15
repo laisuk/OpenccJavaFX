@@ -29,7 +29,7 @@
        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
      </columnConstraints>
      <rowConstraints>
-       <RowConstraints />
+       <RowConstraints vgrow="NEVER" />
      </rowConstraints>
       <children>
          <RadioButton fx:id="rbS2t" mnemonicParsing="false" selected="true" text="zh-Hans（简体）To zh-Hant（繁体）" GridPane.halignment="CENTER">
@@ -56,7 +56,7 @@
          <ColumnConstraints halignment="CENTER" hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
      </columnConstraints>
      <rowConstraints>
-       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
      </rowConstraints>
       <children>
          <RadioButton fx:id="rbStd" mnemonicParsing="false" onMouseClicked="#onRbStdClicked" selected="true" text="Standard（标准简繁）" GridPane.halignment="CENTER">
@@ -77,11 +77,11 @@
                <Font size="14.0" />
             </font>
          </RadioButton>
-         <CheckBox fx:id="cbZHTW" mnemonicParsing="false" text="ZH/TW Idioms（中台惯用语）" GridPane.columnIndex="3" GridPane.halignment="CENTER" />
-         <CheckBox fx:id="cbPunctuation" mnemonicParsing="false" selected="true" text="Puntuations（标点）" GridPane.columnIndex="4" GridPane.halignment="CENTER" />
+         <CheckBox fx:id="cbZHTW" alignment="CENTER" mnemonicParsing="false" text="ZH/TW Idioms（中台惯用语）" GridPane.columnIndex="3" GridPane.halignment="CENTER" />
+         <CheckBox fx:id="cbPunctuation" alignment="CENTER" mnemonicParsing="false" selected="true" text="Puntuations（标点）" GridPane.columnIndex="4" GridPane.halignment="CENTER" />
       </children>
    </GridPane>
-   <TabPane fx:id="tabPane" prefHeight="579.0" prefWidth="1063.0" tabClosingPolicy="UNAVAILABLE">
+   <TabPane fx:id="tabPane" prefHeight="579.0" prefWidth="1063.0" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
      <tabs>
        <Tab fx:id="tabMain" closable="false" onSelectionChanged="#onTabMainSelectionChanged" text="Main Coversion">
          <content>
@@ -89,11 +89,11 @@
                   <children>
                      <GridPane alignment="CENTER" layoutX="129.0" layoutY="15.0" prefHeight="171.0" prefWidth="1063.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                        <columnConstraints>
-                         <ColumnConstraints minWidth="100.0" />
+                         <ColumnConstraints minWidth="100.0" percentWidth="50.0" />
                            <ColumnConstraints minWidth="100.0" />
                        </columnConstraints>
                        <rowConstraints>
-                         <RowConstraints minHeight="100.0" prefHeight="200.0" vgrow="SOMETIMES" />
+                         <RowConstraints minHeight="100.0" prefHeight="200.0" vgrow="ALWAYS" />
                          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
                        </rowConstraints>
                         <children>
@@ -104,10 +104,10 @@
                            </Button>
                            <Button fx:id="btnCopy" mnemonicParsing="false" onMouseClicked="#onBtnCopyClicked" prefHeight="20.0" prefWidth="60.0" text="Copy" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                               <GridPane.margin>
-                                 <Insets right="10.0" top="5.0" />
+                                 <Insets top="5.0" />
                               </GridPane.margin>
                            </Button>
-                           <TextArea fx:id="textAreaSource" onKeyPressed="#onSourceTextChanged" wrapText="true">
+                           <TextArea fx:id="textAreaSource" onDragDropped="#onTaDragDropped" onDragOver="#onTaSourceDragOver" onKeyPressed="#onSourceTextChanged" wrapText="true">
                               <font>
                                  <Font size="14.0" />
                               </font>
@@ -154,6 +154,11 @@
                                  <Insets right="80.0" />
                               </GridPane.margin>
                            </Label>
+                           <Button fx:id="btnSaveAs" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" text="Save As" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                              <GridPane.margin>
+                                 <Insets right="65.0" top="5.0" />
+                              </GridPane.margin>
+                           </Button>
                         </children>
                      </GridPane>
                   </children>
@@ -270,13 +275,16 @@
          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
      </columnConstraints>
      <rowConstraints>
-         <RowConstraints minHeight="10.0" prefHeight="50.0" vgrow="SOMETIMES" />
+         <RowConstraints minHeight="10.0" prefHeight="50.0" vgrow="NEVER" />
      </rowConstraints>
       <children>
-         <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="80.0" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
+         <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="100.0" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
             <font>
                <Font name="System Bold" size="14.0" />
             </font>
+            <GridPane.margin>
+               <Insets top="5.0" />
+            </GridPane.margin>
          </Button>
          <Button fx:id="btnExit" mnemonicParsing="false" onMouseClicked="#onBtnExitClicked" prefHeight="20.0" prefWidth="60.0" text="Exit" GridPane.columnIndex="2" GridPane.halignment="RIGHT" GridPane.valignment="TOP">
             <GridPane.margin>
@@ -303,7 +311,7 @@
        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
      </columnConstraints>
      <rowConstraints>
-         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
      </rowConstraints>
       <children>
          <Label fx:id="lblStatus" text="DemoFx 1.0">

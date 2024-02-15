@@ -5,14 +5,14 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,6 +23,8 @@ import java.util.List;
 import static org.example.demofx.ZhoConverter.*;
 
 public class DemoFxController {
+    // List of desired file extensions
+    private static final List<String> FILE_EXTENSIONS = Arrays.asList(".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2", ".csv");
     @FXML
     private TextArea textAreaSource;
     @FXML
@@ -62,8 +64,6 @@ public class DemoFxController {
     @FXML
     private TextField textFieldPath;
     private boolean isOpenFileDisabled = false;
-    // List of desired file extensions
-    private static final List<String> FILE_EXTENSIONS = Arrays.asList(".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2", ".csv");
 
     @FXML
     protected void onBtnPasteClick() {
@@ -147,14 +147,14 @@ public class DemoFxController {
             lblStatus.setText("Empty file list.\n");
             return;
         }
-        
+
         String outputDirectory = textFieldPath.getText();
         Path outputDirectoryPath = Paths.get(outputDirectory);
         if (outputDirectory.isEmpty() || !Files.isDirectory(outputDirectoryPath)) {
             textAreaPreview.appendText(String.format("Output directory [ %s ] does not exist.\n", outputDirectory));
             return;
-        }  
-        textAreaPreview.clear();      
+        }
+        textAreaPreview.clear();
         final String config = getConfig();
         String convertedText;
         int counter = 0;
@@ -276,7 +276,6 @@ public class DemoFxController {
             btnOpenFile.setDisable(true);
             isOpenFileDisabled = true;
         }
-
     }
 
     public void onBtnAddClicked() {
@@ -354,5 +353,67 @@ public class DemoFxController {
     public void onBtnClearPreviewClicked() {
         textAreaPreview.clear();
         lblStatus.setText("Preview cleared.");
+    }
+
+    public void onBtnSaveAsClicked() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Text File");
+        fileChooser.setInitialDirectory(new File("."));
+        fileChooser.setInitialFileName("File.txt");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
+                new FileChooser.ExtensionFilter("Subtitle Files", "*.srt;*.vtt;*.ass;*.xml;*.ttml2"),
+                new FileChooser.ExtensionFilter("All Files", "*.*"));
+        File selectedFile = fileChooser.showSaveDialog(null);
+
+        if (selectedFile != null) {
+            try {
+                String contents = textAreaDestination.getText();
+                // Write string contents to the file with UTF-8 encoding
+                Files.writeString(selectedFile.toPath(), contents);
+                lblStatus.setText(String.format("Output contents saved to: %s", selectedFile));
+            } catch (Exception e) {
+                lblStatus.setText(String.format("Error writing output file: %s", selectedFile));
+            }
+        }
+    }
+
+    public void onTaSourceDragOver(DragEvent dragEvent) {
+        if (dragEvent.getGestureSource() != textAreaSource && dragEvent.getDragboard().hasFiles()) {
+            dragEvent.acceptTransferModes(TransferMode.COPY);
+        }
+        dragEvent.consume();
+    }
+
+    public void onTaDragDropped(DragEvent dragEvent) {
+        Dragboard dragboard = dragEvent.getDragboard();
+        boolean success = false;
+        if (dragboard.hasFiles()) {
+            File file = dragboard.getFiles().get(0);
+            if (isTextFile(file)) {
+                try {
+                    BufferedReader reader = new BufferedReader(new FileReader(file));
+                    String line;
+                    StringBuilder content = new StringBuilder();
+                    while ((line = reader.readLine()) != null) {
+                        content.append(line).append("\n");
+                    }
+                    reader.close();
+                    textAreaSource.setText(content.toString());
+                    success = true;
+                } catch (Exception e) {
+                    lblStatus.setText("Error: " + e.getMessage());
+                }
+            } else {
+                textAreaSource.setText("Not a valid text file.");
+            }
+        }
+        dragEvent.setDropCompleted(success);
+        dragEvent.consume();
+    }
+
+    private boolean isTextFile(File file) {
+        String fileExtension = getFileExtension(file.getName());
+        return file.isFile() && FILE_EXTENSIONS.contains(fileExtension != null ? fileExtension.toLowerCase() : null);
     }
 } // class DemoFxController
