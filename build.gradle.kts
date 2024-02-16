@@ -12,7 +12,7 @@ version = "1.0-SNAPSHOT"
 tasks.wrapper {
     // You can either download the binary-only version of Gradle (BIN) or
     // the full version (with sources and documentation) of Gradle (ALL)
-    gradleVersion = "8.5"
+    gradleVersion = "8.6"
     distributionType = Wrapper.DistributionType.ALL
 }
 
@@ -20,7 +20,7 @@ repositories {
     mavenCentral()
 }
 
-val junitVersion = "5.10.0"
+val junitVersion = "5.10.1"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
