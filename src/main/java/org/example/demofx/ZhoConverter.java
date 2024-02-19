@@ -7,6 +7,9 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.util.stream.Collectors.joining;
+
+
 public class ZhoConverter {
     public static String convert(String input, String config) {
         OpenCC converter = new OpenCC();
@@ -40,10 +43,12 @@ public class ZhoConverter {
         s2tPunctuationChars.put("‘", "『");
         s2tPunctuationChars.put("’", "』");
 
-//        String testJoin = s2tPunctuationChars.entrySet()
-//                .stream()
-//                .map(e -> e.getKey())
-//                .collect(joining(""));
+        // Fancy join method: Not used
+        String s2tCharsJoin = s2tPunctuationChars.entrySet()
+                .stream()
+                .map(e -> e.getKey() + ":" + e.getValue())
+                .collect(joining(", "));
+//        System.out.println("结果" + s2tCharsJoin);
 
         String pattern;
         if (config.startsWith("s")) {
@@ -57,7 +62,7 @@ public class ZhoConverter {
             pattern = "[" + String.join("", t2sPunctuationChars.keySet()) + "]";
             return replacePattern(inputText, pattern, t2sPunctuationChars);
         }
-    }
+    } // convertPunctuation
 
     private static String replacePattern(String inputText, String pattern, Map<String, String> charMapping) {
         Pattern p = Pattern.compile(pattern);

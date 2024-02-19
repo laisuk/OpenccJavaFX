@@ -63,11 +63,13 @@ public class DemoFxController {
     @FXML
     private TextField textFieldPath;
     private boolean isOpenFileDisabled = false;
+    private String openFileName;
 
     @FXML
     protected void onBtnPasteClick() {
         var inputText = getClipboardTextFx();
         textAreaSource.setText(inputText);
+        openFileName = "";
         updateSourceInfo(zhoCheck(inputText));
         lblFilename.setText("");
         lblStatus.setText("Clipboard contents pasted to source area.");
@@ -199,6 +201,12 @@ public class DemoFxController {
                 lblSourceCode.setText("non-zho (其它)");
         }
         lblSourceCharCount.setText(String.format("[ %,d chars ]", textAreaSource.getText().length()));
+        if (!openFileName.isEmpty()) {
+            lblFilename.setText(new File(openFileName).getName());
+            lblStatus.setText(openFileName);
+        } else {
+            lblFilename.setText(openFileName);
+        }
     }
 
     private String getConfig() {
@@ -235,9 +243,8 @@ public class DemoFxController {
         try {
             String content = Files.readString(file.toPath());
             textAreaSource.setText(content);
+            openFileName = file.toString();
             updateSourceInfo(zhoCheck(content));
-            lblFilename.setText(file.getName());
-            lblStatus.setText(String.format("File: %s", file));
         } catch (IOException e) {
             lblStatus.setText("Error reading file: " + e.getMessage());
         }
@@ -399,6 +406,8 @@ public class DemoFxController {
                     }
                     reader.close();
                     textAreaSource.setText(content.toString());
+                    openFileName = file.toString();
+                    updateSourceInfo(zhoCheck(content.toString()));
                     success = true;
                 } catch (Exception e) {
                     lblStatus.setText("Error: " + e.getMessage());

@@ -32,7 +32,7 @@ tasks.withType<JavaCompile> {
 }
 
 tasks.withType<JavaExec> {
-    args("-Dfile.encoding=UTF8")
+    args("-Dfile.encoding=UTF-8")
 }
 
 application {
@@ -49,6 +49,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     implementation(files("lib/OpenCC-Java.jar"))
+//    implementation(fileTree("lib") {include("*.jar")})
 }
 
 tasks.withType<Jar> {
@@ -58,6 +59,7 @@ tasks.withType<Jar> {
 }
 
 tasks.test {
+    systemProperty("file.encoding", "utf-8")
     useJUnitPlatform()
 }
 
