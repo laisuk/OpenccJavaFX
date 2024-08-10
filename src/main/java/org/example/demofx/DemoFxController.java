@@ -23,7 +23,7 @@ import java.util.List;
 import static org.example.demofx.ZhoConverter.*;
 
 public class DemoFxController {
-    private static final List<String> FILE_EXTENSIONS = Arrays.asList(".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2", ".csv");
+    private static final List<String> FILE_EXTENSIONS = Arrays.asList(".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2", ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp");
     @FXML
     private TextArea textAreaSource;
     @FXML

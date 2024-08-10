@@ -19,7 +19,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" prefHeight="716.0" prefWidth="963.0" spacing="20.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.demofx.DemoFxController">
+<VBox alignment="CENTER" prefHeight="716.0" prefWidth="963.0" spacing="20.0" xmlns="http://javafx.com/javafx/21.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.demofx.DemoFxController">
   <padding>
     <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
   </padding>
@@ -67,7 +67,7 @@
                <Font size="14.0" />
             </font>
          </RadioButton>
-         <RadioButton fx:id="rbZHTW" mnemonicParsing="false" onMouseClicked="#onRbZhtwClicked" text="ZH / TW（中台简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+         <RadioButton fx:id="rbZHTW" mnemonicParsing="false" onMouseClicked="#onRbZhtwClicked" selected="true" text="ZH / TW（中台简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="1" GridPane.halignment="CENTER">
             <font>
                <Font size="14.0" />
             </font>
