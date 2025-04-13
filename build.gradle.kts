@@ -41,7 +41,7 @@ application {
 }
 
 javafx {
-    version = "22.0.2"
+    version = "23.0.2"
     modules("javafx.controls", "javafx.fxml")
 }
 
@@ -49,6 +49,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     implementation(files("lib/OpenCC-Java.jar"))
+    implementation("org.fxmisc.richtext:richtextfx:0.11.5")
 //    implementation(fileTree("lib") {include("*.jar")})
 }
 

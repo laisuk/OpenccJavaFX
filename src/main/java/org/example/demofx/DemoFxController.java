@@ -1,5 +1,6 @@
 package org.example.demofx;
 
+import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -9,6 +10,8 @@ import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
+import org.fxmisc.richtext.CodeArea;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -25,9 +28,11 @@ import static org.example.demofx.ZhoConverter.*;
 public class DemoFxController {
     private static final List<String> FILE_EXTENSIONS = Arrays.asList(".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2", ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp");
     @FXML
-    private TextArea textAreaSource;
+//    private TextArea textAreaSource;
+    private CodeArea textAreaSource;
     @FXML
-    private TextArea textAreaDestination;
+//    private TextArea textAreaDestination;
+    private CodeArea textAreaDestination;
     @FXML
     private TextArea textAreaPreview;
     @FXML
@@ -67,12 +72,38 @@ public class DemoFxController {
 
     @FXML
     protected void onBtnPasteClick() {
-        var inputText = getClipboardTextFx();
-        textAreaSource.setText(inputText);
-        openFileName = "";
-        updateSourceInfo(zhoCheck(inputText));
-        lblFilename.setText("");
-        lblStatus.setText("Clipboard contents pasted to source area.");
+        retryClipboardPaste(3, 100); // Retry 3 times with 100ms delay
+    }
+
+    private void retryClipboardPaste(int retries, int delayMs) {
+        if (retries <= 0) {
+            lblStatus.setText("Clipboard is empty or could not retrieve contents.");
+            return;
+        }
+
+        String inputText = getClipboardTextFx();
+        if (!inputText.isEmpty()) {
+            // If clipboard has content, update the text area and UI
+            textAreaSource.replaceText(inputText);
+            openFileName = "";
+            updateSourceInfo(zhoCheck(inputText));
+            lblFilename.setText("");
+            lblStatus.setText("Clipboard contents pasted to source area.");
+        } else {
+            // Use PauseTransition to retry after delay without blocking the UI thread
+            PauseTransition pause = new PauseTransition(Duration.millis(delayMs));
+            pause.setOnFinished(event -> retryClipboardPaste(retries - 1, delayMs)); // Retry
+            pause.play();
+        }
+    }
+
+    private String getClipboardTextFx() {
+        Clipboard clipboard = Clipboard.getSystemClipboard();
+        if (clipboard.hasString()) {
+            return clipboard.getString();
+        } else {
+            return "";
+        }
     }
 
     @FXML
@@ -91,18 +122,6 @@ public class DemoFxController {
             return fileName.substring(lastDotIndex);
         }
         return null;
-    }
-
-    private String getClipboardTextFx() {
-        // Create a Clipboard object
-        Clipboard clipboard = Clipboard.getSystemClipboard();
-        // Get the content from the clipboard
-        if (clipboard.hasString()) {
-            // Retrieve and print the text content
-            return clipboard.getString();
-        } else {
-            return "";
-        }
     }
 
     public void onBtnExitClicked(MouseEvent mouseEvent) {
@@ -133,7 +152,7 @@ public class DemoFxController {
         if (cbPunctuation.isSelected()) {
             convertedText = convertPunctuation(convertedText, config);
         }
-        textAreaDestination.setText(convertedText);
+        textAreaDestination.replaceText(convertedText);
         if (!lblSourceCode.getText().contains("non") && !lblSourceCode.getText().isEmpty()) {
             lblDestinationCode.setText(lblSourceCode.getText().contains("Hans") ? "zh-Hant (繁体)" : "zh-Hans (简体)");
         } else {
@@ -242,7 +261,11 @@ public class DemoFxController {
     private void displayFileContents(File file) {
         try {
             String content = Files.readString(file.toPath());
-            textAreaSource.setText(content);
+            // Remove BOM if present
+            if (content.startsWith("\uFEFF")) {
+                content = content.substring(1);
+            }
+            textAreaSource.replaceText(content);
             openFileName = file.toString();
             updateSourceInfo(zhoCheck(content));
         } catch (IOException e) {
@@ -337,7 +360,7 @@ public class DemoFxController {
                     textAreaPreview.setText(content);
                     lblStatus.setText(String.format("File Preview: %s", selectedItem));
                 } catch (IOException e) {
-                    textAreaSource.setText("Error reading file: " + e.getMessage());
+                    textAreaSource.replaceText("Error reading file: " + e.getMessage());
                 }
             } else {
                 textAreaPreview.setText("Selected file is not a valid text file.");
@@ -345,7 +368,7 @@ public class DemoFxController {
         }
     }
 
-    public void onBtnSelecPathClicked() {
+    public void onBtnSelectPathClicked() {
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Select Directory");
         directoryChooser.setInitialDirectory(new File("."));
@@ -405,15 +428,20 @@ public class DemoFxController {
                         content.append(line).append("\n");
                     }
                     reader.close();
-                    textAreaSource.setText(content.toString());
+                    String text = content.toString();
+                    // Remove BOM if present
+                    if (text.startsWith("\uFEFF")) {
+                        text = text.substring(1);
+                    }
+                    textAreaSource.replaceText(text);
                     openFileName = file.toString();
-                    updateSourceInfo(zhoCheck(content.toString()));
+                    updateSourceInfo(zhoCheck(text));
                     success = true;
                 } catch (Exception e) {
                     lblStatus.setText("Error: " + e.getMessage());
                 }
             } else {
-                textAreaSource.setText("Not a valid text file.");
+                textAreaSource.replaceText("Not a valid text file.");
             }
         }
         dragEvent.setDropCompleted(success);

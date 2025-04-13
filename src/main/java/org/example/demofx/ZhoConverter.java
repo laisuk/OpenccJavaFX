@@ -2,12 +2,10 @@ package org.example.demofx;
 
 import opencc.OpenCC;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static java.util.stream.Collectors.joining;
+import java.util.stream.Collectors;
 
 
 public class ZhoConverter {
@@ -36,42 +34,59 @@ public class ZhoConverter {
         }
     } // zhoCheck
 
+//    public static String convertPunctuation(String inputText, String config) {
+//        Map<String, String> s2tPunctuationChars = new HashMap<>();
+//        s2tPunctuationChars.put("“", "「");
+//        s2tPunctuationChars.put("”", "」");
+//        s2tPunctuationChars.put("‘", "『");
+//        s2tPunctuationChars.put("’", "』");
+//
+//        // Fancy join method: Not used
+//        String s2tCharsJoin = s2tPunctuationChars.entrySet()
+//                .stream()
+//                .map(e -> e.getKey() + ":" + e.getValue())
+//                .collect(joining(", "));
+//
+//        String pattern;
+//        if (config.startsWith("s")) {
+//            pattern = "[" + String.join("", s2tPunctuationChars.keySet()) + "]";
+//            return replacePattern(inputText, pattern, s2tPunctuationChars);
+//        } else {
+//            Map<String, String> t2sPunctuationChars = new HashMap<>();
+//            for (Map.Entry<String, String> entry : s2tPunctuationChars.entrySet()) {
+//                t2sPunctuationChars.put(entry.getValue(), entry.getKey());
+//            }
+//            pattern = "[" + String.join("", t2sPunctuationChars.keySet()) + "]";
+//            return replacePattern(inputText, pattern, t2sPunctuationChars);
+//        }
+//    } // convertPunctuation
+
     public static String convertPunctuation(String inputText, String config) {
-        Map<String, String> s2tPunctuationChars = new HashMap<>();
-        s2tPunctuationChars.put("“", "「");
-        s2tPunctuationChars.put("”", "」");
-        s2tPunctuationChars.put("‘", "『");
-        s2tPunctuationChars.put("’", "』");
+        Map<String, String> s2tPunctuationChars = Map.of(
+                "“", "「",
+                "”", "」",
+                "‘", "『",
+                "’", "』"
+        ); // Use Map.of for Java 9+
 
-        // Fancy join method: Not used
-        String s2tCharsJoin = s2tPunctuationChars.entrySet()
-                .stream()
-                .map(e -> e.getKey() + ":" + e.getValue())
-                .collect(joining(", "));
-//        System.out.println("结果" + s2tCharsJoin);
+        Map<String, String> mapping = config.startsWith("s") ?
+                s2tPunctuationChars :
+                s2tPunctuationChars.entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
 
-        String pattern;
-        if (config.startsWith("s")) {
-            pattern = "[" + String.join("", s2tPunctuationChars.keySet()) + "]";
-            return replacePattern(inputText, pattern, s2tPunctuationChars);
-        } else {
-            Map<String, String> t2sPunctuationChars = new HashMap<>();
-            for (Map.Entry<String, String> entry : s2tPunctuationChars.entrySet()) {
-                t2sPunctuationChars.put(entry.getValue(), entry.getKey());
-            }
-            pattern = "[" + String.join("", t2sPunctuationChars.keySet()) + "]";
-            return replacePattern(inputText, pattern, t2sPunctuationChars);
-        }
-    } // convertPunctuation
-
-    private static String replacePattern(String inputText, String pattern, Map<String, String> charMapping) {
-        Pattern p = Pattern.compile(pattern);
-        Matcher m = p.matcher(inputText);
-        StringBuilder outputText = new StringBuilder();
-        while (m.find()) {
-            m.appendReplacement(outputText, Matcher.quoteReplacement(charMapping.get(m.group(0))));
-        }
-        m.appendTail(outputText);
-        return outputText.toString();
+        String pattern = "[" + String.join("", mapping.keySet()) + "]";
+        return replacePattern(inputText, pattern, mapping);
     }
+
+    private static String replacePattern(String text, String pattern, Map<String, String> mapping) {
+        Pattern regex = Pattern.compile(pattern);
+        Matcher matcher = regex.matcher(text);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            matcher.appendReplacement(sb, mapping.get(matcher.group()));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
 }
