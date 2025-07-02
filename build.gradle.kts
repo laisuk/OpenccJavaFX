@@ -48,9 +48,13 @@ javafx {
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
-    implementation(files("lib/OpenCC-Java.jar"))
+//    implementation(files("lib/OpenCC-Java.jar"))
     implementation("org.fxmisc.richtext:richtextfx:0.11.5")
 //    implementation(fileTree("lib") {include("*.jar")})
+    // JSON serialization/deserialization
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.19.1")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.19.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.19.1")
 }
 
 tasks.withType<Jar> {
@@ -79,5 +83,15 @@ tasks.named("jlinkZip") {
 tasks.withType<Jar> {
     manifest {
         attributes["Main-Class"] = "org.example.demofx.DemoFxApplication"
+    }
+}
+
+distributions {
+    main {
+        contents {
+            from("dicts") {
+                into("dicts")
+            }
+        }
     }
 }

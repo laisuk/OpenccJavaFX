@@ -1,6 +1,5 @@
 package org.example.demofx;
 
-import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -10,7 +9,6 @@ import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 import org.fxmisc.richtext.CodeArea;
 
 import java.io.BufferedReader;
@@ -23,7 +21,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.example.demofx.ZhoConverter.*;
+//import static org.example.demofx.ZhoConverter.*;
+import openccjava.OpenCC;
 
 public class DemoFxController {
     private static final List<String> FILE_EXTENSIONS = Arrays.asList(".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2", ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp");
@@ -69,31 +68,19 @@ public class DemoFxController {
     private TextField textFieldPath;
     private boolean isOpenFileDisabled = false;
     private String openFileName;
+    private final OpenCC openccInstance = new OpenCC();
 
     @FXML
     protected void onBtnPasteClick() {
-        retryClipboardPaste(3, 100); // Retry 3 times with 100ms delay
-    }
-
-    private void retryClipboardPaste(int retries, int delayMs) {
-        if (retries <= 0) {
-            lblStatus.setText("Clipboard is empty or could not retrieve contents.");
-            return;
-        }
-
         String inputText = getClipboardTextFx();
         if (!inputText.isEmpty()) {
-            // If clipboard has content, update the text area and UI
             textAreaSource.replaceText(inputText);
             openFileName = "";
-            updateSourceInfo(zhoCheck(inputText));
+            updateSourceInfo(openccInstance.zhoCheck(inputText));
             lblFilename.setText("");
             lblStatus.setText("Clipboard contents pasted to source area.");
         } else {
-            // Use PauseTransition to retry after delay without blocking the UI thread
-            PauseTransition pause = new PauseTransition(Duration.millis(delayMs));
-            pause.setOnFinished(event -> retryClipboardPaste(retries - 1, delayMs)); // Retry
-            pause.play();
+            lblStatus.setText("Clipboard is empty or could not retrieve contents.");
         }
     }
 
@@ -148,10 +135,8 @@ public class DemoFxController {
             return;
         }
         var config = getConfig();
-        String convertedText = convert(inputText, config);
-        if (cbPunctuation.isSelected()) {
-            convertedText = convertPunctuation(convertedText, config);
-        }
+        openccInstance.setConfig(config);
+        String convertedText = openccInstance.convert(inputText, cbPunctuation.isSelected());
         textAreaDestination.replaceText(convertedText);
         if (!lblSourceCode.getText().contains("non") && !lblSourceCode.getText().isEmpty()) {
             lblDestinationCode.setText(lblSourceCode.getText().contains("Hans") ? "zh-Hant (繁体)" : "zh-Hans (简体)");
@@ -176,6 +161,7 @@ public class DemoFxController {
         }
         textAreaPreview.clear();
         final String config = getConfig();
+        openccInstance.setConfig(config);
         String convertedText;
         int counter = 0;
         for (String file : fileList) {
@@ -188,10 +174,10 @@ public class DemoFxController {
                 Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
                 try {
                     String contents = Files.readString(new File(file).toPath());
-                    convertedText = convert(contents, config);
-                    if (cbPunctuation.isSelected()) {
-                        convertedText = convertPunctuation(convertedText, config);
-                    }
+                    convertedText = openccInstance.convert(contents, cbPunctuation.isSelected());
+//                    if (cbPunctuation.isSelected()) {
+//                        convertedText = convertPunctuation(convertedText, config);
+//                    }
                     // Write string contents to the file with UTF-8 encoding
                     Files.writeString(outputFilePath, convertedText);
                     textAreaPreview.appendText(String.format("%d : %s --> [Done].\n", counter, outputFilePath));
@@ -267,7 +253,7 @@ public class DemoFxController {
             }
             textAreaSource.replaceText(content);
             openFileName = file.toString();
-            updateSourceInfo(zhoCheck(content));
+            updateSourceInfo(openccInstance.zhoCheck(content));
         } catch (IOException e) {
             lblStatus.setText("Error reading file: " + e.getMessage());
         }
@@ -435,7 +421,7 @@ public class DemoFxController {
                     }
                     textAreaSource.replaceText(text);
                     openFileName = file.toString();
-                    updateSourceInfo(zhoCheck(text));
+                    updateSourceInfo(openccInstance.zhoCheck(text));
                     success = true;
                 } catch (Exception e) {
                     lblStatus.setText("Error: " + e.getMessage());
@@ -483,6 +469,6 @@ public class DemoFxController {
     }
 
     public void onBthRefreshClicked() {
-        updateSourceInfo(zhoCheck(textAreaSource.getText()));
+        updateSourceInfo(openccInstance.zhoCheck(textAreaSource.getText()));
     }
 } // class DemoFxController
