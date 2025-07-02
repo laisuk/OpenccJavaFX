@@ -1,2 +1,14 @@
 @echo off
-java -jar "-Dfile.encoding=UTF-8" --module-path "lib;C:\Java\javafx-sdk-22.0.2\lib" --add-modules javafx.controls,javafx.fxml,OpenCC.Java  build/libs/demofx-1.0-SNAPSHOT.jar
+
+set JAVA=java.exe
+set JFX=C:\Java\javafx-sdk-23.0.2\lib
+set LIB=lib
+set RICH=c:\Java\richtextfx
+set APP=build/libs/demofx-1.0-SNAPSHOT.jar
+
+:: Add the app jar to module path, along with dependencies
+"%JAVA%" ^
+  -Dfile.encoding=UTF-8 ^
+  --module-path "%APP%;%JFX%;%LIB%;%RICH%" ^
+  --add-modules javafx.controls,javafx.fxml,org.fxmisc.richtext ^
+  --module org.example.demofx/org.example.demofx.DemoFxApplication

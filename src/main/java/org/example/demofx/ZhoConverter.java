@@ -1,6 +1,6 @@
 package org.example.demofx;
 
-import opencc.OpenCC;
+import openccjava.OpenCC;
 
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -9,57 +9,31 @@ import java.util.stream.Collectors;
 
 
 public class ZhoConverter {
+    private static final Pattern NON_ZHO = Pattern.compile("[\\p{Punct}\\sA-Za-z0-9]");
+
     public static String convert(String input, String config) {
         OpenCC converter = new OpenCC();
-        converter.setConversion(config);
-        return converter.convert(input);
+        converter.setConfig(config);
+        return converter.convert(input, false);
     }
 
     public static int zhoCheck(String text) {
         if (text.isEmpty())
             return 0;
-        var stripText = text.replaceAll("[\\p{Punct}\\sA-Za-z0-9]", "");
+//        var stripText = text.replaceAll("[\\p{Punct}\\sA-Za-z0-9]", "");
+        var stripText = NON_ZHO.matcher(text).replaceAll("");
         var testText = stripText.length() > 50 ? stripText.substring(0, 50) : stripText;
         var converter = new OpenCC();
-        converter.setConversion("t2s");
-        if (!testText.equals(converter.convert(testText))) {
-            return 1;
-        } else {
-            converter.setConversion("s2t");
-            if (!testText.equals(converter.convert(testText))) {
-                return 2;
-            } else {
-                return 0;
-            }
+        converter.setConfig("t2s");
+        if (!testText.equals(converter.convert(testText, false))) {
+            return 1; // traditional
         }
+        converter.setConfig("s2t");
+        if (!testText.equals(converter.convert(testText, true))) {
+            return 2; // simplified
+        }
+        return 0; // unknown or mixed
     } // zhoCheck
-
-//    public static String convertPunctuation(String inputText, String config) {
-//        Map<String, String> s2tPunctuationChars = new HashMap<>();
-//        s2tPunctuationChars.put("“", "「");
-//        s2tPunctuationChars.put("”", "」");
-//        s2tPunctuationChars.put("‘", "『");
-//        s2tPunctuationChars.put("’", "』");
-//
-//        // Fancy join method: Not used
-//        String s2tCharsJoin = s2tPunctuationChars.entrySet()
-//                .stream()
-//                .map(e -> e.getKey() + ":" + e.getValue())
-//                .collect(joining(", "));
-//
-//        String pattern;
-//        if (config.startsWith("s")) {
-//            pattern = "[" + String.join("", s2tPunctuationChars.keySet()) + "]";
-//            return replacePattern(inputText, pattern, s2tPunctuationChars);
-//        } else {
-//            Map<String, String> t2sPunctuationChars = new HashMap<>();
-//            for (Map.Entry<String, String> entry : s2tPunctuationChars.entrySet()) {
-//                t2sPunctuationChars.put(entry.getValue(), entry.getKey());
-//            }
-//            pattern = "[" + String.join("", t2sPunctuationChars.keySet()) + "]";
-//            return replacePattern(inputText, pattern, t2sPunctuationChars);
-//        }
-//    } // convertPunctuation
 
     public static String convertPunctuation(String inputText, String config) {
         Map<String, String> s2tPunctuationChars = Map.of(
