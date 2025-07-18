@@ -128,23 +128,50 @@ public class DemoFxController {
         }
     }
 
+    //    private void startMainConversion() {
+//        String inputText = textAreaSource.getText();
+//        if (inputText.isEmpty()) {
+//            lblStatus.setText("Nothing to convert.");
+//            return;
+//        }
+//        var config = getConfig();
+//        openccInstance.setConfig(config);
+//        String convertedText = openccInstance.convert(inputText, cbPunctuation.isSelected());
+//        textAreaDestination.replaceText(convertedText);
+//        if (!lblSourceCode.getText().contains("non") && !lblSourceCode.getText().isEmpty()) {
+//            lblDestinationCode.setText(lblSourceCode.getText().contains("Hans") ? "zh-Hant (繁体)" : "zh-Hans (简体)");
+//        } else {
+//            lblDestinationCode.setText(lblSourceCode.getText());
+//        }
+//        lblStatus.setText("Conversion process completed.");
+//    }
     private void startMainConversion() {
         String inputText = textAreaSource.getText();
         if (inputText.isEmpty()) {
             lblStatus.setText("Nothing to convert.");
             return;
         }
+
         var config = getConfig();
         openccInstance.setConfig(config);
+
+        long startTime = System.nanoTime(); // Start timer before convert()
         String convertedText = openccInstance.convert(inputText, cbPunctuation.isSelected());
+        long endTime = System.nanoTime();   // End timer after convert()
+
+        long elapsedMillis = (endTime - startTime) / 1_000_000;
+
         textAreaDestination.replaceText(convertedText);
+
         if (!lblSourceCode.getText().contains("non") && !lblSourceCode.getText().isEmpty()) {
             lblDestinationCode.setText(lblSourceCode.getText().contains("Hans") ? "zh-Hant (繁体)" : "zh-Hans (简体)");
         } else {
             lblDestinationCode.setText(lblSourceCode.getText());
         }
-        lblStatus.setText("Conversion process completed.");
+
+        lblStatus.setText("Conversion completed in " + elapsedMillis + " ms.");
     }
+
 
     private void startBatchConversion() {
         ObservableList<String> fileList = listViewSource.getItems();

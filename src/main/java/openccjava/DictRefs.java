@@ -79,16 +79,30 @@ public class DictRefs {
         return left;
     }
 
-    public static final Pattern STRIP_REGEX = Pattern.compile("[!-/:-@\\[-`{-~\\t\\n\\v\\f\\r 0-9A-Za-z_著]");
+    public enum DelimiterMode {
+        Minimal,
+        Normal,
+        Full
+    }
 
-    public static final Set<Character> DELIMITERS = new HashSet<>(List.of(
-            ' ', '\t', '\n', '\r', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
-            ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '{', '|', '}', '~', '＝', '、', '。', '“', '”',
-            '‘', '’', '『', '』', '「', '」', '﹁', '﹂', '—', '－', '（', '）', '《', '》', '〈', '〉', '？', '！', '…', '／',
-            '＼', '︒', '︑', '︔', '︓', '︿', '﹀', '︹', '︺', '︙', '︐', '［', '﹇', '］', '﹈', '︕', '︖', '︰', '︳',
-            '︴', '︽', '︾', '︵', '︶', '｛', '︷', '｝', '︸', '﹃', '﹄', '【', '︻', '】', '︼', '　', '～', '．', '，',
-            '；', '：'
-    ));
+    public static Set<Character> getDelimiters(DelimiterMode mode) {
+        return switch (mode) {
+            case Minimal -> Set.of('\n');
+            case Normal -> Set.of('，', '。', '！', '？', '\n');
+            case Full -> new HashSet<>(List.of(
+                    ' ', '\t', '\n', '\r', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
+                    ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '{', '|', '}', '~', '＝', '、', '。', '“', '”',
+                    '‘', '’', '『', '』', '「', '」', '﹁', '﹂', '—', '－', '（', '）', '《', '》', '〈', '〉', '？', '！', '…', '／',
+                    '＼', '︒', '︑', '︔', '︓', '︿', '﹀', '︹', '︺', '︙', '︐', '［', '﹇', '］', '﹈', '︕', '︖', '︰', '︳',
+                    '︴', '︽', '︾', '︵', '︶', '｛', '︷', '｝', '︸', '﹃', '﹄', '【', '︻', '】', '︼', '　', '～', '．', '，',
+                    '；', '：'
+            ));
+        };
+    }
+
+    public static final Set<Character> DELIMITERS = getDelimiters(DelimiterMode.Full); // best for parallel
+
+    public static final Pattern STRIP_REGEX = Pattern.compile("[!-/:-@\\[-`{-~\\t\\n\\v\\f\\r 0-9A-Za-z_著]");
 
     public static final Map<Character, Character> PUNCT_S2T_MAP = Map.of(
             '“', '「',

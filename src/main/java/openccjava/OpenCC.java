@@ -13,6 +13,10 @@ public class OpenCC {
     private String config = "s2t";
     private String lastError;
 
+    private static final int MAX_SB_CAPACITY = 2048;
+    private static final ThreadLocal<StringBuilder> threadLocalSb =
+            ThreadLocal.withInitial(() -> new StringBuilder(MAX_SB_CAPACITY));
+
     public OpenCC() {
         this("s2t");
     }
@@ -72,8 +76,8 @@ public class OpenCC {
             case "t2jp" -> t2jp(input);
             case "jp2t" -> jp2t(input);
             default -> {
-                lastError = "Unsupported config: " + config;
-                yield lastError;
+                lastError = "Unsupported config: " + getConfig();
+                yield getLastError();
             }
         };
     }
@@ -100,24 +104,10 @@ public class OpenCC {
         return refs;
     }
 
-//    public String segmentReplace(String text, List<DictEntry> dicts, int maxLength) {
-//        if (text == null || text.isEmpty()) return text;
-//        List<int[]> ranges = getSplitRanges(text);
-//        if (ranges.size() == 1 && ranges.getFirst()[0] == 0 && ranges.getFirst()[1] == text.length()) {
-//            return convertSegment(text, dicts, maxLength);
-//        }
-//        StringBuilder sb = new StringBuilder();
-//        for (int[] range : ranges) {
-//            String segment = text.substring(range[0], range[1]);
-//            sb.append(convertSegment(segment, dicts, maxLength));
-//        }
-//        return sb.toString();
-//    }
-
     public String segmentReplace(String text, List<DictEntry> dicts, int maxLength) {
         if (text == null || text.isEmpty()) return text;
 
-        List<int[]> ranges = getSplitRanges(text);
+        List<int[]> ranges = getSplitRanges(text, true);
         int numSegments = ranges.size();
 
         if (numSegments == 1 &&
@@ -155,12 +145,16 @@ public class OpenCC {
         }
     }
 
-
     public String convertSegment(String segment, List<DictEntry> dicts, int maxLength) {
-        if (segment.length() == 1 && delimiters.contains(segment.charAt(0))) return segment;
-        int i = 0;
+        if (segment.length() == 1 && delimiters.contains(segment.charAt(0))) {
+            return segment;
+        }
+
         int segLen = segment.length();
-        StringBuilder sb = new StringBuilder(segLen);
+        StringBuilder sb = threadLocalSb.get();
+        sb.setLength(0); // reset for reuse
+
+        int i = 0;
         while (i < segLen) {
             int bestLen = 0;
             String bestMatch = null;
@@ -176,10 +170,10 @@ public class OpenCC {
                     if (value != null) {
                         bestMatch = value;
                         bestLen = len;
-                        break; // stop checking other dicts
+                        break; // found, break out of dicts loop
                     }
                 }
-                if (bestMatch != null) break; // stop checking shorter lengths
+                if (bestMatch != null) break; // found, break out of len loop
             }
 
             if (bestMatch != null) {
@@ -194,20 +188,31 @@ public class OpenCC {
         return sb.toString();
     }
 
-    public List<int[]> getSplitRanges(String text) {
+    public List<int[]> getSplitRanges(String text, boolean inclusive) {
         List<int[]> result = new ArrayList<>();
         int start = 0;
+
         for (int i = 0; i < text.length(); i++) {
             if (delimiters.contains(text.charAt(i))) {
-                result.add(new int[]{start, i + 1});
+                if (inclusive) {
+                    result.add(new int[]{start, i + 1});
+                } else {
+                    if (i > start) {
+                        result.add(new int[]{start, i});     // before delimiter
+                    }
+                    result.add(new int[]{i, i + 1});         // delimiter itself
+                }
                 start = i + 1;
             }
         }
+
         if (start < text.length()) {
             result.add(new int[]{start, text.length()});
         }
+
         return result;
     }
+
 
     public String s2t(String input, boolean punctuation) {
         var refs = getDictRefs("s2t");
