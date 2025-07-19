@@ -32,8 +32,12 @@ tasks.withType<JavaCompile> {
 }
 
 tasks.withType<JavaExec> {
-    args("-Dfile.encoding=UTF-8")
+    jvmArgs = listOf(
+        "--enable-native-access=javafx.graphics",
+        "-Dfile.encoding=UTF-8"
+    )
 }
+
 
 application {
     mainModule.set("org.example.demofx")

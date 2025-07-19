@@ -13,7 +13,7 @@ public class OpenCC {
     private String config = "s2t";
     private String lastError;
 
-    private static final int MAX_SB_CAPACITY = 2048;
+    private static final int MAX_SB_CAPACITY = 1024;
     private static final ThreadLocal<StringBuilder> threadLocalSb =
             ThreadLocal.withInitial(() -> new StringBuilder(MAX_SB_CAPACITY));
 
@@ -323,6 +323,7 @@ public class OpenCC {
     public int zhoCheck(String input) {
         if (input == null || input.isEmpty()) return 0;
         String stripped = DictRefs.STRIP_REGEX.matcher(input).replaceAll("");
+        stripped = stripped.length() >= 100 ? stripped.substring(0, 100) : stripped;
         int limit = DictRefs.findMaxUtf8Length(stripped, 200);
         String slice = stripped.substring(0, Math.min(limit, stripped.length()));
         if (!slice.equals(ts(slice))) return 1;

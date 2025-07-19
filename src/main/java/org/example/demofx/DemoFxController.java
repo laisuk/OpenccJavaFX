@@ -19,13 +19,46 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 //import static org.example.demofx.ZhoConverter.*;
 import openccjava.OpenCC;
+import org.fxmisc.richtext.LineNumberFactory;
 
 public class DemoFxController {
-    private static final List<String> FILE_EXTENSIONS = Arrays.asList(".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2", ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp");
+    private static final Set<String> FILE_EXTENSIONS = new HashSet<>(Arrays.asList(
+            ".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2",
+            ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp",
+            ".docx", ".xlsx", ".pptx",  // Office Open XML
+            ".odt", ".ods", ".odp",     // OpenDocument formats
+            ".epub"
+    ));
+
+    private static final Set<String> OFFICE_EXTENSIONS = new HashSet<>(Arrays.asList(
+            ".docx", ".xlsx", ".pptx",  // Office Open XML
+            ".odt", ".ods", ".odp",     // OpenDocument formats
+            ".epub"                     // E-book archive format
+    ));
+
+    private static final List<String> CONFIG_LIST = Arrays.asList(
+            "s2t (简->繁)",
+            "s2tw (简->繁台",
+            "s2twp (简->繁台/惯)",
+            "s2hk (简->繁港)",
+            "t2s (繁->简)",
+            "t2tw (繁->繁台)",
+            "t2twp (繁->繁台/惯)",
+            "t2hk (繁->繁港)",
+            "tw2s (繁台->简)",
+            "tw2sp (繁台->简/惯)",
+            "tw2t (繁台->繁)",
+            "tw2tp (繁台->繁/惯)",
+            "hk2s (繁港->简)",
+            "hk2t (繁港->繁)",
+            "t2jp (日舊->日新)",
+            "jp2t (日新->日舊)");
     @FXML
 //    private TextArea textAreaSource;
     private CodeArea textAreaSource;
@@ -38,6 +71,8 @@ public class DemoFxController {
     private RadioButton rbS2t;
     @FXML
     private RadioButton rbT2s;
+    @FXML
+    private RadioButton rbManual;
     @FXML
     private RadioButton rbStd;
     @FXML
@@ -66,6 +101,17 @@ public class DemoFxController {
     private ListView<String> listViewSource;
     @FXML
     private TextField textFieldPath;
+    @FXML
+    private ComboBox<String> cbManual;
+
+    @FXML
+    public void initialize() {
+        cbManual.getItems().addAll(CONFIG_LIST);
+        cbManual.getSelectionModel().selectFirst();
+        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
+        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
+    }
+
     private boolean isOpenFileDisabled = false;
     private String openFileName;
     private final OpenCC openccInstance = new OpenCC();
@@ -128,28 +174,15 @@ public class DemoFxController {
         }
     }
 
-    //    private void startMainConversion() {
-//        String inputText = textAreaSource.getText();
-//        if (inputText.isEmpty()) {
-//            lblStatus.setText("Nothing to convert.");
-//            return;
-//        }
-//        var config = getConfig();
-//        openccInstance.setConfig(config);
-//        String convertedText = openccInstance.convert(inputText, cbPunctuation.isSelected());
-//        textAreaDestination.replaceText(convertedText);
-//        if (!lblSourceCode.getText().contains("non") && !lblSourceCode.getText().isEmpty()) {
-//            lblDestinationCode.setText(lblSourceCode.getText().contains("Hans") ? "zh-Hant (繁体)" : "zh-Hans (简体)");
-//        } else {
-//            lblDestinationCode.setText(lblSourceCode.getText());
-//        }
-//        lblStatus.setText("Conversion process completed.");
-//    }
     private void startMainConversion() {
         String inputText = textAreaSource.getText();
         if (inputText.isEmpty()) {
             lblStatus.setText("Nothing to convert.");
             return;
+        }
+
+        if (lblSourceCode.getText().isEmpty()) {
+            updateSourceInfo(openccInstance.zhoCheck(inputText));
         }
 
         var config = getConfig();
@@ -163,13 +196,15 @@ public class DemoFxController {
 
         textAreaDestination.replaceText(convertedText);
 
-        if (!lblSourceCode.getText().contains("non") && !lblSourceCode.getText().isEmpty()) {
+        if (rbManual.isSelected()) {
+            lblDestinationCode.setText(cbManual.getValue() != null ? cbManual.getValue() : config);
+        } else if (!lblSourceCode.getText().contains("non") && !lblSourceCode.getText().isEmpty()) {
             lblDestinationCode.setText(lblSourceCode.getText().contains("Hans") ? "zh-Hant (繁体)" : "zh-Hans (简体)");
         } else {
             lblDestinationCode.setText(lblSourceCode.getText());
         }
 
-        lblStatus.setText("Conversion completed in " + elapsedMillis + " ms.");
+        lblStatus.setText("Conversion completed in " + elapsedMillis + " ms. [ " + config + " ]");
     }
 
 
@@ -233,10 +268,11 @@ public class DemoFxController {
                 lblSourceCode.setText("non-zho (其它)");
         }
         lblSourceCharCount.setText(String.format("[ %,d chars ]", textAreaSource.getText().length()));
-        if (!openFileName.isEmpty()) {
+        if (openFileName != null) {
             lblFilename.setText(new File(openFileName).getName());
             lblStatus.setText(openFileName);
         } else {
+            openFileName = "";
             lblFilename.setText(openFileName);
         }
     }
@@ -248,6 +284,11 @@ public class DemoFxController {
         }
         if (rbT2s.isSelected()) {
             config = rbStd.isSelected() ? "t2s" : (rbHK.isSelected() ? "hk2s" : (cbZHTW.isSelected() ? "tw2sp" : "tw2s"));
+        }
+        if (rbManual.isSelected()) {
+            if (cbManual.getValue() != null) {
+                config = cbManual.getValue().split(" ")[0];
+            }
         }
         return config;
     }
@@ -497,5 +538,19 @@ public class DemoFxController {
 
     public void onBthRefreshClicked() {
         updateSourceInfo(openccInstance.zhoCheck(textAreaSource.getText()));
+    }
+
+    public void onCbManualClicked() {
+        rbManual.setSelected(true);
+    }
+
+    public void onBthClearSourceClicked() {
+        textAreaSource.replaceText("");
+        textAreaSource.getUndoManager().forgetHistory();
+    }
+
+    public void onBthClearDestinationClicked() {
+        textAreaDestination.replaceText("");
+        textAreaDestination.getUndoManager().forgetHistory();
     }
 } // class DemoFxController
