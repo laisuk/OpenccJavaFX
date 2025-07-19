@@ -1,4 +1,4 @@
-package org.example.demofx;
+package org.example.openccfx;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -9,6 +9,7 @@ import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import openccjava.OfficeDocHelper;
 import org.fxmisc.richtext.CodeArea;
 
 import java.io.BufferedReader;
@@ -27,7 +28,7 @@ import java.util.Set;
 import openccjava.OpenCC;
 import org.fxmisc.richtext.LineNumberFactory;
 
-public class DemoFxController {
+public class OpenccFxController {
     private static final Set<String> FILE_EXTENSIONS = new HashSet<>(Arrays.asList(
             ".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2",
             ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp",
@@ -149,12 +150,22 @@ public class DemoFxController {
     }
 
     // Helper method to get file extension
-    private String getFileExtension(String fileName) {
-        int lastDotIndex = fileName.lastIndexOf(".");
-        if (lastDotIndex != -1) {
-            return fileName.substring(lastDotIndex);
-        }
-        return null;
+    private static String getFileExtension(String filename) {
+        if (filename == null) return "";
+        int dotIndex = filename.lastIndexOf('.');
+        return (dotIndex >= 0 && dotIndex < filename.length() - 1)
+                ? filename.substring(dotIndex).toLowerCase()
+                : "";
+    }
+
+    private static String buildConvertedFilename(String originalFilename, String config) {
+        if (originalFilename == null || originalFilename.isEmpty()) return config;
+
+        int dotIndex = originalFilename.lastIndexOf('.');
+        String baseName = (dotIndex >= 0) ? originalFilename.substring(0, dotIndex) : originalFilename;
+        String extension = (dotIndex >= 0) ? originalFilename.substring(dotIndex) : "";
+
+        return baseName + "_" + config + extension;
     }
 
     public void onBtnExitClicked(MouseEvent mouseEvent) {
@@ -224,30 +235,43 @@ public class DemoFxController {
         textAreaPreview.clear();
         final String config = getConfig();
         openccInstance.setConfig(config);
-        String convertedText;
         int counter = 0;
+
         for (String file : fileList) {
             counter++;
-            if (!FILE_EXTENSIONS.contains(getFileExtension(file))) {
-                textAreaPreview.appendText(String.format("%d : [Skipped] %s --> Not a valid file format.\n", counter, file));
-            } else {
-                File sourceFilePath = new File(file);
-                String outputFilename = sourceFilePath.getName();
-                Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
-                try {
-                    String contents = Files.readString(new File(file).toPath());
-                    convertedText = openccInstance.convert(contents, cbPunctuation.isSelected());
-//                    if (cbPunctuation.isSelected()) {
-//                        convertedText = convertPunctuation(convertedText, config);
-//                    }
-                    // Write string contents to the file with UTF-8 encoding
-                    Files.writeString(outputFilePath, convertedText);
-                    textAreaPreview.appendText(String.format("%d : %s --> [Done].\n", counter, outputFilePath));
+            String ext = getFileExtension(file).toLowerCase();
+            File sourceFilePath = new File(file);
+            String outputFilename = buildConvertedFilename(sourceFilePath.getName(), config); // ✅ use new helper
+            Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
 
-                } catch (Exception e) {
-//                    throw new RuntimeException(e);
-                    textAreaPreview.appendText(String.format("%d : [Skipped] %s --> Error writing output file.\n", counter, outputFilePath));
+            try {
+                if (OFFICE_EXTENSIONS.contains(ext)) {
+                    // Office file: use OfficeDocHelper
+                    OfficeDocHelper.ConversionResult result = OfficeDocHelper.convertOfficeDoc(
+                            file,
+                            outputFilePath.toString(),
+                            ext.substring(1), // Remove leading dot
+                            openccInstance,
+                            cbPunctuation.isSelected(),
+                            true // Keep font
+                    );
+
+                    textAreaPreview.appendText(String.format("%d : %s -> [%s] %s\n", counter, file,
+                            result.success() ? "Done" : "Skipped", result.message()));
+
+                } else if (FILE_EXTENSIONS.contains(ext)) {
+                    // Regular file: convert as plain text
+                    String contents = Files.readString(sourceFilePath.toPath());
+                    String convertedText = openccInstance.convert(contents, cbPunctuation.isSelected());
+                    Files.writeString(outputFilePath, convertedText);
+                    textAreaPreview.appendText(String.format("%d : %s -> [Done].\n", counter, outputFilePath));
+
+                } else {
+                    // Unsupported file
+                    textAreaPreview.appendText(String.format("%d : [Skipped] %s -> Not a valid file format.\n", counter, file));
                 }
+            } catch (Exception e) {
+                textAreaPreview.appendText(String.format("%d : [Skipped] %s -> Error: %s\n", counter, file, e.getMessage()));
             }
         }
         textAreaPreview.appendText("Process completed.\n");
@@ -408,7 +432,7 @@ public class DemoFxController {
         if (selectedItem != null) {
             File file = new File(selectedItem);
             String fileExtension = getFileExtension(file.getName());
-            if (file.isFile() && FILE_EXTENSIONS.contains(fileExtension != null ? fileExtension.toLowerCase() : null)) {
+            if (file.isFile() && FILE_EXTENSIONS.contains(fileExtension.toLowerCase())) {
                 try {
                     String content = Files.readString(file.toPath());
                     textAreaPreview.setText(content);
@@ -504,7 +528,7 @@ public class DemoFxController {
 
     private boolean isTextFile(File file) {
         String fileExtension = getFileExtension(file.getName());
-        return file.isFile() && FILE_EXTENSIONS.contains(fileExtension != null ? fileExtension.toLowerCase() : null);
+        return file.isFile() && FILE_EXTENSIONS.contains(fileExtension.toLowerCase());
     }
 
     public void onLivSourceDragOver(DragEvent dragEvent) {

@@ -10,4 +10,4 @@ set APP=build/libs/demofx-1.0-SNAPSHOT.jar
   -Dfile.encoding=UTF-8 ^
   --module-path "%APP%;%LIB%;%RICH%" ^
   --add-modules org.fxmisc.richtext ^
-  --module org.example.demofx/org.example.demofx.DemoFxApplication
+  --module org.example.openccfx/org.example.openccfx.OpenccFxApplication

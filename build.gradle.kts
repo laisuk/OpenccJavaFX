@@ -38,10 +38,9 @@ tasks.withType<JavaExec> {
     )
 }
 
-
 application {
-    mainModule.set("org.example.demofx")
-    mainClass.set("org.example.demofx.DemoFxApplication")
+    mainModule.set("org.example.openccfx")
+    mainClass.set("org.example.openccfx.OpenccFxApplication")
 }
 
 javafx {
@@ -52,7 +51,6 @@ javafx {
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
-//    implementation(files("lib/OpenCC-Java.jar"))
     implementation("org.fxmisc.richtext:richtextfx:0.11.5")
 //    implementation(fileTree("lib") {include("*.jar")})
     // JSON serialization/deserialization
@@ -63,7 +61,7 @@ dependencies {
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "org.example.demofx.DemoFxApplication"
+        attributes["Main-Class"] = "org.example.openccfx.OpenccFxApplication"
     }
 }
 
@@ -86,7 +84,7 @@ tasks.named("jlinkZip") {
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "org.example.demofx.DemoFxApplication"
+        attributes["Main-Class"] = "org.example.openccfx.OpenccFxApplication"
     }
 }
 

@@ -1,4 +1,4 @@
-package org.example.demofx;
+package org.example.openccfx;
 
 import openccjava.OpenCC;
 
@@ -9,12 +9,12 @@ import java.util.stream.Collectors;
 
 
 public class ZhoConverter {
-    private static final Pattern NON_ZHO = Pattern.compile("[\\p{Punct}\\sA-Za-z0-9]");
+    private static final Pattern NON_ZHO = Pattern.compile("[\\p{Punct}\\sA-Za-z0-9_著]");
 
-    public static String convert(String input, String config) {
+    public static String convert(String input, String config, Boolean punctuation) {
         OpenCC converter = new OpenCC();
         converter.setConfig(config);
-        return converter.convert(input, false);
+        return converter.convert(input, punctuation);
     }
 
     public static int zhoCheck(String text) {
