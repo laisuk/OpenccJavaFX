@@ -3,7 +3,7 @@
 set JAVA=C:\Java\zulu21.42.19-ca-fx-jdk21.0.7-win_x64\bin\java.exe
 set LIB=lib
 set RICH=c:\Java\richtextfx
-set APP=build/libs/openccfx-1.0-SNAPSHOT.jar
+set APP=build/libs/openccjavafx-1.0-SNAPSHOT.jar
 
 :: Add the app jar to module path, along with dependencies
 "%JAVA%" ^
