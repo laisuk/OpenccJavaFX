@@ -9,7 +9,7 @@ import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import openccjava.OfficeDocHelper;
+import openccjava.OfficeHelper;
 import org.fxmisc.richtext.CodeArea;
 
 import java.io.BufferedReader;
@@ -24,23 +24,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-//import static org.example.demofx.ZhoConverter.*;
 import openccjava.OpenCC;
 import org.fxmisc.richtext.LineNumberFactory;
+
+import static openccjava.OfficeHelper.OFFICE_EXTENSIONS;
 
 public class OpenccFxController {
     private static final Set<String> FILE_EXTENSIONS = new HashSet<>(Arrays.asList(
             ".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2",
-            ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp",
-            ".docx", ".xlsx", ".pptx",  // Office Open XML
-            ".odt", ".ods", ".odp",     // OpenDocument formats
-            ".epub"
-    ));
-
-    private static final Set<String> OFFICE_EXTENSIONS = new HashSet<>(Arrays.asList(
-            ".docx", ".xlsx", ".pptx",  // Office Open XML
-            ".odt", ".ods", ".odp",     // OpenDocument formats
-            ".epub"                     // E-book archive format
+            ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp"
     ));
 
     private static final List<String> CONFIG_LIST = Arrays.asList(
@@ -247,7 +239,7 @@ public class OpenccFxController {
             try {
                 if (OFFICE_EXTENSIONS.contains(ext)) {
                     // Office file: use OfficeDocHelper
-                    OfficeDocHelper.ConversionResult result = OfficeDocHelper.convertOfficeDoc(
+                    OfficeHelper.ConversionResult result = OfficeHelper.convertOfficeDoc(
                             file,
                             outputFilePath.toString(),
                             ext.substring(1), // Remove leading dot
@@ -393,6 +385,7 @@ public class OpenccFxController {
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Text Files", "*.txt"),
                 new FileChooser.ExtensionFilter("Subtitle Files", "*.srt;*.vtt;*.ass;*.xml;*.ttml2"),
+                new FileChooser.ExtensionFilter("Office Files", "*.docx;*.xlsx;*.pptx;*.odt;*.ods;*.odp;*.epub"),
                 new FileChooser.ExtensionFilter("All Files", "*.*"));
         List<File> selectedFiles = fileChooser.showOpenMultipleDialog(null);
         if (selectedFiles != null) {

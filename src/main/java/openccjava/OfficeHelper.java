@@ -7,10 +7,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -20,10 +17,15 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-public class OfficeDocHelper {
-
+public class OfficeHelper {
     public record ConversionResult(boolean success, String message) {
     }
+
+    public static final Set<String> OFFICE_EXTENSIONS = new HashSet<>(Arrays.asList(
+            ".docx", ".xlsx", ".pptx",  // Office Open XML
+            ".odt", ".ods", ".odp",     // OpenDocument formats
+            ".epub"                     // E-book archive format
+    ));
 
     public static ConversionResult convertOfficeDoc(
             String inputPath,
