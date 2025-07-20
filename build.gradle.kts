@@ -12,7 +12,7 @@ version = "1.0-SNAPSHOT"
 tasks.wrapper {
     // You can either download the binary-only version of Gradle (BIN) or
     // the full version (with sources and documentation) of Gradle (ALL)
-    gradleVersion = "8.9"
+    gradleVersion = "8.11.1"
     distributionType = Wrapper.DistributionType.ALL
 }
 

@@ -104,6 +104,35 @@ public class OpenCC {
         return refs;
     }
 
+    public List<int[]> getSplitRanges(String text, boolean inclusive) {
+        List<int[]> result = new ArrayList<>();
+        int start = 0;
+        final int textLength = text.length(); // Cache text length
+
+        for (int i = 0; i < textLength; i++) {
+            if (delimiters.contains(text.charAt(i))) {
+                if (inclusive) {
+                    // Optimized: Directly add the inclusive range
+                    result.add(new int[]{start, i + 1});
+                } else {
+                    // Optimized: Avoid adding empty ranges if i == start
+                    if (i > start) {
+                        result.add(new int[]{start, i});     // before delimiter
+                    }
+                    result.add(new int[]{i, i + 1});         // delimiter itself
+                }
+                start = i + 1; // Update start for the next segment
+            }
+        }
+
+        // Add the last segment if it exists
+        if (start < textLength) {
+            result.add(new int[]{start, textLength});
+        }
+
+        return result;
+    }
+
     public String segmentReplace(String text, List<DictEntry> dicts, int maxLength) {
         if (text == null || text.isEmpty()) return text;
 
@@ -187,32 +216,6 @@ public class OpenCC {
 
         return sb.toString();
     }
-
-    public List<int[]> getSplitRanges(String text, boolean inclusive) {
-        List<int[]> result = new ArrayList<>();
-        int start = 0;
-
-        for (int i = 0; i < text.length(); i++) {
-            if (delimiters.contains(text.charAt(i))) {
-                if (inclusive) {
-                    result.add(new int[]{start, i + 1});
-                } else {
-                    if (i > start) {
-                        result.add(new int[]{start, i});     // before delimiter
-                    }
-                    result.add(new int[]{i, i + 1});         // delimiter itself
-                }
-                start = i + 1;
-            }
-        }
-
-        if (start < text.length()) {
-            result.add(new int[]{start, text.length()});
-        }
-
-        return result;
-    }
-
 
     public String s2t(String input, boolean punctuation) {
         var refs = getDictRefs("s2t");

@@ -59,7 +59,8 @@ public class OpenccFxController {
 //    private TextArea textAreaDestination;
     private CodeArea textAreaDestination;
     @FXML
-    private TextArea textAreaPreview;
+//    private TextArea textAreaPreview;
+    private CodeArea textAreaPreview;
     @FXML
     private RadioButton rbS2t;
     @FXML
@@ -428,13 +429,14 @@ public class OpenccFxController {
             if (file.isFile() && FILE_EXTENSIONS.contains(fileExtension.toLowerCase())) {
                 try {
                     String content = Files.readString(file.toPath());
-                    textAreaPreview.setText(content);
+//                    textAreaPreview.setText(content);
+                    textAreaPreview.replaceText(content);
                     lblStatus.setText(String.format("File Preview: %s", selectedItem));
                 } catch (IOException e) {
-                    textAreaSource.replaceText("Error reading file: " + e.getMessage());
+                    textAreaPreview.replaceText("Error reading file: " + e.getMessage());
                 }
             } else {
-                textAreaPreview.setText("Selected file is not a valid text file.");
+                textAreaPreview.replaceText("Selected file is not a valid text file.");
             }
         }
     }
@@ -452,6 +454,7 @@ public class OpenccFxController {
 
     public void onBtnClearPreviewClicked() {
         textAreaPreview.clear();
+        textAreaPreview.getUndoManager().forgetHistory();
         lblStatus.setText("Preview cleared.");
     }
 
@@ -562,12 +565,17 @@ public class OpenccFxController {
     }
 
     public void onBthClearSourceClicked() {
-        textAreaSource.replaceText("");
+        textAreaSource.clear();
         textAreaSource.getUndoManager().forgetHistory();
+        openFileName = "";
+        lblFilename.setText("");
+        lblSourceCode.setText("");
+        lblSourceCharCount.setText("");
     }
 
     public void onBthClearDestinationClicked() {
-        textAreaDestination.replaceText("");
+        textAreaDestination.clear();
         textAreaDestination.getUndoManager().forgetHistory();
+        lblDestinationCode.setText("");
     }
 } // class DemoFxController

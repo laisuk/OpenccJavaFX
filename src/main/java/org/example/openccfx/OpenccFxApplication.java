@@ -12,7 +12,7 @@ public class OpenccFxApplication extends Application {
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(OpenccFxApplication.class.getResource("openccfx-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1000, 700);
-        stage.setTitle("DemoFX 1.0");
+        stage.setTitle("OpenccJavaFX");
         stage.setScene(scene);
         stage.show();
     }

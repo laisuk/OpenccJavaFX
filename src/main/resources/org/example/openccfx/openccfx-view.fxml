@@ -9,7 +9,6 @@
 <?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
-<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.layout.AnchorPane?>
@@ -77,7 +76,7 @@
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <RadioButton fx:id="rbZHTW" mnemonicParsing="false" onMouseClicked="#onRbZhtwClicked" selected="true" text="ZH / TW（中台简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+            <RadioButton fx:id="rbZHTW" mnemonicParsing="false" onMouseClicked="#onRbZhtwClicked" text="ZH / TW（中台简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                 <font>
                     <Font size="14.0" />
                 </font>
@@ -251,14 +250,26 @@
                                             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                                         </padding>
                                     </ListView>
-                                    <TextArea fx:id="textAreaPreview" editable="false" prefHeight="200.0" prefWidth="200.0" promptText="Preview / Message box" wrapText="true" GridPane.columnIndex="1">
+<!--                                    <TextArea fx:id="textAreaPreview" editable="false" prefHeight="200.0" prefWidth="200.0" promptText="Preview / Message box" wrapText="true" GridPane.columnIndex="1">-->
+<!--                                        <padding>-->
+<!--                                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />-->
+<!--                                        </padding>-->
+<!--                                        <font>-->
+<!--                                            <Font size="14.0" />-->
+<!--                                        </font>-->
+<!--                                    </TextArea>-->
+                                    <VirtualizedScrollPane GridPane.columnIndex="1">
+                                        <content>
+                                            <CodeArea fx:id="textAreaPreview" editable="false" prefHeight="200.0" prefWidth="200.0" style="-fx-border-color: gray; -fx-border-width: 1px; -fx-font-size: 15px;" wrapText="true">
+                                                <padding>
+                                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                                </padding>
+                                            </CodeArea>
+                                        </content>
                                         <padding>
-                                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                            <Insets bottom="5.0" left="5.0" top="5.0" />
                                         </padding>
-                                        <font>
-                                            <Font size="14.0" />
-                                        </font>
-                                    </TextArea>
+                                    </VirtualizedScrollPane>
                                     <GridPane GridPane.rowIndex="1">
                                         <columnConstraints>
                                             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
@@ -382,7 +393,7 @@
             <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <Label fx:id="lblStatus" text="DemoFx 1.0">
+            <Label fx:id="lblStatus" text="OpenccJavaFX">
                 <GridPane.margin>
                     <Insets top="10.0" />
                 </GridPane.margin>
