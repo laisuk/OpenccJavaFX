@@ -1,4 +1,4 @@
-package org.example.openccfx;
+package org.example.openccjavafx;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -25,11 +25,11 @@ import java.util.List;
 import java.util.Set;
 
 import openccjava.OpenCC;
-import org.fxmisc.richtext.LineNumberFactory;
+//import org.fxmisc.richtext.LineNumberFactory;
 
-import static openccjava.OfficeHelper.OFFICE_EXTENSIONS;
+import static openccjava.OfficeHelper.OFFICE_FORMATS;
 
-public class OpenccFxController {
+public class OpenccJavaFxController {
     private static final Set<String> FILE_EXTENSIONS = new HashSet<>(Arrays.asList(
             ".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2",
             ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp"
@@ -102,8 +102,8 @@ public class OpenccFxController {
     public void initialize() {
         cbManual.getItems().addAll(CONFIG_LIST);
         cbManual.getSelectionModel().selectFirst();
-        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
-        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
+//        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
+//        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
     }
 
     private boolean isOpenFileDisabled = false;
@@ -233,24 +233,25 @@ public class OpenccFxController {
         for (String file : fileList) {
             counter++;
             String ext = getFileExtension(file).toLowerCase();
+            String extNoDot = ext.substring(1);
             File sourceFilePath = new File(file);
             String outputFilename = buildConvertedFilename(sourceFilePath.getName(), config); // ✅ use new helper
             Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
 
             try {
-                if (OFFICE_EXTENSIONS.contains(ext)) {
+                if (OFFICE_FORMATS.contains(extNoDot)) {
                     // Office file: use OfficeDocHelper
-                    OfficeHelper.ConversionResult result = OfficeHelper.convertOfficeDoc(
-                            file,
-                            outputFilePath.toString(),
-                            ext.substring(1), // Remove leading dot
+                    OfficeHelper.Result result = OfficeHelper.convert(
+                            sourceFilePath,
+                            outputFilePath.toFile(),
+                            extNoDot, // Remove leading dot
                             openccInstance,
                             cbPunctuation.isSelected(),
                             true // Keep font
                     );
 
                     textAreaPreview.appendText(String.format("%d : %s -> [%s] %s\n", counter, file,
-                            result.success() ? "Done" : "Skipped", result.message()));
+                            result.success ? "Done" : "Skipped", result.message));
 
                 } else if (FILE_EXTENSIONS.contains(ext)) {
                     // Regular file: convert as plain text

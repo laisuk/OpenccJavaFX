@@ -1,4 +1,4 @@
-package org.example.openccfx;
+package org.example.openccjavafx;
 
 import openccjava.OpenCC;
 

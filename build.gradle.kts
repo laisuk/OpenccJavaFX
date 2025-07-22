@@ -3,11 +3,11 @@ plugins {
     application
     id("org.javamodularity.moduleplugin") version "1.8.15"
     id("org.openjfx.javafxplugin") version "0.1.0"
-    id("org.beryx.jlink") version "3.0.1"
+    id("org.beryx.jlink") version "3.1.1"
 }
 
 group = "org.example"
-version = "1.0-SNAPSHOT"
+version = "1.0.0"
 
 tasks.wrapper {
     // You can either download the binary-only version of Gradle (BIN) or
@@ -39,8 +39,8 @@ tasks.withType<JavaExec> {
 }
 
 application {
-    mainModule.set("org.example.openccfx")
-    mainClass.set("org.example.openccfx.OpenccFxApplication")
+    mainModule.set("org.example.openccjavafx")
+    mainClass.set("org.example.openccjavafx.OpenccJavaFxApplication")
 }
 
 javafx {
@@ -61,7 +61,7 @@ dependencies {
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "org.example.openccfx.OpenccFxApplication"
+        attributes["Main-Class"] = "org.example.openccjavafx.OpenccJavaFxApplication"
     }
 }
 
@@ -72,20 +72,54 @@ tasks.test {
 
 jlink {
     imageZip = project.file("${layout.buildDirectory}/distributions/app-${javafx.platform.classifier}.zip")
-    options = listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages")
+    options = listOf("--strip-debug", "--compress", "zip-6", "--no-header-files", "--no-man-pages")
+
     launcher {
-        name = "app"
+        name = "OpenccJavaFX"
     }
+
+    // ✅ Use this to tell jlink to include JavaFX modules
+    addExtraDependencies("javafx")
+
+    jpackage {
+        imageName = "OpenccJavaFX"
+        installerName = "OpenccJavaFX-Setup"
+        installerType = "msi"
+//        skipInstaller = true
+        appVersion = "1.0.0"
+
+        // Optional: include external dicts folder in the final package
+        resourceDir = file("src/main/jpackage")
+
+        // Optional icon
+        icon = "src/main/jpackage/icon.ico"
+        installerOptions = listOf("--win-menu", "--win-shortcut", "--win-dir-chooser")
+
+    }
+}
+
+tasks.register<Copy>("copyDicts") {
+    from("dicts")
+    into("build/jpackage/OpenccJavaFX/dicts")
+}
+
+tasks.named("jpackage").configure {
+    dependsOn("copyDicts")
+}
+
+tasks.named("copyDicts") {
+    mustRunAfter("jpackageImage")
+}
+
+tasks.register<Zip>("zipAppImage") {
+    dependsOn("jpackageImage", "copyDicts")
+    archiveFileName.set("OpenccJavaFX-portable.zip")
+    from("build/jpackage/OpenccJavaFX")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
 }
 
 tasks.named("jlinkZip") {
     group = "distribution"
-}
-
-tasks.withType<Jar> {
-    manifest {
-        attributes["Main-Class"] = "org.example.openccfx.OpenccFxApplication"
-    }
 }
 
 distributions {

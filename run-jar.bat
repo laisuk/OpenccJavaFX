@@ -11,4 +11,4 @@ set APP=build/libs/openccjavafx-1.0-SNAPSHOT.jar
   -Dfile.encoding=UTF-8 ^
   --module-path "%APP%;%JFX%;%LIB%;%RICH%" ^
   --add-modules javafx.controls,javafx.fxml,org.fxmisc.richtext ^
-  --module org.example.openccfx/org.example.openccfx.OpenccFxApplication
+  --module org.example.openccjavafx/org.example.openccjavafx.OpenccJavaFxApplication

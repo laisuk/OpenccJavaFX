@@ -1,4 +1,4 @@
-module org.example.openccfx {
+module org.example.openccjavafx {
     requires javafx.controls;
     requires javafx.fxml;
     requires java.datatransfer;
@@ -9,7 +9,7 @@ module org.example.openccfx {
     requires com.fasterxml.jackson.core;
     requires com.fasterxml.jackson.annotation;
 
-    opens org.example.openccfx to javafx.fxml;
-    exports org.example.openccfx;
+    opens org.example.openccjavafx to javafx.fxml;
+    exports org.example.openccjavafx;
     exports openccjava;
 }
