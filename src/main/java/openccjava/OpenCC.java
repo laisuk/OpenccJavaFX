@@ -58,6 +58,10 @@ public class OpenCC {
     }
 
     public String convert(String input, boolean punctuation) {
+        if (input == null || input.isEmpty()) {
+            lastError = "Input text is null or empty";
+            return lastError;
+        }
         return switch (config) {
             case "s2t" -> s2t(input, punctuation);
             case "t2s" -> t2s(input, punctuation);
