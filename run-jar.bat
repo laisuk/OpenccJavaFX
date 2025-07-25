@@ -4,7 +4,7 @@ set JAVA=java.exe
 set JFX=C:\Java\javafx-sdk-23.0.2\lib
 set LIB=lib
 set RICH=c:\Java\richtextfx
-set APP=build/libs/openccjavafx-1.0-SNAPSHOT.jar
+set APP=build/libs/openccjavafx-1.0.0.jar
 
 :: Add the app jar to module path, along with dependencies
 "%JAVA%" ^
