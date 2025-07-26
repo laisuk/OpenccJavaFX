@@ -44,7 +44,7 @@ application {
 }
 
 javafx {
-    version = "23.0.2"
+    version = "21.0.8"
     modules("javafx.controls", "javafx.fxml")
 }
 
@@ -57,6 +57,10 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.19.1")
     implementation("com.fasterxml.jackson.core:jackson-core:2.19.1")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.19.1")
+
+    // Core CLI parser
+    implementation("info.picocli:picocli:4.7.7")
+    annotationProcessor("info.picocli:picocli-codegen:4.7.7")
 }
 
 tasks.withType<Jar> {

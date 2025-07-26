@@ -21,7 +21,7 @@
 <?import org.fxmisc.flowless.VirtualizedScrollPane?>
 <?import org.fxmisc.richtext.CodeArea?>
 
-<VBox alignment="CENTER" prefHeight="720.0" prefWidth="1000.0" spacing="20.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.OpenccJavaFxController">
+<VBox alignment="CENTER" prefHeight="720.0" prefWidth="1000.0" spacing="20.0" xmlns="http://javafx.com/javafx/21.0.8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.OpenccJavaFxController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
@@ -68,7 +68,7 @@
             <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <RadioButton fx:id="rbStd" mnemonicParsing="false" onMouseClicked="#onRbStdClicked" selected="true" text="Standard（标准简繁）" GridPane.halignment="CENTER">
+            <RadioButton fx:id="rbStd" mnemonicParsing="false" onMouseClicked="#onRbStdClicked" selected="true" text="General（通用简繁）" GridPane.halignment="CENTER">
                 <toggleGroup>
                     <ToggleGroup fx:id="GroupRegion" />
                 </toggleGroup>
