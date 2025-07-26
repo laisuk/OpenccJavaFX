@@ -1,7 +1,7 @@
 @echo off
 
 set JAVA=java.exe
-set JFX=C:\Java\javafx-sdk-23.0.2\lib
+set JFX=C:\Java\javafx-sdk-21.0.8\lib
 set LIB=lib
 set RICH=c:\Java\richtextfx
 set APP=build/libs/openccjavafx-1.0.0.jar
