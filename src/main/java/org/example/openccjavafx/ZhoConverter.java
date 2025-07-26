@@ -22,14 +22,14 @@ public class ZhoConverter {
             return 0;
 //        var stripText = text.replaceAll("[\\p{Punct}\\sA-Za-z0-9]", "");
         var stripText = NON_ZHO.matcher(text).replaceAll("");
-        var testText = stripText.length() > 50 ? stripText.substring(0, 50) : stripText;
+        var testText = stripText.substring(0, Math.min(stripText.length(), 50));
         var converter = new OpenCC();
         converter.setConfig("t2s");
         if (!testText.equals(converter.convert(testText, false))) {
             return 1; // traditional
         }
         converter.setConfig("s2t");
-        if (!testText.equals(converter.convert(testText, true))) {
+        if (!testText.equals(converter.convert(testText, false))) {
             return 2; // simplified
         }
         return 0; // unknown or mixed
