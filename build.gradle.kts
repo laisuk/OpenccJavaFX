@@ -132,6 +132,15 @@ distributions {
             from("dicts") {
                 into("dicts")
             }
+            from("openccjava-cli.bat") {
+                into("bin")
+            }
+            from("openccjava-cli") {
+                into("bin")
+                filePermissions {
+                    unix("0755") // Sets permissions to rwxr-xr-x
+                }
+            }
         }
     }
 }

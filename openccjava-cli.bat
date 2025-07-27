@@ -1,5 +1,5 @@
-REM Batch file to run openccjavacli for distZip
 @echo off
+REM Batch file to run openccjavacli for distZip
 REM Save current directory
 pushd "%~dp0\.."
 

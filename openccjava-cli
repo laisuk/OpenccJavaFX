@@ -1,0 +1,13 @@
+#!/bin/bash
+# Resolve the directory where this script resides
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR/.."
+
+# Change to root directory temporarily
+pushd "$ROOT_DIR" > /dev/null
+
+# Run the Java CLI
+java -cp lib/* openccjavacli.Main "$@"
+
+# Restore the original directory
+popd > /dev/null
