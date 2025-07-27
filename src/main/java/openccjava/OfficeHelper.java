@@ -416,7 +416,7 @@ public class OfficeHelper {
                 collectEpubTargets(file, baseDir, results);
             } else {
                 String name = file.getName().toLowerCase();
-                if (name.endsWith(".xhtml") || name.endsWith(".opf") || name.endsWith(".ncx")) {
+                if (name.endsWith(".xhtml") || name.endsWith(".html") || name.endsWith(".opf") || name.endsWith(".ncx")) {
                     results.add(baseDir.toPath().relativize(file.toPath()));
                 }
             }
