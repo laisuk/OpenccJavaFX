@@ -250,7 +250,7 @@ public class OpenccJavaFxController {
                             true // Keep font
                     );
 
-                    textAreaPreview.appendText(String.format("%d : %s -> [%s] %s\n", counter, file,
+                    textAreaPreview.appendText(String.format("%d : %s -> [%s] %s\n", counter, result.success ? outputFilePath : file,
                             result.success ? "Done" : "Skipped", result.message));
 
                 } else if (FILE_EXTENSIONS.contains(ext)) {
