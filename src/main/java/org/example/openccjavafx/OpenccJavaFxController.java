@@ -528,6 +528,11 @@ public class OpenccJavaFxController {
         return file.isFile() && FILE_EXTENSIONS.contains(fileExtension.toLowerCase());
     }
 
+    private boolean isOfficeFile(File file) {
+        String fileExtension = getFileExtension(file.getName());
+        return file.isFile() && OFFICE_FORMATS.contains(fileExtension.toLowerCase().substring(1));
+    }
+
     public void onLivSourceDragOver(DragEvent dragEvent) {
         if (dragEvent.getGestureSource() != listViewSource && dragEvent.getDragboard().hasFiles()) {
             dragEvent.acceptTransferModes(TransferMode.COPY);
@@ -543,7 +548,7 @@ public class OpenccJavaFxController {
             List<File> files = dragboard.getFiles();
             int count = 0;
             for (File file : files) {
-                if (isTextFile(file) && !fileList.contains(file.getAbsolutePath())) {
+                if ((isTextFile(file) || isOfficeFile(file)) && !fileList.contains(file.getAbsolutePath())) {
                     fileList.add(file.getAbsolutePath());
                     count++;
                     success = true;

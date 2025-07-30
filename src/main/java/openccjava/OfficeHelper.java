@@ -28,9 +28,9 @@ public class OfficeHelper {
     /**
      * List of supported file extensions for Office and EPUB documents.
      */
-    public static final List<String> OFFICE_FORMATS = Arrays.asList(
+    public static final Set<String> OFFICE_FORMATS = new HashSet<>(Arrays.asList(
             "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
-    );
+    ));
 
     /**
      * Logger instance used for reporting non-fatal processing errors.
