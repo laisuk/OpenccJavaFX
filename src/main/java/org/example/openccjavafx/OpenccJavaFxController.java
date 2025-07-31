@@ -76,6 +76,8 @@ public class OpenccJavaFxController {
     @FXML
     private CheckBox cbPunctuation;
     @FXML
+    private CheckBox cbConvertFilename;
+    @FXML
     private Label lblSourceCode;
     @FXML
     private Label lblDestinationCode;
@@ -236,6 +238,9 @@ public class OpenccJavaFxController {
             String extNoDot = ext.substring(1);
             File sourceFilePath = new File(file);
             String outputFilename = buildConvertedFilename(sourceFilePath.getName(), config); // ✅ use new helper
+            if (cbConvertFilename.isSelected()) {
+                outputFilename = openccInstance.convert(outputFilename);
+            }
             Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
 
             try {
