@@ -21,7 +21,7 @@
 <?import org.fxmisc.flowless.VirtualizedScrollPane?>
 <?import org.fxmisc.richtext.CodeArea?>
 
-<VBox alignment="CENTER" prefHeight="720.0" prefWidth="1000.0" spacing="20.0" xmlns="http://javafx.com/javafx/21.0.8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.OpenccJavaFxController">
+<VBox alignment="CENTER" prefHeight="720.0" prefWidth="1000.0" spacing="20.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.OpenccJavaFxController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
@@ -196,12 +196,15 @@
                                  <Insets />
                               </opaqueInsets>
                                     </Label>
-                                    <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" text="🔄" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" text="↻" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets right="100.0" top="5.0" />
                                         </GridPane.margin>
+                              <font>
+                                 <Font name="System Bold" size="13.0" />
+                              </font>
                                     </Button>
-                                    <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" text="💾" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" text="↧" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets right="100.0" top="5.0" />
                                         </GridPane.margin>
@@ -280,7 +283,7 @@
                                         <children>
                                             <HBox prefHeight="100.0" prefWidth="200.0">
                                                 <children>
-                                                    <Button fx:id="btnAdd" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnAddClicked" text="➕" HBox.hgrow="ALWAYS">
+                                                    <Button fx:id="btnAdd" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnAddClicked" text="+" HBox.hgrow="ALWAYS">
                                                         <font>
                                                             <Font name="System Bold" size="12.0" />
                                                         </font>
@@ -288,7 +291,7 @@
                                                             <Insets right="5.0" />
                                                         </HBox.margin>
                                                     </Button>
-                                                    <Button fx:id="btnRemove" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnRemoveClicked" text="➖" HBox.hgrow="ALWAYS">
+                                                    <Button fx:id="btnRemove" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnRemoveClicked" text="-" HBox.hgrow="ALWAYS">
                                                         <font>
                                                             <Font name="System Bold" size="12.0" />
                                                         </font>
@@ -329,7 +332,7 @@
                                                 </font>
                                             </Label>
                                             <TextField fx:id="textFieldPath" prefHeight="25.0" prefWidth="284.0" promptText="Please set output folder before start" HBox.hgrow="ALWAYS" />
-                                            <Button fx:id="btnSelectPath" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnSelectPathClicked" text="📂">
+                                            <Button fx:id="btnSelectPath" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnSelectPathClicked" text="...">
                                                 <HBox.margin>
                                                     <Insets left="5.0" right="5.0" />
                                                 </HBox.margin>

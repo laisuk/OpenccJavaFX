@@ -322,7 +322,7 @@ public class OpenccJavaFxController {
         fileChooser.setInitialDirectory(new File("."));
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("Subtitle Files", "*.srt;*.vtt;*.ass;*.xml;*.ttml2"),
+                new FileChooser.ExtensionFilter("Subtitle Files", Arrays.asList("*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2")),
                 new FileChooser.ExtensionFilter("All Files", "*.*"));
         File selectedFile = fileChooser.showOpenDialog(null);
 
