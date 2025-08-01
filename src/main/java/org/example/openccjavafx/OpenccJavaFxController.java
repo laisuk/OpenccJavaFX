@@ -391,9 +391,10 @@ public class OpenccJavaFxController {
         fileChooser.setInitialDirectory(new File("."));
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("Subtitle Files", "*.srt;*.vtt;*.ass;*.xml;*.ttml2"),
-                new FileChooser.ExtensionFilter("Office Files", "*.docx;*.xlsx;*.pptx;*.odt;*.ods;*.odp;*.epub"),
-                new FileChooser.ExtensionFilter("All Files", "*.*"));
+                new FileChooser.ExtensionFilter("Subtitle Files", Arrays.asList("*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2")),
+                new FileChooser.ExtensionFilter("Office Files", Arrays.asList("*.docx", "*.xlsx", "*.pptx", "*.odt", "*.ods", "*.odp", "*.epub")),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
         List<File> selectedFiles = fileChooser.showOpenMultipleDialog(null);
         if (selectedFiles != null) {
             // Check for duplicate files and add only new files to the list
