@@ -2,7 +2,6 @@ package openccjava;
 
 import openccjava.DictionaryMaxlength.DictEntry;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -116,37 +115,6 @@ public class DictRefs {
          * @return the transformed result
          */
         String apply(String input, List<DictEntry> dicts, int maxLength);
-    }
-
-    /**
-     * Finds the maximum number of characters that can be encoded within the given UTF-8 byte budget.
-     *
-     * <p>Used to efficiently limit the preview of text when detecting language variants (e.g. in zhoCheck).
-     *
-     * @param input    the input string
-     * @param maxBytes the max number of UTF-8 bytes allowed
-     * @return number of characters (not bytes) fitting within {@code maxBytes}
-     */
-    public static int findMaxUtf8Length(String input, int maxBytes) {
-        if (input == null || input.isEmpty() || maxBytes <= 0) {
-            return 0;
-        }
-
-        int estMaxChars = Math.min(input.length(), maxBytes / 2);  // Assume avg 2 bytes per char
-        input = input.substring(0, estMaxChars);
-
-        int left = 0, right = input.length();
-        while (left < right) {
-            int mid = (left + right + 1) / 2;
-            int utf8Length = input.substring(0, mid).getBytes(StandardCharsets.UTF_8).length;
-            if (utf8Length <= maxBytes) {
-                left = mid;
-            } else {
-                right = mid - 1;
-            }
-        }
-
-        return left;
     }
 
     /**

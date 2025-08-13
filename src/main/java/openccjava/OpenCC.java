@@ -655,7 +655,7 @@ public class OpenCC {
      * @return the text converted to Traditional Chinese, character by character
      */
     public String st(String input) {
-        return convertSegment(input, List.of(dictionary.st_characters), 1);
+        return convertSegment(input, List.of(dictionary.st_characters), 2); // maxLength = 2 for surrogate-paired characters
     }
 
     /**
@@ -668,7 +668,7 @@ public class OpenCC {
      * @return the text converted to Simplified Chinese, character by character
      */
     public String ts(String input) {
-        return convertSegment(input, List.of(dictionary.ts_characters), 1);
+        return convertSegment(input, List.of(dictionary.ts_characters), 2); // maxLength = 2 for surrogate-paired characters
     }
 
     /**
@@ -692,8 +692,14 @@ public class OpenCC {
         if (input == null || input.isEmpty()) return 0;
 
         String stripped = DictRefs.STRIP_REGEX.matcher(input).replaceAll("");
-        int limit = DictRefs.findMaxUtf8Length(stripped, 200);
-        String slice = stripped.substring(0, Math.min(limit, stripped.length()));
+        if (stripped.isEmpty()) return 0;
+
+        // Take first 100 code points
+        int[] codePoints = stripped.codePoints()
+                .limit(100)
+                .toArray();
+
+        String slice = new String(codePoints, 0, codePoints.length);
 
         if (!slice.equals(ts(slice))) return 1;
         if (!slice.equals(st(slice))) return 2;

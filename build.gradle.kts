@@ -52,7 +52,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     implementation("org.fxmisc.richtext:richtextfx:0.11.5")
-//    implementation(fileTree("lib") {include("*.jar")})
+
     // JSON serialization/deserialization
     implementation("com.fasterxml.jackson.core:jackson-databind:2.19.1")
     implementation("com.fasterxml.jackson.core:jackson-core:2.19.1")
@@ -74,9 +74,10 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// Notes: Use --compress=zip-6 for JDK 21+, otherwise use 2
 jlink {
     imageZip = project.file("${layout.buildDirectory}/distributions/app-${javafx.platform.classifier}.zip")
-    options = listOf("--strip-debug", "--compress", "zip-6", "--no-header-files", "--no-man-pages")
+    options = listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages")
 
     launcher {
         name = "OpenccJavaFX"
