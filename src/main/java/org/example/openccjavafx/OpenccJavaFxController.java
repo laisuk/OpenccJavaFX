@@ -115,7 +115,7 @@ public class OpenccJavaFxController {
     @FXML
     protected void onBtnPasteClick() {
         String inputText = getClipboardTextFx();
-        if (!inputText.isEmpty()) {
+        if ((inputText != null) && !(inputText.isEmpty())) {
             textAreaSource.replaceText(inputText);
             openFileName = "";
             updateSourceInfo(openccInstance.zhoCheck(inputText));
