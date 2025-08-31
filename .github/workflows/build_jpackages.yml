@@ -13,13 +13,16 @@ jobs:
         include:
           - os: ubuntu-latest
             os_tag: linux
-            gradlew: ./gradlew
+            gradle_cmd: ./gradlew
+            shell: bash
           - os: windows-latest
             os_tag: windows
-            gradlew: gradlew.bat
+            gradle_cmd: .\gradlew.bat
+            shell: pwsh
           - os: macos-latest
             os_tag: macos
-            gradlew: ./gradlew
+            gradle_cmd: ./gradlew
+            shell: bash
 
     steps:
       - name: Checkout
@@ -32,60 +35,61 @@ jobs:
           java-version: 17
           cache: gradle
 
-      # ---- Linux runtime deps for JavaFX & packaging
+      # ---------- Linux deps (Ubuntu 24.04 uses libasound2t64)
       - name: Install Linux runtime deps
         if: matrix.os == 'ubuntu-latest'
+        shell: bash
         run: |
+          set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-0 libasound2 libx11-6 libxext6 libxrender1 libxtst6 libxi6 libgl1 libglib2.0-0 \
+          if ! sudo apt-get install -y --no-install-recommends libasound2t64; then
+            sudo apt-get install -y --no-install-recommends libasound2 || true
+          fi
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-0 libx11-6 libxext6 libxrender1 libxtst6 libxi6 libgl1 libglib2.0-0 \
+            libfreetype6 libfontconfig1 libxkbcommon-x11-0 \
             fakeroot rpm patchelf zip
 
-      # ---- Install WiX Toolset on Windows (needed for MSI)
+      # ---------- Windows: WiX for MSI
       - name: Install WiX Toolset (Windows)
         if: matrix.os == 'windows-latest'
-        shell: powershell
+        shell: pwsh
         run: |
           choco install wixtoolset --no-progress -y
-          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
-          if (-not (Test-Path $wixPath)) {
-            # Some images may ship 3.14 instead of 3.11
-            $wixPath = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
-          }
+          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          if (-not (Test-Path $wixPath)) { $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin" }
           if (-not (Test-Path $wixPath)) { throw "WiX bin folder not found." }
-
-          echo "WIX=$wixPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "$wixPath"       | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-          # Verify candle/light exist
+          "WIX=$wixPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $wixPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           & "$wixPath\candle.exe" -? | Out-Null
           & "$wixPath\light.exe"  -? | Out-Null
 
-      - name: Grant execute permission for Gradle wrapper (non-Windows)
+      - name: Make gradlew executable (non-Windows)
         if: matrix.os != 'windows-latest'
+        shell: bash
         run: chmod +x gradlew
 
       - name: Show Java & Gradle versions
+        shell: ${{ matrix.shell }}
         run: |
           java -version
-          ${{ matrix.gradlew }} --version
+          ${{ matrix.gradle_cmd }} --version
 
-      # ---- Build & Package
+      # ---------- Build & Package
       - name: Run jpackage / jpackageImage
+        shell: ${{ matrix.shell }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            # Uses your Gradle jpackage (installerType=msi) and copyDicts dependency chain
-            ${{ matrix.gradlew }} --no-daemon clean jpackage
+            # PowerShell shell is set, but this block runs via pwsh;
+            # call the wrapper with matrix.gradle_cmd
+            ${{ matrix.gradle_cmd }} --no-daemon clean jpackage
           elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            # App image + portable zip
-            ${{ matrix.gradlew }} --no-daemon clean jpackageImage zipAppImage
+            ${{ matrix.gradle_cmd }} --no-daemon clean jpackageImage zipAppImage
           else
-            # macOS: App image + portable zip
-            ${{ matrix.gradlew }} --no-daemon clean jpackageImage zipAppImage
+            ${{ matrix.gradle_cmd }} --no-daemon clean jpackageImage zipAppImage
           fi
-        shell: bash
 
-      # ---- Upload build outputs (download manually from the run)
+      # ---------- Artifacts
       - name: Upload app image folder
         uses: actions/upload-artifact@v4
         with:
@@ -97,7 +101,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: portable-zip-${{ matrix.os_tag }}
-          path: build/distributions/OpenccJavaFX-portable.zip
+          path: build/distributions/*.zip
           if-no-files-found: ignore
 
       - name: Upload native installers (msi/deb/rpm/dmg/pkg)

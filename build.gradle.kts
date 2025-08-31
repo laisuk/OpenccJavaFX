@@ -1,3 +1,5 @@
+import org.gradle.internal.os.OperatingSystem
+
 plugins {
     java
     application
@@ -103,9 +105,17 @@ jlink {
     }
 }
 
+val isMac = OperatingSystem.current().isMacOsX
+val appImageRoot = layout.buildDirectory.dir(
+    if (isMac) "jpackage/OpenccJavaFX.app/Contents/app"
+    else "jpackage/OpenccJavaFX"
+)
+
+// Put dicts into the actual app-image for each OS
 tasks.register<Copy>("copyDicts") {
+    dependsOn("jpackageImage")
     from("dicts")
-    into("build/jpackage/OpenccJavaFX/dicts")
+    into(appImageRoot.map { it.dir("dicts") })
 }
 
 tasks.named("jpackage").configure {
@@ -116,11 +126,12 @@ tasks.named("copyDicts") {
     mustRunAfter("jpackageImage")
 }
 
+// Zip the correct app-image path (bundle on macOS, folder elsewhere)
 tasks.register<Zip>("zipAppImage") {
     dependsOn("jpackageImage", "copyDicts")
-    archiveFileName.set("OpenccJavaFX-portable.zip")
-    from("build/jpackage/OpenccJavaFX")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    archiveFileName.set("OpenccJavaFX-portable.zip")
+    from(if (isMac) "build/jpackage/OpenccJavaFX.app" else "build/jpackage/OpenccJavaFX")
 }
 
 tasks.named("jlinkZip") {
