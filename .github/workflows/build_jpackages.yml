@@ -1,0 +1,113 @@
+name: JPackage (Linux / Windows / macOS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  jpackage:
+    name: jpackage (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            os_tag: linux
+            gradlew: ./gradlew
+          - os: windows-latest
+            os_tag: windows
+            gradlew: gradlew.bat
+          - os: macos-latest
+            os_tag: macos
+            gradlew: ./gradlew
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Temurin JDK 17 (with jpackage)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      # ---- Linux runtime deps for JavaFX & packaging
+      - name: Install Linux runtime deps
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-0 libasound2 libx11-6 libxext6 libxrender1 libxtst6 libxi6 libgl1 libglib2.0-0 \
+            fakeroot rpm patchelf zip
+
+      # ---- Install WiX Toolset on Windows (needed for MSI)
+      - name: Install WiX Toolset (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          choco install wixtoolset --no-progress -y
+          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          if (-not (Test-Path $wixPath)) {
+            # Some images may ship 3.14 instead of 3.11
+            $wixPath = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          }
+          if (-not (Test-Path $wixPath)) { throw "WiX bin folder not found." }
+
+          echo "WIX=$wixPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "$wixPath"       | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+          # Verify candle/light exist
+          & "$wixPath\candle.exe" -? | Out-Null
+          & "$wixPath\light.exe"  -? | Out-Null
+
+      - name: Grant execute permission for Gradle wrapper (non-Windows)
+        if: matrix.os != 'windows-latest'
+        run: chmod +x gradlew
+
+      - name: Show Java & Gradle versions
+        run: |
+          java -version
+          ${{ matrix.gradlew }} --version
+
+      # ---- Build & Package
+      - name: Run jpackage / jpackageImage
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            # Uses your Gradle jpackage (installerType=msi) and copyDicts dependency chain
+            ${{ matrix.gradlew }} --no-daemon clean jpackage
+          elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            # App image + portable zip
+            ${{ matrix.gradlew }} --no-daemon clean jpackageImage zipAppImage
+          else
+            # macOS: App image + portable zip
+            ${{ matrix.gradlew }} --no-daemon clean jpackageImage zipAppImage
+          fi
+        shell: bash
+
+      # ---- Upload build outputs (download manually from the run)
+      - name: Upload app image folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-image-${{ matrix.os_tag }}
+          path: build/jpackage/**
+          if-no-files-found: ignore
+
+      - name: Upload portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-zip-${{ matrix.os_tag }}
+          path: build/distributions/OpenccJavaFX-portable.zip
+          if-no-files-found: ignore
+
+      - name: Upload native installers (msi/deb/rpm/dmg/pkg)
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os_tag }}
+          path: |
+            build/jpackage/*.msi
+            build/jpackage/*.deb
+            build/jpackage/*.rpm
+            build/jpackage/*.pkg
+            build/jpackage/*.dmg
+          if-no-files-found: ignore
