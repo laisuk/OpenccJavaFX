@@ -115,14 +115,14 @@ public class OpenccJavaFxController {
     @FXML
     protected void onBtnPasteClick() {
         String inputText = getClipboardTextFx();
-        if ((inputText != null) && !(inputText.isEmpty())) {
+        if ((inputText == null) || inputText.isEmpty()) {
+            lblStatus.setText("Clipboard is empty or could not retrieve contents.");
+        } else {
             textAreaSource.replaceText(inputText);
             openFileName = "";
             updateSourceInfo(openccInstance.zhoCheck(inputText));
             lblFilename.setText("");
             lblStatus.setText("Clipboard contents pasted to source area.");
-        } else {
-            lblStatus.setText("Clipboard is empty or could not retrieve contents.");
         }
     }
 
