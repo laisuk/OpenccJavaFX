@@ -14,15 +14,12 @@ jobs:
           - os: ubuntu-latest
             os_tag: linux
             gradle_cmd: ./gradlew
-            shell: bash
           - os: windows-latest
             os_tag: windows
             gradle_cmd: .\gradlew.bat
-            shell: pwsh
           - os: macos-latest
             os_tag: macos
             gradle_cmd: ./gradlew
-            shell: bash
 
     steps:
       - name: Checkout
@@ -70,26 +67,41 @@ jobs:
         run: chmod +x gradlew
 
       - name: Show Java & Gradle versions
-        shell: ${{ matrix.shell }}
+        shell: bash
+        if: matrix.os != 'windows-latest'
         run: |
           java -version
           ${{ matrix.gradle_cmd }} --version
 
-      # ---------- Build & Package
-      - name: Run jpackage / jpackageImage
-        shell: ${{ matrix.shell }}
+      - name: Show Java & Gradle versions (Windows)
+        shell: pwsh
+        if: matrix.os == 'windows-latest'
         run: |
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            # PowerShell shell is set, but this block runs via pwsh;
-            # call the wrapper with matrix.gradle_cmd
-            ${{ matrix.gradle_cmd }} --no-daemon clean jpackage
-          elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            ${{ matrix.gradle_cmd }} --no-daemon clean jpackageImage zipAppImage
-          else
-            ${{ matrix.gradle_cmd }} --no-daemon clean jpackageImage zipAppImage
-          fi
+          java -version
+          ${{ matrix.gradle_cmd }} --version
+
+      # ---------- Build & Package (split by OS to avoid shell mixing)
+
+      - name: Build (Windows MSI via jpackage)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage
+
+      - name: Build (Linux app-image + portable zip)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackageImage zipAppImage
+
+      - name: Build (macOS app-image + portable zip)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackageImage zipAppImage
 
       # ---------- Artifacts
+
       - name: Upload app image folder
         uses: actions/upload-artifact@v4
         with:
