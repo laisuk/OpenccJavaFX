@@ -88,36 +88,33 @@ jobs:
         run: |
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=msi
 
-      - name: Build Linux DEB (+ RPM) and show outputs
+      - name: Build Linux DEB (+ RPM) into separate dirs and show outputs
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           set -euxo pipefail
-          which jpackage
-          jpackage --version || true
-          which dpkg-deb
-          dpkg-deb --version
-          which desktop-file-install || true
-          which ar || true
 
-          # Build DEB
-          ${{ matrix.gradle_cmd }} --no-daemon --info clean jpackage -PinstallerType=deb
-          # Optional: also RPM
-          ${{ matrix.gradle_cmd }} --no-daemon --info jpackage -PinstallerType=rpm
+          # Build DEB into its own folder
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage \
+            -PinstallerType=deb \
+            -PinstallerOut=build/installer/deb
 
-          echo "=== Recursive tree ==="
-          find build -maxdepth 5 -type f -printf "%p\t%k KB\n" | sort || true
+          # Build RPM into its own folder (no clean now)
+          ${{ matrix.gradle_cmd }} --no-daemon jpackage \
+            -PinstallerType=rpm \
+            -PinstallerOut=build/installer/rpm
 
-          # Assert a .deb exists anywhere under build/
+          echo "=== Recursive tree (build/installer and build/jpackage) ==="
+          find build/installer build/jpackage -maxdepth 3 -type f -printf "%p\t%k KB\n" | sort || true
+
+          # Assert a .deb exists
           shopt -s globstar nullglob
-          debs=(build/**/*.deb)
+          debs=(build/installer/**/*.deb build/jpackage/**/*.deb)
           if (( ${#debs[@]} == 0 )); then
             echo "::error::No .deb file generated. Check the jpackage output above and problems-report.html." >&2
-            if [ -f build/reports/problems/problems-report.html ]; then
-              echo "Problems report: build/reports/problems/problems-report.html"
-            fi
+            [ -f build/reports/problems/problems-report.html ] && echo "Problems report: build/reports/problems/problems-report.html"
             exit 1
-          fi      
+          fi
 
       - name: Build macOS DMG
         if: matrix.os == 'macos-latest'
@@ -138,10 +135,13 @@ jobs:
         with:
           name: installers-${{ matrix.os_tag }}
           path: |
-            build/**/*.msi
-            build/**/*.deb
-            build/**/*.rpm
-            build/**/*.dmg
-            build/**/*.pkg
+            build/installer/**/*.deb
+            build/installer/**/*.rpm
+            build/jpackage/**/*.deb
+            build/jpackage/**/*.rpm
+            build/jpackage/**/*.msi
+            build/jpackage/**/*.dmg
+            build/jpackage/**/*.pkg
           if-no-files-found: ignore
+
 

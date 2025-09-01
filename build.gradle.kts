@@ -108,6 +108,12 @@ jlink {
         installerType = targetType
         if (isLinux == true && overrideType == null) installerType = "deb"  // default to deb
 
+        // Allow overriding the installer output directory per invocation:
+        val outOverride = (findProperty("installerOut") as String?)?.trim()
+        if (!outOverride.isNullOrEmpty()) {
+            installerOutputDir = file(outOverride)
+        }
+
         // Optional icon per OS (will use if the file exists)
         val iconPath = when {
             isWindows == true -> "src/main/jpackage/icon.ico"
