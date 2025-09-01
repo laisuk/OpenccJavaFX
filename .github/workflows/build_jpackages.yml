@@ -87,17 +87,23 @@ jobs:
         run: |
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=msi
 
-      - name: Build Linux DEB
+      - name: Build Linux DEB + RPM
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
+          set -euxo pipefail
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=deb
-
-      - name: Build Linux RPM
-        if: matrix.os == 'ubuntu-latest'
-        shell: bash
-        run: |
           ${{ matrix.gradle_cmd }} --no-daemon jpackage -PinstallerType=rpm
+          echo "=== build/jpackage contents ==="
+          ls -al build/jpackage || true      
+          
+          # Assert a .deb exists so we notice if it didn't get created
+          shopt -s nullglob
+          debs=(build/jpackage/*.deb)
+          if (( ${#debs[@]} == 0 )); then
+          echo "::error::No .deb file generated. Check jpackage output above." >&2
+          exit 1
+          fi
 
       - name: Build macOS DMG
         if: matrix.os == 'macos-latest'

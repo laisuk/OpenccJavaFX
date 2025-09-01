@@ -79,6 +79,7 @@ tasks.test {
 val os: OperatingSystem? = OperatingSystem.current()
 val isWindows = os?.isWindows
 val isMac = os?.isMacOsX
+val isLinux = os?.isLinux
 
 // Notes: Use --compress=zip-6 for JDK 21+, otherwise use 2
 jlink {
@@ -117,10 +118,15 @@ jlink {
         }
 
         // OS-specific installer options
+        // IMPORTANT: add DEB maintainer (and a friendly linux package name)
         installerOptions = when {
             isWindows == true -> listOf("--win-menu", "--win-shortcut", "--win-dir-chooser")
             isMac == true -> listOf("--mac-package-identifier", "org.example.openccjavafx")
-            else -> listOf("--linux-shortcut") // add --linux-deb-maintainer if you want
+            else -> listOf(
+                "--linux-shortcut",
+                "--linux-package-name", "openccjavafx",
+                "--linux-deb-maintainer", "Laisuk Lai <laisuk@users.noreply.github.com>"
+            )
         }
 
         // Optional: include external dicts folder in the final package
