@@ -32,20 +32,14 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Install Linux runtime deps
+      - name: Install Linux packaging deps (lean)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           set -euxo pipefail
           sudo apt-get update
-          if ! sudo apt-get install -y --no-install-recommends libasound2t64; then
-            sudo apt-get install -y --no-install-recommends libasound2 || true
-          fi
           sudo apt-get install -y --no-install-recommends \
-            libgtk-3-0 libx11-6 libxext6 libxrender1 libxtst6 libxi6 libgl1 libglib2.0-0 \
-            libfreetype6 libfontconfig1 libxkbcommon-x11-0 \
-            fakeroot rpm patchelf desktop-file-utils dpkg-dev xz-utils file binutils xdg-utils zip
-
+            fakeroot desktop-file-utils xz-utils binutils rpm      
 
       # Windows: WiX for MSI
       - name: Install WiX Toolset (Windows)
@@ -88,11 +82,11 @@ jobs:
         run: |
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=msi
 
-      - name: Build Linux DEB (+ RPM) into separate dirs and show outputs
+      - name: Build Linux DEB (+ RPM) into separate dirs
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
 
           # Build DEB into its own folder
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage \
@@ -104,17 +98,13 @@ jobs:
             -PinstallerType=rpm \
             -PinstallerOut=build/installer/rpm
 
-          echo "=== Recursive tree (build/installer and build/jpackage) ==="
-          find build/installer build/jpackage -maxdepth 3 -type f -printf "%p\t%k KB\n" | sort || true
-
-          # Assert a .deb exists
+          # Assert a .deb exists (quiet unless missing)
           shopt -s globstar nullglob
           debs=(build/installer/**/*.deb build/jpackage/**/*.deb)
           if (( ${#debs[@]} == 0 )); then
-            echo "::error::No .deb file generated. Check the jpackage output above and problems-report.html." >&2
-            [ -f build/reports/problems/problems-report.html ] && echo "Problems report: build/reports/problems/problems-report.html"
+            echo "::error::No .deb file generated." >&2
             exit 1
-          fi
+          fi      
 
       - name: Build macOS DMG
         if: matrix.os == 'macos-latest'

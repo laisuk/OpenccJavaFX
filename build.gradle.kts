@@ -106,7 +106,7 @@ jlink {
             else -> "deb"  // linux default
         }
         installerType = targetType
-        if (isLinux == true && overrideType == null) installerType = "deb"  // default to deb
+        // if (isLinux == true && overrideType == null) installerType = "deb"  // default to deb
 
         // Allow overriding the installer output directory per invocation:
         val outOverride = (findProperty("installerOut") as String?)?.trim()
