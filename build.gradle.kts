@@ -126,7 +126,6 @@ jlink {
         // Optional: include external dicts folder in the final package
         // Keep your resources (e.g., desktop files/icons)
         resourceDir = file("src/main/jpackage")
-
     }
 }
 
