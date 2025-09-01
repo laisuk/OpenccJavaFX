@@ -117,7 +117,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-image-${{ matrix.os_tag }}
-          path: build/jpackage/**
+          # exclude Windows/macOS installers from the app-image artifact
+          path: |
+            build/jpackage/**
+            !build/jpackage/*.msi
+            !build/jpackage/*.dmg
+            !build/jpackage/*.pkg
           if-no-files-found: ignore
 
       - name: Upload native installers (msi/deb/rpm/dmg/pkg)
