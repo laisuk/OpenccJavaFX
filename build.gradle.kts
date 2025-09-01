@@ -76,6 +76,10 @@ tasks.test {
     useJUnitPlatform()
 }
 
+val os: OperatingSystem? = OperatingSystem.current()
+val isWindows = os?.isWindows
+val isMac = os?.isMacOsX
+
 // Notes: Use --compress=zip-6 for JDK 21+, otherwise use 2
 jlink {
     imageZip = project.file("${layout.buildDirectory}/distributions/app-${javafx.platform.classifier}.zip")
@@ -91,23 +95,43 @@ jlink {
     jpackage {
         imageName = "OpenccJavaFX"
         installerName = "OpenccJavaFX-Setup"
-        installerType = "msi"
-//        skipInstaller = true
-        appVersion = "1.0.0"
+        appVersion = project.version.toString()
+
+        // Choose installer type per OS (can override: -PinstallerType=deb|rpm|dmg|pkg|msi)
+        val overrideType = (findProperty("installerType") as String?)?.lowercase()
+        val targetType = overrideType ?: when {
+            isWindows == true -> "msi"
+            isMac == true -> "dmg"  // or "pkg" if you prefer
+            else -> "deb"  // linux default
+        }
+        installerType = targetType
+
+        // Optional icon per OS (will use if the file exists)
+        val iconPath = when {
+            isWindows == true -> "src/main/jpackage/icon.ico"
+            isMac == true -> "src/main/jpackage/icon.icns"
+            else -> "src/main/jpackage/icon.png"
+        }
+        if (file(iconPath).exists()) {
+            icon = iconPath
+        }
+
+        // OS-specific installer options
+        installerOptions = when {
+            isWindows == true -> listOf("--win-menu", "--win-shortcut", "--win-dir-chooser")
+            isMac == true -> listOf("--mac-package-identifier", "org.example.openccjavafx")
+            else -> listOf("--linux-shortcut") // add --linux-deb-maintainer if you want
+        }
 
         // Optional: include external dicts folder in the final package
+        // Keep your resources (e.g., desktop files/icons)
         resourceDir = file("src/main/jpackage")
-
-        // Optional icon
-        icon = "src/main/jpackage/icon.ico"
-        installerOptions = listOf("--win-menu", "--win-shortcut", "--win-dir-chooser")
 
     }
 }
 
-val isMac = OperatingSystem.current().isMacOsX
 val appImageRoot = layout.buildDirectory.dir(
-    if (isMac) "jpackage/OpenccJavaFX.app/Contents/app"
+    if (isMac == true) "jpackage/OpenccJavaFX.app/Contents/app"
     else "jpackage/OpenccJavaFX"
 )
 
@@ -131,7 +155,7 @@ tasks.register<Zip>("zipAppImage") {
     dependsOn("jpackageImage", "copyDicts")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
     archiveFileName.set("OpenccJavaFX-portable.zip")
-    from(if (isMac) "build/jpackage/OpenccJavaFX.app" else "build/jpackage/OpenccJavaFX")
+    from(if (isMac == true) "build/jpackage/OpenccJavaFX.app" else "build/jpackage/OpenccJavaFX")
 }
 
 tasks.named("jlinkZip") {

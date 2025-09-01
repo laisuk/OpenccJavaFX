@@ -32,7 +32,7 @@ jobs:
           java-version: 17
           cache: gradle
 
-      # ---------- Linux deps (Ubuntu 24.04 uses libasound2t64)
+      # Linux deps (Ubuntu 24.04 switched to libasound2t64)
       - name: Install Linux runtime deps
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -44,10 +44,9 @@ jobs:
           fi
           sudo apt-get install -y --no-install-recommends \
             libgtk-3-0 libx11-6 libxext6 libxrender1 libxtst6 libxi6 libgl1 libglib2.0-0 \
-            libfreetype6 libfontconfig1 libxkbcommon-x11-0 \
-            fakeroot rpm patchelf zip
+            libfreetype6 libfontconfig1 libxkbcommon-x11-0 fakeroot rpm zip
 
-      # ---------- Windows: WiX for MSI
+      # Windows: WiX for MSI
       - name: Install WiX Toolset (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -66,54 +65,52 @@ jobs:
         shell: bash
         run: chmod +x gradlew
 
-      - name: Show Java & Gradle versions
-        shell: bash
+      # Show versions
+      - name: Show Java & Gradle versions (Unix)
         if: matrix.os != 'windows-latest'
+        shell: bash
         run: |
           java -version
           ${{ matrix.gradle_cmd }} --version
 
       - name: Show Java & Gradle versions (Windows)
-        shell: pwsh
         if: matrix.os == 'windows-latest'
+        shell: pwsh
         run: |
           java -version
           ${{ matrix.gradle_cmd }} --version
 
-      # ---------- Build & Package (split by OS to avoid shell mixing)
-
-      - name: Build (Windows MSI via jpackage)
+      # Build installers
+      - name: Build Windows MSI
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=msi
 
-      - name: Build (Linux app-image + portable zip)
+      - name: Build Linux DEB
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
-          ${{ matrix.gradle_cmd }} --no-daemon clean jpackageImage zipAppImage
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=deb
 
-      - name: Build (macOS app-image + portable zip)
+      - name: Build Linux RPM
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          ${{ matrix.gradle_cmd }} --no-daemon jpackage -PinstallerType=rpm
+
+      - name: Build macOS DMG
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
-          ${{ matrix.gradle_cmd }} --no-daemon clean jpackageImage zipAppImage
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=dmg
 
-      # ---------- Artifacts
-
+      # Artifacts (installers + app-image for inspection)
       - name: Upload app image folder
         uses: actions/upload-artifact@v4
         with:
           name: app-image-${{ matrix.os_tag }}
           path: build/jpackage/**
-          if-no-files-found: ignore
-
-      - name: Upload portable zip
-        uses: actions/upload-artifact@v4
-        with:
-          name: portable-zip-${{ matrix.os_tag }}
-          path: build/distributions/*.zip
           if-no-files-found: ignore
 
       - name: Upload native installers (msi/deb/rpm/dmg/pkg)
@@ -124,6 +121,6 @@ jobs:
             build/jpackage/*.msi
             build/jpackage/*.deb
             build/jpackage/*.rpm
-            build/jpackage/*.pkg
             build/jpackage/*.dmg
+            build/jpackage/*.pkg
           if-no-files-found: ignore
