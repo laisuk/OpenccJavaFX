@@ -12,7 +12,7 @@ group = "org.example"
 version = "1.0.0"
 
 tasks.wrapper {
-    // You can either download the binary-only version of Gradle (BIN) or
+    // Either download the binary-only version of Gradle (BIN) or
     // the full version (with sources and documentation) of Gradle (ALL)
     gradleVersion = "8.11.1"
     distributionType = Wrapper.DistributionType.ALL
@@ -106,7 +106,6 @@ jlink {
             else -> "deb"  // linux default
         }
         installerType = targetType
-        // if (isLinux == true && overrideType == null) installerType = "deb"  // default to deb
 
         // Allow overriding the installer output directory per invocation:
         val outOverride = (findProperty("installerOut") as String?)?.trim()
@@ -120,6 +119,7 @@ jlink {
             isMac == true -> "src/main/jpackage/icon.icns"
             else -> "src/main/jpackage/icon.png"
         }
+
         if (file(iconPath).exists()) {
             icon = iconPath
         }
@@ -140,7 +140,7 @@ jlink {
         }
 
         // Optional: include external dicts folder in the final package
-        // Keep your resources (e.g., desktop files/icons)
+        // Keep resources (e.g., desktop files/icons)
         resourceDir = file("src/main/jpackage")
     }
 }
