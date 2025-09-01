@@ -33,20 +33,20 @@ jobs:
           cache: gradle
 
       # Linux deps (Ubuntu 24.04 switched to libasound2t64)
+      # Linux deps (add dpkg-dev, xz-utils, file; keep desktop-file-utils & fakeroot)
       - name: Install Linux runtime deps
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           set -euxo pipefail
           sudo apt-get update
-          # asound t64 transition
           if ! sudo apt-get install -y --no-install-recommends libasound2t64; then
             sudo apt-get install -y --no-install-recommends libasound2 || true
           fi
           sudo apt-get install -y --no-install-recommends \
             libgtk-3-0 libx11-6 libxext6 libxrender1 libxtst6 libxi6 libgl1 libglib2.0-0 \
             libfreetype6 libfontconfig1 libxkbcommon-x11-0 \
-            fakeroot rpm patchelf desktop-file-utils zip
+            fakeroot rpm patchelf desktop-file-utils dpkg-dev xz-utils file zip
 
       # Windows: WiX for MSI
       - name: Install WiX Toolset (Windows)
@@ -89,21 +89,28 @@ jobs:
         run: |
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=msi
 
-      - name: Build Linux DEB + RPM
+      - name: Build Linux DEB (+ RPM) and show outputs
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           set -euxo pipefail
+          # DEB first
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=deb
+          # Optional: RPM too
           ${{ matrix.gradle_cmd }} --no-daemon jpackage -PinstallerType=rpm
-          echo "=== build/jpackage contents ==="
-          ls -al build/jpackage || true      
-          
-          # Assert a .deb exists so we notice if it didn't get created
-          shopt -s nullglob
-          debs=(build/jpackage/*.deb)
+
+          echo "=== build/jpackage (recursive) ==="
+          find build/jpackage -maxdepth 3 -type f -printf "%p\t%k KB\n" | sort || true
+
+          # Assert .deb exists (search recursively)
+          shopt -s globstar nullglob
+          debs=(build/jpackage/**/*.deb)
           if (( ${#debs[@]} == 0 )); then
-            echo "::error::No .deb file generated. Check jpackage output above." >&2
+            echo "::error::No .deb file generated. Check jpackage output above and problems-report.html." >&2
+            # Print problems report location if exists
+            if [ -f build/reports/problems/problems-report.html ]; then
+              echo "Problems report: build/reports/problems/problems-report.html"
+            fi
             exit 1
           fi
 
@@ -126,9 +133,9 @@ jobs:
         with:
           name: installers-${{ matrix.os_tag }}
           path: |
-            build/jpackage/*.msi
-            build/jpackage/*.deb
-            build/jpackage/*.rpm
-            build/jpackage/*.dmg
-            build/jpackage/*.pkg
+            build/jpackage/**/*.msi
+            build/jpackage/**/*.deb
+            build/jpackage/**/*.rpm
+            build/jpackage/**/*.dmg
+            build/jpackage/**/*.pkg
           if-no-files-found: ignore

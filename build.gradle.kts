@@ -106,6 +106,7 @@ jlink {
             else -> "deb"  // linux default
         }
         installerType = targetType
+        if (isLinux == true && overrideType == null) installerType = "deb"  // default to deb
 
         // Optional icon per OS (will use if the file exists)
         val iconPath = when {
@@ -123,9 +124,12 @@ jlink {
             isWindows == true -> listOf("--win-menu", "--win-shortcut", "--win-dir-chooser")
             isMac == true -> listOf("--mac-package-identifier", "org.example.openccjavafx")
             else -> listOf(
+                "--verbose",
                 "--linux-shortcut",
                 "--linux-package-name", "openccjavafx",
-                "--linux-deb-maintainer", "Laisuk Lai <laisuk@users.noreply.github.com>"
+                "--linux-deb-maintainer", "Laisuk Lai <laisuk@users.noreply.github.com>",
+                "--vendor", "OpenccJavaFX",
+                "--linux-app-category", "Utility"
             )
         }
 
