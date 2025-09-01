@@ -39,12 +39,14 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
+          # asound t64 transition
           if ! sudo apt-get install -y --no-install-recommends libasound2t64; then
             sudo apt-get install -y --no-install-recommends libasound2 || true
           fi
           sudo apt-get install -y --no-install-recommends \
             libgtk-3-0 libx11-6 libxext6 libxrender1 libxtst6 libxi6 libgl1 libglib2.0-0 \
-            libfreetype6 libfontconfig1 libxkbcommon-x11-0 fakeroot rpm zip
+            libfreetype6 libfontconfig1 libxkbcommon-x11-0 \
+            fakeroot rpm patchelf desktop-file-utils zip
 
       # Windows: WiX for MSI
       - name: Install WiX Toolset (Windows)
@@ -101,8 +103,8 @@ jobs:
           shopt -s nullglob
           debs=(build/jpackage/*.deb)
           if (( ${#debs[@]} == 0 )); then
-          echo "::error::No .deb file generated. Check jpackage output above." >&2
-          exit 1
+            echo "::error::No .deb file generated. Check jpackage output above." >&2
+            exit 1
           fi
 
       - name: Build macOS DMG
