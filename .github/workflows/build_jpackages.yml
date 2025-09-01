@@ -32,8 +32,6 @@ jobs:
           java-version: 17
           cache: gradle
 
-      # Linux deps (Ubuntu 24.04 switched to libasound2t64)
-      # Linux deps (add dpkg-dev, xz-utils, file; keep desktop-file-utils & fakeroot)
       - name: Install Linux runtime deps
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -46,7 +44,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libgtk-3-0 libx11-6 libxext6 libxrender1 libxtst6 libxi6 libgl1 libglib2.0-0 \
             libfreetype6 libfontconfig1 libxkbcommon-x11-0 \
-            fakeroot rpm patchelf desktop-file-utils dpkg-dev xz-utils file zip
+            fakeroot rpm patchelf desktop-file-utils dpkg-dev xz-utils file binutils xdg-utils zip
+
 
       # Windows: WiX for MSI
       - name: Install WiX Toolset (Windows)
@@ -94,25 +93,31 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # DEB first
-          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=deb
-          # Optional: RPM too
-          ${{ matrix.gradle_cmd }} --no-daemon jpackage -PinstallerType=rpm
+          which jpackage
+          jpackage --version || true
+          which dpkg-deb
+          dpkg-deb --version
+          which desktop-file-install || true
+          which ar || true
 
-          echo "=== build/jpackage (recursive) ==="
-          find build/jpackage -maxdepth 3 -type f -printf "%p\t%k KB\n" | sort || true
+          # Build DEB
+          ${{ matrix.gradle_cmd }} --no-daemon --info clean jpackage -PinstallerType=deb
+          # Optional: also RPM
+          ${{ matrix.gradle_cmd }} --no-daemon --info jpackage -PinstallerType=rpm
 
-          # Assert .deb exists (search recursively)
+          echo "=== Recursive tree ==="
+          find build -maxdepth 5 -type f -printf "%p\t%k KB\n" | sort || true
+
+          # Assert a .deb exists anywhere under build/
           shopt -s globstar nullglob
-          debs=(build/jpackage/**/*.deb)
+          debs=(build/**/*.deb)
           if (( ${#debs[@]} == 0 )); then
-            echo "::error::No .deb file generated. Check jpackage output above and problems-report.html." >&2
-            # Print problems report location if exists
+            echo "::error::No .deb file generated. Check the jpackage output above and problems-report.html." >&2
             if [ -f build/reports/problems/problems-report.html ]; then
               echo "Problems report: build/reports/problems/problems-report.html"
             fi
             exit 1
-          fi
+          fi      
 
       - name: Build macOS DMG
         if: matrix.os == 'macos-latest'
@@ -133,9 +138,10 @@ jobs:
         with:
           name: installers-${{ matrix.os_tag }}
           path: |
-            build/jpackage/**/*.msi
-            build/jpackage/**/*.deb
-            build/jpackage/**/*.rpm
-            build/jpackage/**/*.dmg
-            build/jpackage/**/*.pkg
+            build/**/*.msi
+            build/**/*.deb
+            build/**/*.rpm
+            build/**/*.dmg
+            build/**/*.pkg
           if-no-files-found: ignore
+
