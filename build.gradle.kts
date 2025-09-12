@@ -5,7 +5,7 @@ plugins {
     application
     id("org.javamodularity.moduleplugin") version "1.8.15"
     id("org.openjfx.javafxplugin") version "0.1.0"
-    id("org.beryx.jlink") version "3.1.1"
+    id("org.beryx.jlink") version "3.1.3"
 }
 
 group = "org.example"
@@ -53,7 +53,7 @@ javafx {
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
-    implementation("org.fxmisc.richtext:richtextfx:0.11.5")
+    implementation("org.fxmisc.richtext:richtextfx:0.11.6")
 
     // JSON serialization/deserialization
     implementation("com.fasterxml.jackson.core:jackson-databind:2.19.1")

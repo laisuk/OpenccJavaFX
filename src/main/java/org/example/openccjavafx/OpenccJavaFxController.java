@@ -19,10 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import openccjava.OpenCC;
 //import org.fxmisc.richtext.LineNumberFactory;
@@ -531,12 +528,12 @@ public class OpenccJavaFxController {
 
     private boolean isTextFile(File file) {
         String fileExtension = getFileExtension(file.getName());
-        return file.isFile() && FILE_EXTENSIONS.contains(fileExtension.toLowerCase());
+        return file.isFile() && FILE_EXTENSIONS.contains(fileExtension.toLowerCase(Locale.ROOT));
     }
 
     private boolean isOfficeFile(File file) {
         String fileExtension = getFileExtension(file.getName());
-        return file.isFile() && OFFICE_FORMATS.contains(fileExtension.toLowerCase().substring(1));
+        return file.isFile() && OFFICE_FORMATS.contains(fileExtension.toLowerCase(Locale.ROOT).substring(1));
     }
 
     public void onLivSourceDragOver(DragEvent dragEvent) {
