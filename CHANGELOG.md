@@ -7,6 +7,14 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.0.1-beta1] - 2025-09-17
+
+### Added
+
+- Add dragAndDrop text to `TextBoxSource`
+
+---
+
 ## [1.0.0] – 2025-07-30
 
 ### Added

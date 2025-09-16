@@ -486,7 +486,9 @@ public class OpenccJavaFxController {
     }
 
     public void onTaSourceDragOver(DragEvent dragEvent) {
-        if (dragEvent.getGestureSource() != textAreaSource && dragEvent.getDragboard().hasFiles()) {
+        Dragboard dragboard = dragEvent.getDragboard();
+        if (dragEvent.getGestureSource() != textAreaSource &&
+                (dragboard.hasFiles() || dragboard.hasString())) {
             dragEvent.acceptTransferModes(TransferMode.COPY);
         }
         dragEvent.consume();
@@ -521,6 +523,19 @@ public class OpenccJavaFxController {
             } else {
                 textAreaSource.replaceText("Not a valid text file.");
             }
+        } else if (dragboard.hasString()) {
+            // User dragged in plain text
+            String text = dragboard.getString();
+
+            // Remove BOM if present (just in case)
+            if (text.startsWith("\uFEFF")) {
+                text = text.substring(1);
+            }
+
+            textAreaSource.replaceText(text);
+            openFileName = "<Dropped text>";
+            updateSourceInfo(openccInstance.zhoCheck(text));
+            success = true;
         }
         dragEvent.setDropCompleted(success);
         dragEvent.consume();
