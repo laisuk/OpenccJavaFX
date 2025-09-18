@@ -171,7 +171,7 @@ public class OfficeHelper {
                 Path fullPath = tempDir.resolve(relativePath);
                 if (!Files.isRegularFile(fullPath)) continue;
 
-//                String xml = Files.readString(fullPath);
+                // String xml = Files.readString(fullPath);
                 // Java 8: no Files.readString, use readAllBytes
                 byte[] bytes = Files.readAllBytes(fullPath);
                 String xml = new String(bytes, StandardCharsets.UTF_8);

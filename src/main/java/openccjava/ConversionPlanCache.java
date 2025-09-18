@@ -5,32 +5,79 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Cache for (config,punctuation) → DictRefs with per-round StarterUnion.
- * Uses DictionaryMaxlength's UnionKey slot cache (no RoundKey/union map here).
+ * Cache for mapping an {@link OpenCC.Config} and punctuation setting
+ * to a fully prepared {@link DictRefs} instance with per-round
+ * {@link StarterUnion} precomputation.
+ *
+ * <p>
+ * This class provides fast retrieval of conversion plans, avoiding
+ * repeated recomputation of dictionary unions for the same configuration.
+ * Internally, it relies on {@link DictionaryMaxlength}'s
+ * {@link UnionKey}-based slot cache rather than building its own
+ * round/union maps.
+ * </p>
+ *
+ * <p>
+ * Thread-safe: backed by a {@link ConcurrentHashMap}.
+ * </p>
  */
 public final class ConversionPlanCache {
+    /**
+     * Provider for a {@link DictionaryMaxlength} instance.
+     * <p>
+     * Implementations can supply a dictionary either lazily
+     * or from a preloaded source.
+     * </p>
+     */
     public interface Provider {
+        /**
+         * Returns the {@link DictionaryMaxlength} backing this cache.
+         *
+         * @return a dictionary instance, never {@code null}
+         */
         DictionaryMaxlength get();
     }
 
+    /**
+     * Supplier of the backing {@link DictionaryMaxlength}.
+     */
     private final Provider provider;
 
     /**
-     * Primary cache: (config,punct) → DictRefs (with unions).
+     * Primary cache mapping from {@link PlanKey} (config + punctuation)
+     * to {@link DictRefs} with per-round {@link StarterUnion}.
      */
     private final ConcurrentMap<PlanKey, DictRefs> planCache = new ConcurrentHashMap<>();
 
+    /**
+     * Constructs a new cache with the given provider.
+     *
+     * @param provider the dictionary provider, must not be {@code null}
+     * @throws NullPointerException if {@code provider} is {@code null}
+     */
     public ConversionPlanCache(Provider provider) {
         this.provider = Objects.requireNonNull(provider);
     }
 
+    /**
+     * Retrieves or builds a {@link DictRefs} plan for the given
+     * configuration and punctuation mode.
+     *
+     * @param config      the OpenCC configuration
+     * @param punctuation whether punctuation conversion is enabled
+     * @return the prepared {@link DictRefs} with unions for this config
+     */
     public DictRefs getPlan(OpenCC.Config config, boolean punctuation) {
         return planCache.computeIfAbsent(new PlanKey(config, punctuation),
                 k -> buildPlan(config, punctuation));
     }
 
     /**
-     * Clear built plans (unions live inside DictionaryMaxlength slots and are managed there).
+     * Clears all cached conversion plans.
+     * <p>
+     * This does not affect unions inside {@link DictionaryMaxlength},
+     * which are managed separately in slot caches.
+     * </p>
      */
     public void clear() {
         planCache.clear();
@@ -38,6 +85,43 @@ public final class ConversionPlanCache {
 
     // ---------------- plan building ----------------
 
+    /**
+     * Builds a {@link DictRefs} conversion plan for the given configuration and punctuation mode.
+     * <p>
+     * Each plan consists of one or more "rounds," where each round applies a set of
+     * dictionary entries to the input. A corresponding {@link StarterUnion} is attached
+     * to each round for fast starter checks. Plans are built using
+     * {@link DictionaryMaxlength}'s predefined slots and {@link UnionKey} caches.
+     * </p>
+     *
+     * <p>
+     * The switch below covers all supported {@link OpenCC.Config} values:
+     * </p>
+     * <ul>
+     *   <li><b>S2T / T2S</b> – Simplified ↔ Traditional with optional punctuation dictionaries</li>
+     *   <li><b>S2Tw / Tw2S / S2Twp / Tw2Sp</b> – Conversions involving Taiwan-specific
+     *       phrase and variant dictionaries</li>
+     *   <li><b>S2Hk / Hk2S / T2Hk / Hk2T</b> – Conversions involving Hong Kong variants</li>
+     *   <li><b>T2Tw / T2Twp / Tw2T / Tw2Tp</b> – Traditional ↔ Taiwan conversions</li>
+     *   <li><b>T2Jp / Jp2T</b> – Traditional ↔ Japanese conversions</li>
+     * </ul>
+     *
+     * <p>
+     * For each case, the following rules apply:
+     * </p>
+     * <ul>
+     *   <li>{@code r1}, {@code r2}, {@code r3} – the per-round dictionary lists</li>
+     *   <li>{@link DictRefs} – created with the first round and extended with
+     *       {@link DictRefs#withRound2(List, StarterUnion)} or
+     *       {@link DictRefs#withRound3(List, StarterUnion)} as needed</li>
+     *   <li>{@link StarterUnion} – retrieved from {@link DictionaryMaxlength#unionFor(UnionKey)}</li>
+     * </ul>
+     *
+     * @param config      the OpenCC configuration (e.g. {@link OpenCC.Config#S2T})
+     * @param punctuation whether punctuation conversion should be included
+     * @return the constructed {@link DictRefs} for this configuration
+     * @throws IllegalArgumentException if the configuration is not handled
+     */
     private DictRefs buildPlan(OpenCC.Config config, boolean punctuation) {
         final DictionaryMaxlength d = provider.get();
 
@@ -160,17 +244,54 @@ public final class ConversionPlanCache {
 
     // ------------- keys -------------
 
+    /**
+     * Composite key for caching conversion plans.
+     * <p>
+     * A {@code PlanKey} uniquely identifies a plan by:
+     * <ul>
+     *   <li>{@link OpenCC.Config} – the conversion configuration</li>
+     *   <li>Punctuation mode – whether punctuation conversion is enabled</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * Instances are immutable and provide efficient hashing
+     * for use in {@link java.util.concurrent.ConcurrentMap}.
+     * </p>
+     */
     static final class PlanKey {
+        /**
+         * Conversion configuration (e.g. {@link OpenCC.Config#S2T}).
+         */
         final OpenCC.Config config;
+        /**
+         * Whether punctuation conversion is enabled.
+         */
         final boolean punctuation;
+        /**
+         * Precomputed hash code for performance in maps.
+         */
         private final int hash;
 
+        /**
+         * Constructs a new key from the given configuration and punctuation mode.
+         *
+         * @param c the OpenCC configuration
+         * @param p whether punctuation conversion is enabled
+         */
         PlanKey(OpenCC.Config c, boolean p) {
             this.config = c;
             this.punctuation = p;
             this.hash = (c.ordinal() * 397) ^ (p ? 1 : 0);
         }
 
+        /**
+         * Equality is based on both {@link #config} and {@link #punctuation}.
+         *
+         * @param o the object to compare
+         * @return {@code true} if the other object is a {@code PlanKey}
+         * with the same config and punctuation flag
+         */
         @Override
         public boolean equals(Object o) {
             if (!(o instanceof PlanKey)) return false;
@@ -178,11 +299,24 @@ public final class ConversionPlanCache {
             return k.config == config && k.punctuation == punctuation;
         }
 
+        /**
+         * Returns the precomputed hash code.
+         *
+         * @return the hash code
+         */
         @Override
         public int hashCode() {
             return hash;
         }
 
+        /**
+         * Returns a string form for debugging/logging.
+         * <p>
+         * Example: {@code "S2T_punct"} or {@code "T2S"}.
+         * </p>
+         *
+         * @return the string representation of this key
+         */
         @Override
         public String toString() {
             return config + (punctuation ? "_punct" : "");

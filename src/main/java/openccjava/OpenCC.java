@@ -50,29 +50,50 @@ public class OpenCC {
     }
 
     /**
-     * Loaded dictionary data containing phrase/character maps and their max lengths.
+     * The loaded dictionary data, including all phrase and character maps
+     * along with their maximum lengths.
      */
     private final DictionaryMaxlength dictionary;
+
+    /**
+     * Cache of conversion plans keyed by configuration and punctuation flag.
+     * <p>
+     * Each plan contains one or more dictionary rounds and their
+     * precomputed {@link StarterUnion}s for fast lookup.
+     * </p>
+     */
     private final ConversionPlanCache planCache;
 
+    /**
+     * Supported conversion configurations.
+     * <p>
+     * Each constant corresponds to an OpenCC conversion mode, such as
+     * Simplified↔Traditional, or region-specific variants (Taiwan, Hong Kong, Japan).
+     * </p>
+     */
     public enum Config {
         S2T, T2S, S2Tw, Tw2S, S2Twp, Tw2Sp,
         S2Hk, Hk2S, T2Tw, T2Twp, Tw2T, Tw2Tp,
         T2Hk, Hk2T, T2Jp, Jp2T;
 
         /**
-         * Return lowercase string form (e.g. S2T -> "s2t").
+         * Returns the lowercase string form of this config.
+         * <p>
+         * Example: {@code S2T.asStr()} → {@code "s2t"}.
+         * </p>
+         *
+         * @return the lowercase string representation
          */
         public String asStr() {
             return name().toLowerCase();
         }
 
         /**
-         * Parse string (case-insensitive).
+         * Parses a string into a {@code Config} constant, case-insensitive.
          *
-         * @param value string like "s2t", "T2S", etc.
-         * @return Config enum constant
-         * @throws IllegalArgumentException if no match
+         * @param value a string such as {@code "s2t"} or {@code "T2S"}
+         * @return the matching {@code Config} constant
+         * @throws IllegalArgumentException if {@code value} is {@code null} or does not match any constant
          */
         public static Config fromStr(String value) {
             if (value == null) {
@@ -121,20 +142,31 @@ public class OpenCC {
     }
 
     /**
-     * Constructs an OpenCC instance with a specified conversion configuration.
-     * <p>
-     * This constructor attempts to load the dictionary data in the following order:
-     * </p>
-     * <ol>
-     *   <li><b>File system:</b> Attempts to load {@code dicts/dictionary_maxlength.json} from the current working directory.</li>
-     *   <li><b>Classpath resource:</b> If not found on the file system, attempts to load the same JSON from the application's resources (e.g. {@code /dicts/dictionary_maxlength.json} inside the JAR).</li>
-     *   <li><b>Plain text fallback:</b> If the JSON is not found in either location, falls back to loading individual dictionary text files from {@code dicts/} using {@link DictionaryMaxlength#fromDicts()}.</li>
-     * </ol>
-     *  <p><i>Informational log messages</i> are emitted when a dictionary is successfully loaded from a specific source.</p>
-     *  <p><i>Warnings</i> are logged if the loader falls back to text-based dictionaries.</p>
+     * Constructs an {@code OpenCC} instance with the specified conversion configuration.
      *
-     * @param config the OpenCC conversion configuration key (e.g. "s2t", "tw2sp")
-     * @throws RuntimeException if any dictionary source fails to load or parse
+     * <p>The constructor attempts to load the dictionary data in the following order:</p>
+     * <ol>
+     *   <li><b>JSON file from file system:</b>
+     *       {@code dicts/dictionary_maxlength.json} in the current working directory.</li>
+     *   <li><b>Embedded JSON resource:</b>
+     *       {@code /dicts/dictionary_maxlength.json} from the application’s classpath (e.g. inside the JAR).</li>
+     *   <li><b>Plain text fallback:</b>
+     *       If the JSON is not found, falls back to loading individual dictionary text files from
+     *       {@code dicts/} using {@link DictionaryMaxlength#fromDicts()}.</li>
+     * </ol>
+     *
+     * <p>Logging behavior:</p>
+     * <ul>
+     *   <li><i>INFO</i> is logged when a dictionary is successfully loaded from either file system or resource.</li>
+     *   <li><i>WARNING</i> is logged if the loader falls back to plain-text dictionaries.</li>
+     * </ul>
+     *
+     * <p>If all attempts fail, a {@link RuntimeException} is thrown with the cause recorded in
+     * {@link #lastError}.</p>
+     *
+     * @param config the conversion configuration key (e.g. {@code "s2t"}, {@code "tw2sp"});
+     *               see {@link Config} for supported values
+     * @throws RuntimeException if no dictionary source can be loaded or parsed
      */
     public OpenCC(String config) {
         DictionaryMaxlength loaded;
@@ -167,11 +199,25 @@ public class OpenCC {
         setConfig(config);
     }
 
-    // expose helper
+    /**
+     * Retrieves the {@link DictRefs} for the given configuration and punctuation mode,
+     * including attached {@link StarterUnion}s.
+     *
+     * @param cfg         the conversion configuration
+     * @param punctuation whether punctuation conversion is enabled
+     * @return the prepared {@link DictRefs} for this configuration
+     */
     private DictRefs getRefsUnionForConfig(Config cfg, boolean punctuation) {
         return planCache.getPlan(cfg, punctuation);
     }
 
+    /**
+     * Clears all cached conversion plans.
+     * <p>
+     * This forces plans to be rebuilt lazily the next time they are requested.
+     * Starter unions inside {@link DictionaryMaxlength} remain unaffected.
+     * </p>
+     */
     public void clearPlanCache() {
         planCache.clear();
     }
@@ -560,9 +606,35 @@ public class OpenCC {
     }
 
     // --- helper struct -----------------------------------------------------------
+
+    /**
+     * Groups dictionary entries into phrase dictionaries and single-character dictionaries,
+     * with a cached maximum phrase length.
+     * <p>
+     * This partitioning is used internally to optimize lookup:
+     * <ul>
+     *   <li><b>phraseDicts</b> – dictionaries where {@code maxLength &gt;= 3},
+     *       searched longest-first during phrase matching</li>
+     *   <li><b>singleDicts</b> – dictionaries where {@code maxLength &lt; 3},
+     *       typically single-character or punctuation mappings</li>
+     *   <li><b>phraseMaxLen</b> – the maximum key length across all phrase dictionaries</li>
+     * </ul>
+     * </p>
+     */
     private static final class DictPartition {
+        /**
+         * Dictionaries containing multi-character phrases (length ≥ 3).
+         */
         final List<DictionaryMaxlength.DictEntry> phraseDicts;
+
+        /**
+         * Dictionaries containing single-character or punctuation entries (length &lt; 3).
+         */
         final List<DictionaryMaxlength.DictEntry> singleDicts;
+
+        /**
+         * Maximum phrase length across {@link #phraseDicts}.
+         */
         final int phraseMaxLen;
 
         DictPartition(List<DictionaryMaxlength.DictEntry> phraseDicts,
@@ -574,6 +646,17 @@ public class OpenCC {
         }
     }
 
+    /**
+     * Partitions a list of dictionary entries into phrase dictionaries and single-character dictionaries.
+     * <p>
+     * Entries with {@code maxLength ≥ 3} are placed in {@code phraseDicts}, and the maximum phrase
+     * length is tracked. Entries with {@code maxLength &lt; 3} are placed in {@code singleDicts}.
+     * Both lists are wrapped as unmodifiable.
+     * </p>
+     *
+     * @param dicts the dictionaries to partition
+     * @return a {@link DictPartition} containing the grouped entries and maximum phrase length
+     */
     private static DictPartition partitionDicts(List<DictionaryMaxlength.DictEntry> dicts) {
         List<DictionaryMaxlength.DictEntry> phrase = new ArrayList<>(dicts.size());
         List<DictionaryMaxlength.DictEntry> single = new ArrayList<>(2);
@@ -596,9 +679,37 @@ public class OpenCC {
     }
 
     /**
-     * Faster bridge using union + phrase/single partition.
+     * Performs dictionary-based segment replacement using a starter union and
+     * phrase/single partitioning.
+     *
+     * <p>This method accelerates conversion by:</p>
+     * <ul>
+     *   <li>Partitioning the provided dictionaries into phrase dictionaries
+     *       (length ≥ 3) and single-character dictionaries (length &lt; 3)
+     *       via {@link #partitionDicts(List)}.</li>
+     *   <li>Splitting the input text into independent ranges using
+     *       {@link #getSplitRanges(String, boolean)}.</li>
+     *   <li>Passing each segment to {@code convertSegmentWithUnion}, which uses
+     *       the supplied {@link StarterUnion} to skip impossible starters quickly.</li>
+     * </ul>
+     *
+     * <p>Execution mode:</p>
+     * <ul>
+     *   <li><b>Parallel</b> – if the input text exceeds 10,000 characters or
+     *       there are more than 100 split segments, segments are processed
+     *       in parallel using {@link IntStream#parallel()}.</li>
+     *   <li><b>Sequential</b> – otherwise, segments are processed in order
+     *       in a single thread.</li>
+     * </ul>
+     *
+     * <p>If the text is {@code null} or empty, it is returned unchanged.</p>
+     *
+     * @param text      the input text
+     * @param dicts     the dictionaries to use for conversion
+     * @param maxLength the maximum phrase length
+     * @param union     the starter union for fast starter checks
+     * @return the converted text
      */
-    // New: union-aware segmentReplace (keeps your original splitting & parallel flow)
     public String segmentReplaceWithUnion(String text,
                                           List<DictionaryMaxlength.DictEntry> dicts,
                                           int maxLength,
@@ -639,6 +750,47 @@ public class OpenCC {
     }
 
     // Internal: faster converter for a single segment using pre-partitioned dicts
+
+    /**
+     * Converts a single text segment using pre-partitioned dictionaries and an optional starter union.
+     * <p>
+     * Algorithm:
+     * </p>
+     * <ol>
+     *   <li><b>Starter pre-check:</b> If a {@link StarterUnion} is provided and the current code point
+     *       is not present in the union, the character is copied through without any dictionary lookups.</li>
+     *   <li><b>Phrase-first, greedy longest match:</b> For entries with {@code maxLength ≥ 3}, try the longest
+     *       possible substring at the current index down to length 3. On the first hit, append the replacement
+     *       and advance by the matched length.</li>
+     *   <li><b>Single-character fallback:</b> If no phrase matches, attempt a single-character (or surrogate-pair)
+     *       lookup in the {@code singleDicts}. On hit, append the replacement and advance by one code point.</li>
+     *   <li><b>No match:</b> Append the original code point and advance by one code point.</li>
+     * </ol>
+     *
+     * <p>
+     * Performance characteristics:
+     * </p>
+     * <ul>
+     *   <li>The union pre-check avoids hash lookups for impossible starters.</li>
+     *   <li>Phrase dictionaries are filtered by their {@code maxLength} to skip impossible candidates.</li>
+     *   <li>Greedy longest-match ensures deterministic results consistent with OpenCC behavior.</li>
+     * </ul>
+     *
+     * <p>
+     * Unicode/UTF-16 notes:
+     * </p>
+     * <ul>
+     *   <li>Iteration is by code point; {@link Character#charCount(int)} determines the number of UTF-16 units.</li>
+     *   <li>Substring bounds are in UTF-16 indices; surrogate pairs therefore advance by 2 code units.</li>
+     *   <li>No normalization is performed; keys must match the input’s exact code point sequence.</li>
+     * </ul>
+     *
+     * @param input       the segment to convert (non-null; empty returns immediately)
+     * @param part        pre-partitioned dictionaries (phrase vs single) and phrase max length
+     * @param roundMaxLen per-round maximum phrase length limit (upper-bounds the search window)
+     * @param union       optional {@link StarterUnion} for fast starter rejection; may be {@code null}
+     * @return the converted segment
+     */
     private String convertSegmentWithUnion(String input,
                                            DictPartition part,
                                            int roundMaxLen,

@@ -22,8 +22,35 @@ public class DictRefs {
     private List<Integer> maxLengths;
 
     // --- NEW: unions per round (nullable when not used) ---
+
+    /**
+     * Starter union for round-1 dictionaries.
+     * <p>
+     * Contains all possible starter characters (first code points)
+     * for the dictionaries in the first round.
+     * May be {@code null} if the round is not defined.
+     * </p>
+     */
     public StarterUnion u1;
+
+    /**
+     * Starter union for round 2 dictionaries.
+     * <p>
+     * Contains all possible starter characters (first code points)
+     * for the dictionaries in the second round.
+     * May be {@code null} if the round is not used.
+     * </p>
+     */
     public StarterUnion u2;
+
+    /**
+     * Starter union for round 3 dictionaries.
+     * <p>
+     * Contains all possible starter characters (first code points)
+     * for the dictionaries in the third round.
+     * May be {@code null} if the round is not used.
+     * </p>
+     */
     public StarterUnion u3;
 
     /**
@@ -65,19 +92,44 @@ public class DictRefs {
     // --- NEW: fluent round setters that also attach unions ---
 
     /**
-     * Round 1 only.
+     * Constructs a {@code DictRefs} for round&nbsp;1 only.
+     *
+     * @param r1     the list of dictionary entries for round&nbsp;1
+     * @param union1 the starter union for round&nbsp;1
      */
     public DictRefs(List<DictEntry> r1, StarterUnion union1) {
         this.round1 = Collections.unmodifiableList(new ArrayList<>(r1));
         this.u1 = union1;
     }
 
+    /**
+     * Adds round&nbsp;2 to this {@code DictRefs}.
+     * <p>
+     * The provided dictionary entries are stored as an unmodifiable list,
+     * and the corresponding starter union is attached to {@link #u2}.
+     * </p>
+     *
+     * @param r2     the list of dictionary entries for round&nbsp;2
+     * @param union2 the starter union for round&nbsp;2
+     * @return this {@code DictRefs} instance, for fluent chaining
+     */
     public DictRefs withRound2(List<DictEntry> r2, StarterUnion union2) {
         this.round2 = Collections.unmodifiableList(new ArrayList<>(r2));
         this.u2 = union2;
         return this;
     }
 
+    /**
+     * Adds round&nbsp;3 to this {@code DictRefs}.
+     * <p>
+     * The provided dictionary entries are stored as an unmodifiable list,
+     * and the corresponding starter union is attached to {@link #u3}.
+     * </p>
+     *
+     * @param r3     the list of dictionary entries for round&nbsp;3
+     * @param union3 the starter union for round&nbsp;3
+     * @return this {@code DictRefs} instance, for fluent chaining
+     */
     public DictRefs withRound3(List<DictEntry> r3, StarterUnion union3) {
         this.round3 = Collections.unmodifiableList(new ArrayList<>(r3));
         this.u3 = union3;
@@ -108,7 +160,29 @@ public class DictRefs {
     }
 
     /**
-     * NEW: segment replace that passes the per-round union to the core converter.
+     * Performs multi-round segment replacement with per-round starter unions.
+     * <p>
+     * Each round is applied in sequence:
+     * <ol>
+     *   <li>Round&nbsp;1 is always applied with {@link #u1}.</li>
+     *   <li>If defined, round&nbsp;2 is applied with {@link #u2}.</li>
+     *   <li>If defined, round&nbsp;3 is applied with {@link #u3}.</li>
+     * </ol>
+     * </p>
+     *
+     * <p>
+     * The provided {@link SegmentReplaceFnWithUnion} receives:
+     * <ul>
+     *   <li>the current input text,</li>
+     *   <li>the list of dictionaries for the round,</li>
+     *   <li>the maximum phrase length for that round,</li>
+     *   <li>and the corresponding {@link StarterUnion}.</li>
+     * </ul>
+     * </p>
+     *
+     * @param input     the text to process
+     * @param segmentFn the function that performs replacement using dictionaries and union
+     * @return the fully converted string after all rounds
      */
     public String applySegmentReplace(String input, SegmentReplaceFnWithUnion segmentFn) {
         List<Integer> maxLengths = getMaxLengths();
@@ -124,29 +198,64 @@ public class DictRefs {
     }
 
     // --- Back-compat overload (optional). Calls with null unions. ---
+
+    /**
+     * Backward-compatible overload of {@link #applySegmentReplace(String, SegmentReplaceFnWithUnion)}.
+     * <p>
+     * This version accepts a {@link SegmentReplaceFn} that does not handle
+     * {@link StarterUnion}. The unions are passed as {@code null}.
+     * </p>
+     *
+     * @param input     the text to process
+     * @param segmentFn the function that performs replacement using dictionaries only
+     * @return the fully converted string after all rounds
+     */
     public String applySegmentReplace(String input, SegmentReplaceFn segmentFn) {
         return applySegmentReplace(input, (txt, dicts, maxLen, union) -> segmentFn.apply(txt, dicts, maxLen));
     }
 
     /**
      * A functional interface for segment-based dictionary replacement.
+     * <p>
+     * This variant is unaware of starter unions. It is suitable for
+     * simple replacements where only the dictionaries and maximum
+     * phrase length are required.
+     * </p>
      */
     @FunctionalInterface
     public interface SegmentReplaceFn {
         /**
-         * Applies dictionary-based transformation to a text segment.
+         * Applies dictionary-based transformation to the given input text.
          *
          * @param input     the text to convert
-         * @param dicts     dictionaries to use for conversion
-         * @param maxLength maximum phrase length allowed
+         * @param dicts     the dictionaries to use for conversion
+         * @param maxLength the maximum phrase length allowed
          * @return the transformed result
          */
         String apply(String input, List<DictEntry> dicts, int maxLength);
     }
 
-    // --- NEW: union-aware variant used by OpenCC.segmentReplace(...) ---
+    /**
+     * A union-aware functional interface for segment-based dictionary replacement.
+     * <p>
+     * This extended variant is used by
+     * {@link DictRefs#applySegmentReplace(String, SegmentReplaceFnWithUnion)}
+     * and provides access to a per-round {@link StarterUnion}, enabling
+     * optimized starter checks during replacement.
+     * </p>
+     */
     @FunctionalInterface
     public interface SegmentReplaceFnWithUnion {
+        /**
+         * Applies dictionary-based transformation to the given input text,
+         * using both dictionaries and the provided starter union.
+         *
+         * @param input     the text to convert
+         * @param dicts     the dictionaries to use for conversion
+         * @param maxLength the maximum phrase length allowed
+         * @param union     the starter union for this round
+         * @return the transformed result
+         */
         String apply(String input, List<DictEntry> dicts, int maxLength, StarterUnion union);
     }
 
