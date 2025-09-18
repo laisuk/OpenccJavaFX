@@ -192,6 +192,32 @@ public class DictionaryMaxlength {
         return r;
     }
 
+    // --- No-reflection field assignment table (Java 8 compatible) ---
+    private static final Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> ASSIGN;
+
+    static {
+        Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> m = new LinkedHashMap<>();
+
+        m.put("st_characters", (o, e) -> o.st_characters = e);
+        m.put("st_phrases", (o, e) -> o.st_phrases = e);
+        m.put("ts_characters", (o, e) -> o.ts_characters = e);
+        m.put("ts_phrases", (o, e) -> o.ts_phrases = e);
+        m.put("tw_phrases", (o, e) -> o.tw_phrases = e);
+        m.put("tw_phrases_rev", (o, e) -> o.tw_phrases_rev = e);
+        m.put("tw_variants", (o, e) -> o.tw_variants = e);
+        m.put("tw_variants_rev", (o, e) -> o.tw_variants_rev = e);
+        m.put("tw_variants_rev_phrases", (o, e) -> o.tw_variants_rev_phrases = e);
+        m.put("hk_variants", (o, e) -> o.hk_variants = e);
+        m.put("hk_variants_rev", (o, e) -> o.hk_variants_rev = e);
+        m.put("hk_variants_rev_phrases", (o, e) -> o.hk_variants_rev_phrases = e);
+        m.put("jps_characters", (o, e) -> o.jps_characters = e);
+        m.put("jps_phrases", (o, e) -> o.jps_phrases = e);
+        m.put("jp_variants", (o, e) -> o.jp_variants = e);
+        m.put("jp_variants_rev", (o, e) -> o.jp_variants_rev = e);
+
+        ASSIGN = Collections.unmodifiableMap(m);
+    }
+
     /**
      * Returns the assignment table mapping dictionary identifiers to setter functions.
      * <p>
@@ -207,29 +233,7 @@ public class DictionaryMaxlength {
      * @return an unmodifiable map of dictionary field setters keyed by dictionary name
      */
     private static Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> getAssign() {
-        final Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> assign;
-        {
-            Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> m =
-                    new LinkedHashMap<>();
-            m.put("st_characters", (o, e) -> o.st_characters = e);
-            m.put("st_phrases", (o, e) -> o.st_phrases = e);
-            m.put("ts_characters", (o, e) -> o.ts_characters = e);
-            m.put("ts_phrases", (o, e) -> o.ts_phrases = e);
-            m.put("tw_phrases", (o, e) -> o.tw_phrases = e);
-            m.put("tw_phrases_rev", (o, e) -> o.tw_phrases_rev = e);
-            m.put("tw_variants", (o, e) -> o.tw_variants = e);
-            m.put("tw_variants_rev", (o, e) -> o.tw_variants_rev = e);
-            m.put("tw_variants_rev_phrases", (o, e) -> o.tw_variants_rev_phrases = e);
-            m.put("hk_variants", (o, e) -> o.hk_variants = e);
-            m.put("hk_variants_rev", (o, e) -> o.hk_variants_rev = e);
-            m.put("hk_variants_rev_phrases", (o, e) -> o.hk_variants_rev_phrases = e);
-            m.put("jps_characters", (o, e) -> o.jps_characters = e);
-            m.put("jps_phrases", (o, e) -> o.jps_phrases = e);
-            m.put("jp_variants", (o, e) -> o.jp_variants = e);
-            m.put("jp_variants_rev", (o, e) -> o.jp_variants_rev = e);
-            assign = Collections.unmodifiableMap(m);
-        }
-        return assign;
+        return ASSIGN;
     }
 
     /**
@@ -374,32 +378,6 @@ public class DictionaryMaxlength {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             return loadDictionaryMaxlength(br);
         }
-    }
-
-    // --- No-reflection field assignment table (Java 8 compatible) ---
-    private static final Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> ASSIGN;
-
-    static {
-        Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> m = new LinkedHashMap<>();
-
-        m.put("st_characters", (o, e) -> o.st_characters = e);
-        m.put("st_phrases", (o, e) -> o.st_phrases = e);
-        m.put("ts_characters", (o, e) -> o.ts_characters = e);
-        m.put("ts_phrases", (o, e) -> o.ts_phrases = e);
-        m.put("tw_phrases", (o, e) -> o.tw_phrases = e);
-        m.put("tw_phrases_rev", (o, e) -> o.tw_phrases_rev = e);
-        m.put("tw_variants", (o, e) -> o.tw_variants = e);
-        m.put("tw_variants_rev", (o, e) -> o.tw_variants_rev = e);
-        m.put("tw_variants_rev_phrases", (o, e) -> o.tw_variants_rev_phrases = e);
-        m.put("hk_variants", (o, e) -> o.hk_variants = e);
-        m.put("hk_variants_rev", (o, e) -> o.hk_variants_rev = e);
-        m.put("hk_variants_rev_phrases", (o, e) -> o.hk_variants_rev_phrases = e);
-        m.put("jps_characters", (o, e) -> o.jps_characters = e);
-        m.put("jps_phrases", (o, e) -> o.jps_phrases = e);
-        m.put("jp_variants", (o, e) -> o.jp_variants = e);
-        m.put("jp_variants_rev", (o, e) -> o.jp_variants_rev = e);
-
-        ASSIGN = Collections.unmodifiableMap(m);
     }
 
     /**

@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentMap;
  * Uses DictionaryMaxlength's UnionKey slot cache (no RoundKey/union map here).
  */
 public final class ConversionPlanCache {
-
     public interface Provider {
         DictionaryMaxlength get();
     }
