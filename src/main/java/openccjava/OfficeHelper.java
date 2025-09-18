@@ -1,13 +1,26 @@
 package openccjava;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import java.util.zip.*;
+import java.util.stream.Collectors;
+import java.util.function.Predicate;
+import java.util.zip.CRC32;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Utility class for converting Office-based document formats using OpenCC logic.
@@ -28,14 +41,57 @@ public class OfficeHelper {
     /**
      * List of supported file extensions for Office and EPUB documents.
      */
-    public static final Set<String> OFFICE_FORMATS = new HashSet<>(Arrays.asList(
+    public static final List<String> OFFICE_FORMATS = Arrays.asList(
             "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
-    ));
+    );
 
     /**
      * Logger instance used for reporting non-fatal processing errors.
      */
     private static final Logger LOGGER = Logger.getLogger(OfficeHelper.class.getName());
+
+    /**
+     * Precompiled regular expression patterns for extracting font declarations
+     * across supported document formats.
+     *
+     * <p>Each pattern provides three capturing groups:
+     * <ol>
+     *   <li>Prefix (e.g., attribute or CSS property start)</li>
+     *   <li>The actual font value</li>
+     *   <li>Suffix (e.g., closing quote, semicolon, or delimiter)</li>
+     * </ol>
+     *
+     * <p>Supported formats and their corresponding attributes:
+     * <ul>
+     *   <li><b>docx</b>: {@code w:eastAsia}, {@code w:ascii}, {@code w:hAnsi}, {@code w:cs}</li>
+     *   <li><b>xlsx</b>: {@code val}</li>
+     *   <li><b>pptx</b>: {@code typeface}</li>
+     *   <li><b>odt/ods/odp</b>: {@code style:font-name}, {@code style:font-name-asian},
+     *       {@code style:font-name-complex}, {@code svg:font-family}, {@code style:name}</li>
+     *   <li><b>epub</b>: CSS {@code font-family}</li>
+     * </ul>
+     *
+     * <p>These patterns are used when {@code --keep-font} is enabled to temporarily
+     * replace font declarations with markers during OpenCC text conversion,
+     * and then restore them afterward.
+     */
+    private static final Map<String, Pattern> FONT_PATTERNS;
+
+    static {
+        Map<String, Pattern> map = new HashMap<>();
+        map.put("docx", Pattern.compile("(w:(?:eastAsia|ascii|hAnsi|cs)=\")(.*?)(\")"));
+        map.put("xlsx", Pattern.compile("(val=\")(.*?)(\")"));
+        map.put("pptx", Pattern.compile("(typeface=\")(.*?)(\")"));
+
+        Pattern odPattern = Pattern.compile("((?:style:font-name(?:-asian|-complex)?|svg:font-family|style:name)=[\"'])([^\"']+)([\"'])");
+        map.put("odt", odPattern);
+        map.put("ods", odPattern);
+        map.put("odp", odPattern);
+
+        map.put("epub", Pattern.compile("(font-family\\s*:\\s*)([^;\"']+)([;\"'])?"));
+
+        FONT_PATTERNS = Collections.unmodifiableMap(map);
+    }
 
     /**
      * Represents the result of an Office document conversion.
@@ -61,6 +117,13 @@ public class OfficeHelper {
             this.success = success;
             this.message = message;
         }
+    }
+
+    /**
+     * Constructs an instance of {@code OfficeHelper}.
+     */
+    public OfficeHelper() {
+        // No initialization required
     }
 
     /**
@@ -92,10 +155,10 @@ public class OfficeHelper {
             boolean punctuation,
             boolean keepFont
     ) {
-        String tempDirName = format + "_temp_" + UUID.randomUUID();
-        Path tempDir = Paths.get(System.getProperty("java.io.tmpdir")).resolve(tempDirName);
+        Path tempDir = null;
 
         try {
+            tempDir = Files.createTempDirectory(format + "_temp_");
             unzip(inputFile.toPath(), tempDir);
 
             List<Path> targets = getTargetXmlPaths(format, tempDir);
@@ -108,7 +171,10 @@ public class OfficeHelper {
                 Path fullPath = tempDir.resolve(relativePath);
                 if (!Files.isRegularFile(fullPath)) continue;
 
-                String xml = Files.readString(fullPath);
+//                String xml = Files.readString(fullPath);
+                // Java 8: no Files.readString, use readAllBytes
+                byte[] bytes = Files.readAllBytes(fullPath);
+                String xml = new String(bytes, StandardCharsets.UTF_8);
                 Map<String, String> fontMap = new HashMap<>();
 
                 if (keepFont) {
@@ -116,7 +182,7 @@ public class OfficeHelper {
                     if (pattern != null) {
                         Matcher matcher = pattern.matcher(xml);
                         int counter = 0;
-                        StringBuilder sb = new StringBuilder();
+                        StringBuffer sb = new StringBuffer();
 
                         while (matcher.find()) {
                             String marker = "__F_O_N_T_" + counter++ + "__";
@@ -129,6 +195,10 @@ public class OfficeHelper {
                 }
 
                 String converted = converter.convert(xml, punctuation);
+                if (converted == null) {
+                    // Fail fast with a clear error message
+                    throw new RuntimeException("native error: " + converter.getLastError());
+                }
 
                 if (keepFont) {
                     for (Map.Entry<String, String> entry : fontMap.entrySet()) {
@@ -136,7 +206,10 @@ public class OfficeHelper {
                     }
                 }
 
-                Files.writeString(fullPath, converted);
+                // Files.writeString(fullPath, converted);
+                // Java 8: no Files.writeString, use Files.write
+                // ✅ portable: always UTF-8
+                Files.write(fullPath, converted.getBytes(StandardCharsets.UTF_8));
                 convertedCount++;
             }
 
@@ -221,7 +294,7 @@ public class OfficeHelper {
                                     Files.copy(path, zos);
                                     zos.closeEntry();
                                 } catch (IOException e) {
-                                    System.err.println("Error zipping file " + path + ": " + e.getMessage());
+                                    LOGGER.log(Level.WARNING, "Error zipping file " + path, e);
                                 }
                             });
                 }
@@ -270,7 +343,9 @@ public class OfficeHelper {
             mimeEntry.setCompressedSize(mimeBytes.length);
 
             CRC32 crc = new CRC32();
-            crc.update(mimeBytes);
+//            crc.update(mimeBytes);
+            // Java 8 zip checksum
+            crc.update(mimeBytes, 0, mimeBytes.length);
             mimeEntry.setCrc(crc.getValue());
 
             zos.putNextEntry(mimeEntry);
@@ -313,36 +388,64 @@ public class OfficeHelper {
     private static List<Path> getTargetXmlPaths(String format, Path baseDir) {
         switch (format) {
             case "docx":
-                return List.of(Paths.get("word/document.xml"));
+                return Collections.singletonList(Paths.get("word/document.xml"));
 
             case "xlsx":
-                return List.of(Paths.get("xl/sharedStrings.xml"));
+                return Collections.singletonList(Paths.get("xl/sharedStrings.xml"));
 
             case "pptx": {
-                List<Path> results = new ArrayList<>();
-                File pptDir = baseDir.resolve("ppt").toFile();
-
-                if (pptDir.isDirectory()) {
-                    collectPptxTargets(pptDir, baseDir.toFile(), results);
+                Path pptDir = baseDir.resolve("ppt");
+                if (!Files.isDirectory(pptDir)) {
+                    return Collections.emptyList();
                 }
 
-                return results;
+                Predicate<Path> isTarget = p -> {
+                    String name = p.getFileName().toString();
+                    return name.endsWith(".xml") && (
+                            name.startsWith("slide") ||
+                                    name.contains("notesSlide") ||
+                                    name.contains("slideMaster") ||
+                                    name.contains("slideLayout") ||
+                                    name.contains("comment")
+                    );
+                };
+
+                try (Stream<Path> stream = Files.walk(pptDir)) {
+                    return stream
+                            .filter(Files::isRegularFile)
+                            .filter(isTarget)
+                            .map(baseDir::relativize)
+                            .collect(Collectors.toList());
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Failed to collect pptx targets", e);
+                    return Collections.emptyList();
+                }
             }
 
             case "odt":
             case "ods":
             case "odp":
-                return List.of(Paths.get("content.xml"));
+                return Collections.singletonList(Paths.get("content.xml"));
 
             case "epub": {
-                List<Path> epubTargets = new ArrayList<>();
-                File root = baseDir.toFile();
+                Predicate<Path> isTarget = p -> {
+                    String name = p.getFileName().toString().toLowerCase();
+                    return name.endsWith(".xhtml") ||
+                            name.endsWith(".html") ||
+                            name.endsWith(".opf") ||
+                            name.endsWith(".ncx");
+                };
 
-                if (root.isDirectory()) {
-                    collectEpubTargets(root, baseDir.toFile(), epubTargets);
+                try (Stream<Path> stream = Files.walk(baseDir)) {
+                    return stream
+                            .filter(Files::isRegularFile)
+                            .filter(isTarget)
+                            .map(baseDir::relativize)
+                            .collect(Collectors.toList());
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Failed to collect epub targets", e);
+                    return Collections.emptyList();
                 }
-
-                return epubTargets;
             }
 
             default:
@@ -351,110 +454,17 @@ public class OfficeHelper {
     }
 
     /**
-     * Recursively collects relevant PowerPoint XML slide fragments from a `.pptx` directory.
+     * Returns a regular expression {@link Pattern} for extracting font declarations
+     * in the specified document format.
      *
-     * <p>This method targets files typically found under {@code ppt/} such as:
-     * <ul>
-     *   <li>{@code slide*.xml}</li>
-     *   <li>{@code notesSlide*.xml}</li>
-     *   <li>{@code slideMaster*.xml}</li>
-     *   <li>{@code slideLayout*.xml}</li>
-     *   <li>{@code comment*.xml}</li>
-     * </ul>
+     * <p>See {@link #FONT_PATTERNS} for the supported formats and attributes.</p>
      *
-     * <p>All paths returned are relative to {@code baseDir}.
-     *
-     * @param dir     current directory to scan
-     * @param baseDir root of the extracted .pptx archive
-     * @param results list to append matching relative {@link Path}s
-     */
-    private static void collectPptxTargets(File dir, File baseDir, List<Path> results) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-
-        for (File file : files) {
-            if (file.isDirectory()) {
-                collectPptxTargets(file, baseDir, results);
-            } else {
-                String name = file.getName();
-                if (name.endsWith(".xml") && (
-                        name.startsWith("slide") ||
-                                name.contains("notesSlide") ||
-                                name.contains("slideMaster") ||
-                                name.contains("slideLayout") ||
-                                name.contains("comment")
-                )) {
-                    Path relative = baseDir.toPath().relativize(file.toPath());
-                    results.add(relative);
-                }
-            }
-        }
-    }
-
-    /**
-     * Recursively collects relevant XHTML and metadata files for EPUB conversion.
-     *
-     * <p>This method targets common EPUB content files including:
-     * <ul>
-     *   <li>{@code *.xhtml} - main HTML content</li>
-     *   <li>{@code *.opf}   - package metadata</li>
-     *   <li>{@code *.ncx}   - navigation control files</li>
-     * </ul>
-     *
-     * <p>All paths returned are relative to {@code baseDir}.
-     *
-     * @param current the current directory to walk
-     * @param baseDir the root of the extracted EPUB archive
-     * @param results list to append matching relative {@link Path}s
-     */
-    private static void collectEpubTargets(File current, File baseDir, List<Path> results) {
-        File[] files = current.listFiles();
-        if (files == null) return;
-
-        for (File file : files) {
-            if (file.isDirectory()) {
-                collectEpubTargets(file, baseDir, results);
-            } else {
-                String name = file.getName().toLowerCase();
-                if (name.endsWith(".xhtml") || name.endsWith(".html") || name.endsWith(".opf") || name.endsWith(".ncx")) {
-                    results.add(baseDir.toPath().relativize(file.toPath()));
-                }
-            }
-        }
-    }
-
-    /**
-     * Returns a regular expression {@link Pattern} for extracting font declarations in the specified document format.
-     *
-     * <p>This is used when {@code --keep-font} is enabled, allowing the font declarations
-     * (e.g., {@code font-family}, {@code w:eastAsia}, {@code style:font-name}) to be temporarily replaced with markers
-     * during OpenCC text conversion and then restored afterward.
-     *
-     * <p>The returned pattern uses 3 capturing groups:
-     * <ol>
-     *   <li>Prefix (e.g., attribute start)</li>
-     *   <li>The actual font value</li>
-     *   <li>Suffix (e.g., closing quote or semicolon)</li>
-     * </ol>
-     *
-     * @param format the document format (e.g., {@code docx}, {@code odt}, {@code epub})
+     * @param format the document format key (e.g., {@code docx}, {@code xlsx}, {@code pptx},
+     *               {@code odt}, {@code ods}, {@code odp}, {@code epub})
      * @return the format-specific font extraction {@link Pattern}, or {@code null} if unsupported
      */
     private static Pattern getFontPattern(String format) {
-        return switch (format) {
-            case "docx" -> Pattern.compile("(w:(?:eastAsia|ascii|hAnsi|cs)=\")(.*?)(\")");
-
-            case "xlsx" -> Pattern.compile("(val=\")(.*?)(\")");
-
-            case "pptx" -> Pattern.compile("(typeface=\")(.*?)(\")");
-
-            case "odt", "ods", "odp" ->
-                    Pattern.compile("((?:style:font-name(?:-asian|-complex)?|svg:font-family|style:name)=[\"'])([^\"']+)([\"'])");
-
-            case "epub" -> Pattern.compile("(font-family\\s*:\\s*)([^;\"']+)([;\"'])?");
-
-            default -> null;
-        };
+        return FONT_PATTERNS.get(format);
     }
 
     /**
@@ -463,7 +473,7 @@ public class OfficeHelper {
      * <p>This method is typically used to clean up temporary extraction folders after document processing.
      * It walks the file tree in reverse order (files first, then directories) to ensure successful deletion.
      *
-     * <p>Any deletion failures (e.g. due to file locks) are logged to {@code System.err}, but do not halt execution.
+     * <p>Any deletion failures (e.g. due to file locks) are logged but do not halt execution.
      *
      * @param dirPath the root directory to delete
      */
@@ -471,21 +481,19 @@ public class OfficeHelper {
         if (dirPath == null || !Files.exists(dirPath)) return;
 
         try {
-            if (Files.exists(dirPath)) { // Redundant but ensures safety under race conditions
-                try (Stream<Path> paths = Files.walk(dirPath)) {
-                    paths
-                            .sorted(Comparator.reverseOrder()) // Delete children before parents
-                            .forEach(p -> {
-                                try {
-                                    Files.delete(p);
-                                } catch (IOException e) {
-                                    System.err.println("⚠️ Failed to delete " + p + ": " + e.getMessage());
-                                }
-                            });
-                }
+            try (Stream<Path> paths = Files.walk(dirPath)) {
+                paths
+                        .sorted(Comparator.reverseOrder()) // Delete children before parents
+                        .forEach(p -> {
+                            try {
+                                Files.delete(p);
+                            } catch (IOException e) {
+                                LOGGER.log(Level.WARNING, "Failed to delete " + p, e);
+                            }
+                        });
             }
         } catch (IOException e) {
-            System.err.println("Error walking directory for cleanup at " + dirPath + ": " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Error walking directory for cleanup at " + dirPath, e);
         }
     }
 }

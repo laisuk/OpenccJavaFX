@@ -21,6 +21,11 @@ public class DictRefs {
     private List<DictEntry> round3;
     private List<Integer> maxLengths;
 
+    // --- NEW: unions per round (nullable when not used) ---
+    public StarterUnion u1;
+    public StarterUnion u2;
+    public StarterUnion u3;
+
     /**
      * Constructs a {@code DictRefs} instance with round 1 dictionary(s).
      *
@@ -57,6 +62,28 @@ public class DictRefs {
         return this;
     }
 
+    // --- NEW: fluent round setters that also attach unions ---
+
+    /**
+     * Round 1 only.
+     */
+    public DictRefs(List<DictEntry> r1, StarterUnion union1) {
+        this.round1 = Collections.unmodifiableList(new ArrayList<>(r1));
+        this.u1 = union1;
+    }
+
+    public DictRefs withRound2(List<DictEntry> r2, StarterUnion union2) {
+        this.round2 = Collections.unmodifiableList(new ArrayList<>(r2));
+        this.u2 = union2;
+        return this;
+    }
+
+    public DictRefs withRound3(List<DictEntry> r3, StarterUnion union3) {
+        this.round3 = Collections.unmodifiableList(new ArrayList<>(r3));
+        this.u3 = union3;
+        return this;
+    }
+
     /**
      * Computes the maximum phrase length from each round's dictionaries.
      *
@@ -81,24 +108,24 @@ public class DictRefs {
     }
 
     /**
-     * Applies all defined dictionary rounds using the provided segment replacement function.
-     *
-     * <p>Each round applies its dictionary list sequentially on the result of the previous round.
-     *
-     * @param input     the input text to convert
-     * @param segmentFn a functional interface that accepts (input, dicts, maxLength)
-     * @return the transformed result after all applicable rounds
+     * NEW: segment replace that passes the per-round union to the core converter.
      */
-    public String applySegmentReplace(String input, SegmentReplaceFn segmentFn) {
+    public String applySegmentReplace(String input, SegmentReplaceFnWithUnion segmentFn) {
         List<Integer> maxLengths = getMaxLengths();
-        String result = segmentFn.apply(input, round1, maxLengths.get(0));
+
+        String result = segmentFn.apply(input, round1, maxLengths.get(0), u1);
         if (round2 != null) {
-            result = segmentFn.apply(result, round2, maxLengths.get(1));
+            result = segmentFn.apply(result, round2, maxLengths.get(1), u2);
         }
         if (round3 != null) {
-            result = segmentFn.apply(result, round3, maxLengths.get(2));
+            result = segmentFn.apply(result, round3, maxLengths.get(2), u3);
         }
         return result;
+    }
+
+    // --- Back-compat overload (optional). Calls with null unions. ---
+    public String applySegmentReplace(String input, SegmentReplaceFn segmentFn) {
+        return applySegmentReplace(input, (txt, dicts, maxLen, union) -> segmentFn.apply(txt, dicts, maxLen));
     }
 
     /**
@@ -117,6 +144,12 @@ public class DictRefs {
         String apply(String input, List<DictEntry> dicts, int maxLength);
     }
 
+    // --- NEW: union-aware variant used by OpenCC.segmentReplace(...) ---
+    @FunctionalInterface
+    public interface SegmentReplaceFnWithUnion {
+        String apply(String input, List<DictEntry> dicts, int maxLength, StarterUnion union);
+    }
+
     /**
      * A pattern for stripping non-Chinese symbols (punctuation, whitespace, Latin letters, digits, etc.).
      *
@@ -127,32 +160,46 @@ public class DictRefs {
     /**
      * A predefined set of characters used as delimiters for text segmentation.
      */
-    public static final Set<Character> DELIMITERS = new HashSet<>(List.of(
-            ' ', '\t', '\n', '\r', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
-            ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '{', '|', '}', '~', '＝', '、', '。', '“', '”',
-            '‘', '’', '『', '』', '「', '」', '﹁', '﹂', '—', '－', '（', '）', '《', '》', '〈', '〉', '？', '！', '…', '／',
-            '＼', '︒', '︑', '︔', '︓', '︿', '﹀', '︹', '︺', '︙', '︐', '［', '﹇', '］', '﹈', '︕', '︖', '︰', '︳',
-            '︴', '︽', '︾', '︵', '︶', '｛', '︷', '｝', '︸', '﹃', '﹄', '【', '︻', '】', '︼', '　', '～', '．', '，',
-            '；', '：'
-    ));
+    public static final Set<Character> DELIMITERS;
+
+    static {
+        // Use LinkedHashSet to preserve order (optional, but deterministic)
+        Set<Character> s = new LinkedHashSet<>(Arrays.asList(
+                ' ', '\t', '\n', '\r', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
+                ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '{', '|', '}', '~', '＝', '、', '。', '“', '”',
+                '‘', '’', '『', '』', '「', '」', '﹁', '﹂', '—', '－', '（', '）', '《', '》', '〈', '〉', '？', '！', '…', '／',
+                '＼', '︒', '︑', '︔', '︓', '︿', '﹀', '︹', '︺', '︙', '︐', '［', '﹇', '］', '﹈', '︕', '︖', '︰', '︳',
+                '︴', '︽', '︾', '︵', '︶', '｛', '︷', '｝', '︸', '﹃', '﹄', '【', '︻', '】', '︼', '　', '～', '．', '，',
+                '；', '：'
+        ));
+        DELIMITERS = Collections.unmodifiableSet(s);
+    }
 
     /**
      * Mapping of Simplified-style punctuation to Traditional-style punctuation.
      */
-    public static final Map<Character, Character> PUNCT_S2T_MAP = Map.of(
-            '“', '「',
-            '”', '」',
-            '‘', '『',
-            '’', '』'
-    );
+    public static final Map<Character, Character> PUNCT_S2T_MAP;
+
+    static {
+        Map<Character, Character> m = new LinkedHashMap<>();
+        m.put('“', '「');
+        m.put('”', '」');
+        m.put('‘', '『');
+        m.put('’', '』');
+        PUNCT_S2T_MAP = Collections.unmodifiableMap(m);
+    }
 
     /**
      * Mapping of Traditional-style punctuation to Simplified-style punctuation.
      */
-    public static final Map<Character, Character> PUNCT_T2S_MAP = Map.of(
-            '「', '“',
-            '」', '”',
-            '『', '‘',
-            '』', '’'
-    );
+    public static final Map<Character, Character> PUNCT_T2S_MAP;
+
+    static {
+        Map<Character, Character> m = new LinkedHashMap<>();
+        m.put('「', '“');
+        m.put('」', '”');
+        m.put('『', '‘');
+        m.put('』', '’');
+        PUNCT_T2S_MAP = Collections.unmodifiableMap(m);
+    }
 }

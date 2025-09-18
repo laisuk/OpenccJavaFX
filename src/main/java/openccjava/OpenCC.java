@@ -5,6 +5,7 @@ import openccjava.DictionaryMaxlength.DictEntry;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -52,6 +53,34 @@ public class OpenCC {
      * Loaded dictionary data containing phrase/character maps and their max lengths.
      */
     private final DictionaryMaxlength dictionary;
+    private final ConversionPlanCache planCache;
+
+    public enum Config {
+        S2T, T2S, S2Tw, Tw2S, S2Twp, Tw2Sp,
+        S2Hk, Hk2S, T2Tw, T2Twp, Tw2T, Tw2Tp,
+        T2Hk, Hk2T, T2Jp, Jp2T;
+
+        /**
+         * Return lowercase string form (e.g. S2T -> "s2t").
+         */
+        public String asStr() {
+            return name().toLowerCase();
+        }
+
+        /**
+         * Parse string (case-insensitive).
+         *
+         * @param value string like "s2t", "T2S", etc.
+         * @return Config enum constant
+         * @throws IllegalArgumentException if no match
+         */
+        public static Config fromStr(String value) {
+            if (value == null) {
+                throw new IllegalArgumentException("Config string cannot be null");
+            }
+            return Config.valueOf(value.trim().toUpperCase());
+        }
+    }
 
     /**
      * Cached DictRefs to avoid redundant config resolution.
@@ -108,19 +137,20 @@ public class OpenCC {
      * @throws RuntimeException if any dictionary source fails to load or parse
      */
     public OpenCC(String config) {
+        DictionaryMaxlength loaded;
         try {
-            Path jsonPath = Path.of("dicts", "dictionary_maxlength.json");
+            Path jsonPath = Paths.get("dicts", "dictionary_maxlength.json");
 
             if (Files.exists(jsonPath)) {
-                this.dictionary = DictionaryMaxlength.fromJson(jsonPath.toString());
+                loaded = DictionaryMaxlength.fromJson(jsonPath.toString());
                 LOGGER.info("Loaded dictionary from file system.");
             } else {
                 try (InputStream in = DictionaryMaxlength.class.getResourceAsStream("/dicts/dictionary_maxlength.json")) {
                     if (in != null) {
-                        this.dictionary = DictionaryMaxlength.fromJson(in);
+                        loaded = DictionaryMaxlength.fromJson(in);
                         LOGGER.info("Loaded dictionary from embedded resource.");
                     } else {
-                        this.dictionary = DictionaryMaxlength.fromDicts();
+                        loaded = DictionaryMaxlength.fromDicts();
                         LOGGER.warning("Falling back to plain text dictionaries.");
                     }
                 }
@@ -131,7 +161,19 @@ public class OpenCC {
             throw new RuntimeException("Failed to load dictionaries", e);
         }
 
+        this.dictionary = loaded;
+        this.planCache = new ConversionPlanCache(() -> this.dictionary);
+
         setConfig(config);
+    }
+
+    // expose helper
+    private DictRefs getRefsForConfig(Config cfg, boolean punctuation) {
+        return planCache.getPlan(cfg, punctuation);
+    }
+
+    public void clearPlanCache() {
+        planCache.clear();
     }
 
     /**
@@ -142,12 +184,16 @@ public class OpenCC {
      * @param dictPath the path to the text dictionary directory
      */
     public OpenCC(String config, Path dictPath) {
+        DictionaryMaxlength loaded;
         try {
-            this.dictionary = DictionaryMaxlength.fromDicts(dictPath.toString());
+            loaded = DictionaryMaxlength.fromDicts(dictPath.toString());
         } catch (Exception e) {
             this.lastError = e.getMessage();
             throw new RuntimeException("Failed to load text dictionaries from: " + dictPath, e);
         }
+
+        this.dictionary = loaded;
+        this.planCache = new ConversionPlanCache(() -> this.dictionary); // after dictionary
 
         setConfig(config);
     }
@@ -191,8 +237,8 @@ public class OpenCC {
      * @return list of supported configs
      */
     public static List<String> getSupportedConfigs() {
-        return List.of("s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s",
-                "t2tw", "tw2t", "t2twp", "tw2tp", "t2hk", "hk2t", "t2jp", "jp2t");
+        return Collections.unmodifiableList(Arrays.asList("s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s",
+                "t2tw", "tw2t", "t2twp", "tw2tp", "t2hk", "hk2t", "t2jp", "jp2t"));
     }
 
     /**
@@ -223,28 +269,63 @@ public class OpenCC {
             return lastError;
         }
 
-        return switch (config) {
-            case "s2t" -> s2t(input, punctuation);
-            case "t2s" -> t2s(input, punctuation);
-            case "s2tw" -> s2tw(input, punctuation);
-            case "tw2s" -> tw2s(input, punctuation);
-            case "s2twp" -> s2twp(input, punctuation);
-            case "tw2sp" -> tw2sp(input, punctuation);
-            case "s2hk" -> s2hk(input, punctuation);
-            case "hk2s" -> hk2s(input, punctuation);
-            case "t2tw" -> t2tw(input);
-            case "t2twp" -> t2twp(input);
-            case "tw2t" -> tw2t(input);
-            case "tw2tp" -> tw2tp(input);
-            case "t2hk" -> t2hk(input);
-            case "hk2t" -> hk2t(input);
-            case "t2jp" -> t2jp(input);
-            case "jp2t" -> jp2t(input);
-            default -> {
+        String result;
+        switch (config) {
+            case "s2t":
+                result = s2t(input, punctuation);
+                break;
+            case "t2s":
+                result = t2s(input, punctuation);
+                break;
+            case "s2tw":
+                result = s2tw(input, punctuation);
+                break;
+            case "tw2s":
+                result = tw2s(input, punctuation);
+                break;
+            case "s2twp":
+                result = s2twp(input, punctuation);
+                break;
+            case "tw2sp":
+                result = tw2sp(input, punctuation);
+                break;
+            case "s2hk":
+                result = s2hk(input, punctuation);
+                break;
+            case "hk2s":
+                result = hk2s(input, punctuation);
+                break;
+            case "t2tw":
+                result = t2tw(input);
+                break;
+            case "t2twp":
+                result = t2twp(input);
+                break;
+            case "tw2t":
+                result = tw2t(input);
+                break;
+            case "tw2tp":
+                result = tw2tp(input);
+                break;
+            case "t2hk":
+                result = t2hk(input);
+                break;
+            case "hk2t":
+                result = hk2t(input);
+                break;
+            case "t2jp":
+                result = t2jp(input);
+                break;
+            case "jp2t":
+                result = jp2t(input);
+                break;
+            default:
                 lastError = "Unsupported config: " + config;
-                yield lastError;
-            }
-        };
+                result = lastError;
+                break;
+        }
+
+        return result;
     }
 
     /**
@@ -263,26 +344,53 @@ public class OpenCC {
     private DictRefs getDictRefs(String key) {
         if (configCache.containsKey(key)) return configCache.get(key);
 
-        var d = dictionary;
+        final DictionaryMaxlength d = this.dictionary; // no 'var' in Java 8
+        DictRefs refs = null;
 
-        DictRefs refs = switch (key) {
-            case "s2t" -> new DictRefs(List.of(d.st_phrases, d.st_characters));
-            case "t2s" -> new DictRefs(List.of(d.ts_phrases, d.ts_characters));
-            case "s2tw" -> new DictRefs(List.of(d.st_phrases, d.st_characters))
-                    .withRound2(List.of(d.tw_variants));
-            case "tw2s" -> new DictRefs(List.of(d.tw_variants_rev_phrases, d.tw_variants_rev))
-                    .withRound2(List.of(d.ts_phrases, d.ts_characters));
-            case "s2twp" -> new DictRefs(List.of(d.st_phrases, d.st_characters))
-                    .withRound2(List.of(d.tw_phrases))
-                    .withRound3(List.of(d.tw_variants));
-            case "tw2sp" -> new DictRefs(List.of(d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev))
-                    .withRound2(List.of(d.ts_phrases, d.ts_characters));
-            case "s2hk" -> new DictRefs(List.of(d.st_phrases, d.st_characters))
-                    .withRound2(List.of(d.hk_variants));
-            case "hk2s" -> new DictRefs(List.of(d.hk_variants_rev_phrases, d.hk_variants_rev))
-                    .withRound2(List.of(d.ts_phrases, d.ts_characters));
-            default -> null;
-        };
+        switch (key) {
+            case "s2t":
+                refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters));
+                break;
+
+            case "t2s":
+                refs = new DictRefs(Arrays.asList(d.ts_phrases, d.ts_characters));
+                break;
+
+            case "s2tw":
+                refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
+                        .withRound2(Collections.singletonList(d.tw_variants));
+                break;
+
+            case "tw2s":
+                refs = new DictRefs(Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev))
+                        .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
+                break;
+
+            case "s2twp":
+                refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
+                        .withRound2(Collections.singletonList(d.tw_phrases))
+                        .withRound3(Collections.singletonList(d.tw_variants));
+                break;
+
+            case "tw2sp":
+                refs = new DictRefs(Arrays.asList(d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev))
+                        .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
+                break;
+
+            case "s2hk":
+                refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
+                        .withRound2(Collections.singletonList(d.hk_variants));
+                break;
+
+            case "hk2s":
+                refs = new DictRefs(Arrays.asList(d.hk_variants_rev_phrases, d.hk_variants_rev))
+                        .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
+                break;
+
+            default:
+                // unknown key -> leave refs null
+                break;
+        }
 
         if (refs != null) configCache.put(key, refs);
         return refs;
@@ -443,6 +551,154 @@ public class OpenCC {
         return result;
     }
 
+    // --- helper struct -----------------------------------------------------------
+    private static final class DictPartition {
+        final List<DictionaryMaxlength.DictEntry> phraseDicts;
+        final List<DictionaryMaxlength.DictEntry> singleDicts;
+        final int phraseMaxLen;
+
+        DictPartition(List<DictionaryMaxlength.DictEntry> phraseDicts,
+                      List<DictionaryMaxlength.DictEntry> singleDicts,
+                      int phraseMaxLen) {
+            this.phraseDicts = phraseDicts;
+            this.singleDicts = singleDicts;
+            this.phraseMaxLen = phraseMaxLen;
+        }
+    }
+
+    private static DictPartition partitionDicts(List<DictionaryMaxlength.DictEntry> dicts) {
+        List<DictionaryMaxlength.DictEntry> phrase = new ArrayList<>(dicts.size());
+        List<DictionaryMaxlength.DictEntry> single = new ArrayList<>(2);
+        int maxLen = 0;
+
+        for (DictionaryMaxlength.DictEntry e : dicts) {
+            if (e.maxLength >= 3) {
+                phrase.add(e);
+                if (e.maxLength > maxLen) maxLen = e.maxLength;
+            } else {
+                single.add(e);
+            }
+        }
+
+        return new DictPartition(
+                Collections.unmodifiableList(phrase),
+                Collections.unmodifiableList(single),
+                maxLen
+        );
+    }
+
+    /**
+     * Faster bridge using union + phrase/single partition.
+     */
+    // New: union-aware segmentReplace (keeps your original splitting & parallel flow)
+    public String segmentReplaceWithUnion(String text,
+                                          List<DictionaryMaxlength.DictEntry> dicts,
+                                          int maxLength,
+                                          StarterUnion union) {
+        if (text == null || text.isEmpty()) return text;
+
+        DictPartition part = partitionDicts(dicts);
+
+        List<int[]> ranges = getSplitRanges(text, true);
+        int numSegments = ranges.size();
+
+        if (numSegments == 1 &&
+                ranges.get(0)[0] == 0 &&
+                ranges.get(0)[1] == text.length()) {
+            return convertSegmentWithUnion(text, part, maxLength, union);
+        }
+
+        boolean useParallel = text.length() > 10_000 || numSegments > 100;
+
+        if (useParallel) {
+            String[] segments = new String[numSegments];
+            IntStream.range(0, numSegments).parallel().forEach(i -> {
+                int[] range = ranges.get(i);
+                String seg = text.substring(range[0], range[1]);
+                segments[i] = convertSegmentWithUnion(seg, part, maxLength, union);
+            });
+            StringBuilder sb = new StringBuilder(text.length());
+            for (String seg : segments) sb.append(seg);
+            return sb.toString();
+        } else {
+            StringBuilder sb = new StringBuilder(text.length());
+            for (int[] range : ranges) {
+                String seg = text.substring(range[0], range[1]);
+                sb.append(convertSegmentWithUnion(seg, part, maxLength, union));
+            }
+            return sb.toString();
+        }
+    }
+
+    // Internal: faster converter for a single segment using pre-partitioned dicts
+    private String convertSegmentWithUnion(String input,
+                                           DictPartition part,
+                                           int roundMaxLen,
+                                           StarterUnion union) {
+        if (input.isEmpty()) return input;
+
+        final int n = input.length();
+        final StringBuilder out = new StringBuilder(n + (n >> 3));
+
+        for (int i = 0; i < n; ) {
+            final int cp = input.codePointAt(i);
+            final int starterLen = Character.charCount(cp);
+
+            if (union != null && !union.hasStarter(cp)) {
+                out.appendCodePoint(cp);
+                i += starterLen;
+                continue;
+            }
+
+            String hit = null;
+            int hitLen = 0;
+
+            // phrase search
+            if (!part.phraseDicts.isEmpty()) {
+                final int remaining = n - i;
+                final int tryMax = Math.min(Math.min(part.phraseMaxLen, roundMaxLen), remaining);
+                if (tryMax >= 3) {
+                    outer:
+                    for (int len = tryMax; len >= 3; len--) {
+                        final String sub = input.substring(i, i + len);
+                        for (DictionaryMaxlength.DictEntry e : part.phraseDicts) {
+                            if (e.maxLength < len) continue;
+                            final String repl = e.dict.get(sub);
+                            if (repl != null) {
+                                hit = repl;
+                                hitLen = len;
+                                break outer;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // single-char search
+            if (hit == null && !part.singleDicts.isEmpty() && i + starterLen <= n) {
+                final String sub = input.substring(i, i + starterLen);
+                for (DictionaryMaxlength.DictEntry e : part.singleDicts) {
+                    final String repl = e.dict.get(sub);
+                    if (repl != null) {
+                        hit = repl;
+                        hitLen = starterLen;
+                        break;
+                    }
+                }
+            }
+
+            if (hit != null) {
+                out.append(hit);
+                i += hitLen;
+            } else {
+                out.appendCodePoint(cp);
+                i += starterLen;
+            }
+        }
+
+        return out.toString();
+    }
+
     /**
      * Converts Simplified Chinese to Traditional Chinese.
      *
@@ -451,10 +707,8 @@ public class OpenCC {
      * @return the converted text in Traditional Chinese
      */
     public String s2t(String input, boolean punctuation) {
-        var refs = getDictRefs("s2t");
-        if (refs == null) return input;
-        String output = refs.applySegmentReplace(input, this::segmentReplace);
-        return punctuation ? translatePunctuation(output, DictRefs.PUNCT_S2T_MAP) : output;
+        DictRefs refs = planCache.getPlan(Config.S2T, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -465,10 +719,8 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String t2s(String input, boolean punctuation) {
-        var refs = getDictRefs("t2s");
-        if (refs == null) return input;
-        String output = refs.applySegmentReplace(input, this::segmentReplace);
-        return punctuation ? translatePunctuation(output, DictRefs.PUNCT_T2S_MAP) : output;
+        DictRefs refs = planCache.getPlan(Config.T2S, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -479,10 +731,8 @@ public class OpenCC {
      * @return the converted text in Traditional Chinese (Taiwan)
      */
     public String s2tw(String input, boolean punctuation) {
-        var refs = getDictRefs("s2tw");
-        if (refs == null) return input;
-        String output = refs.applySegmentReplace(input, this::segmentReplace);
-        return punctuation ? translatePunctuation(output, DictRefs.PUNCT_S2T_MAP) : output;
+        DictRefs refs = planCache.getPlan(Config.S2Tw, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -493,10 +743,8 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String tw2s(String input, boolean punctuation) {
-        var refs = getDictRefs("tw2s");
-        if (refs == null) return input;
-        String output = refs.applySegmentReplace(input, this::segmentReplace);
-        return punctuation ? translatePunctuation(output, DictRefs.PUNCT_T2S_MAP) : output;
+        DictRefs refs = planCache.getPlan(Config.Tw2S, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -507,10 +755,8 @@ public class OpenCC {
      * @return the converted text in full Taiwan-style Traditional Chinese
      */
     public String s2twp(String input, boolean punctuation) {
-        var refs = getDictRefs("s2twp");
-        if (refs == null) return input;
-        String output = refs.applySegmentReplace(input, this::segmentReplace);
-        return punctuation ? translatePunctuation(output, DictRefs.PUNCT_S2T_MAP) : output;
+        DictRefs refs = planCache.getPlan(Config.S2Twp, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -521,10 +767,8 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String tw2sp(String input, boolean punctuation) {
-        var refs = getDictRefs("tw2sp");
-        if (refs == null) return input;
-        String output = refs.applySegmentReplace(input, this::segmentReplace);
-        return punctuation ? translatePunctuation(output, DictRefs.PUNCT_T2S_MAP) : output;
+        DictRefs refs = planCache.getPlan(Config.Tw2Sp, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -535,10 +779,8 @@ public class OpenCC {
      * @return the converted text in Hong Kong-style Traditional Chinese
      */
     public String s2hk(String input, boolean punctuation) {
-        var refs = getDictRefs("s2hk");
-        if (refs == null) return input;
-        String output = refs.applySegmentReplace(input, this::segmentReplace);
-        return punctuation ? translatePunctuation(output, DictRefs.PUNCT_S2T_MAP) : output;
+        DictRefs refs = planCache.getPlan(Config.S2Hk, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -549,10 +791,8 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String hk2s(String input, boolean punctuation) {
-        var refs = getDictRefs("hk2s");
-        if (refs == null) return input;
-        String output = refs.applySegmentReplace(input, this::segmentReplace);
-        return punctuation ? translatePunctuation(output, DictRefs.PUNCT_T2S_MAP) : output;
+        DictRefs refs = planCache.getPlan(Config.Hk2S, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -562,8 +802,8 @@ public class OpenCC {
      * @return the text converted to Taiwan-style Traditional Chinese
      */
     public String t2tw(String input) {
-        var refs = new DictRefs(List.of(dictionary.tw_variants));
-        return refs.applySegmentReplace(input, this::segmentReplace);
+        DictRefs refs = planCache.getPlan(Config.T2Tw, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -573,9 +813,8 @@ public class OpenCC {
      * @return the converted Taiwan Traditional Chinese with phrases and variants
      */
     public String t2twp(String input) {
-        var refs = new DictRefs(List.of(dictionary.tw_phrases))
-                .withRound2(List.of(dictionary.tw_variants));
-        return refs.applySegmentReplace(input, this::segmentReplace);
+        DictRefs refs = planCache.getPlan(Config.T2Twp, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -585,8 +824,8 @@ public class OpenCC {
      * @return the converted base Traditional Chinese text
      */
     public String tw2t(String input) {
-        var refs = new DictRefs(List.of(dictionary.tw_variants_rev_phrases, dictionary.tw_variants_rev));
-        return refs.applySegmentReplace(input, this::segmentReplace);
+        DictRefs refs = planCache.getPlan(Config.Tw2T, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -596,9 +835,8 @@ public class OpenCC {
      * @return the fully reverted Traditional Chinese text
      */
     public String tw2tp(String input) {
-        var refs = new DictRefs(List.of(dictionary.tw_variants_rev_phrases, dictionary.tw_variants_rev))
-                .withRound2(List.of(dictionary.tw_phrases_rev));
-        return refs.applySegmentReplace(input, this::segmentReplace);
+        DictRefs refs = planCache.getPlan(Config.Tw2Tp, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -608,8 +846,8 @@ public class OpenCC {
      * @return the converted text using HK Traditional variants
      */
     public String t2hk(String input) {
-        var refs = new DictRefs(List.of(dictionary.hk_variants));
-        return refs.applySegmentReplace(input, this::segmentReplace);
+        DictRefs refs = planCache.getPlan(Config.T2Hk, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -619,8 +857,8 @@ public class OpenCC {
      * @return the converted base Traditional Chinese text
      */
     public String hk2t(String input) {
-        var refs = new DictRefs(List.of(dictionary.hk_variants_rev_phrases, dictionary.hk_variants_rev));
-        return refs.applySegmentReplace(input, this::segmentReplace);
+        DictRefs refs = planCache.getPlan(Config.Hk2T, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -630,8 +868,8 @@ public class OpenCC {
      * @return the text converted to Japanese-style Kanji variants
      */
     public String t2jp(String input) {
-        var refs = new DictRefs(List.of(dictionary.jp_variants));
-        return refs.applySegmentReplace(input, this::segmentReplace);
+        DictRefs refs = planCache.getPlan(Config.T2Jp, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -641,8 +879,8 @@ public class OpenCC {
      * @return the converted Traditional Chinese text
      */
     public String jp2t(String input) {
-        var refs = new DictRefs(List.of(dictionary.jps_phrases, dictionary.jps_characters, dictionary.jp_variants_rev));
-        return refs.applySegmentReplace(input, this::segmentReplace);
+        DictRefs refs = planCache.getPlan(Config.Jp2T, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
@@ -655,7 +893,7 @@ public class OpenCC {
      * @return the text converted to Traditional Chinese, character by character
      */
     public String st(String input) {
-        return convertSegment(input, List.of(dictionary.st_characters), 2); // maxLength = 2 for surrogate-paired characters
+        return convertSegment(input, Collections.singletonList(dictionary.st_characters), 2); // maxLength = 2 for surrogate-paired characters
     }
 
     /**
@@ -668,7 +906,7 @@ public class OpenCC {
      * @return the text converted to Simplified Chinese, character by character
      */
     public String ts(String input) {
-        return convertSegment(input, List.of(dictionary.ts_characters), 2); // maxLength = 2 for surrogate-paired characters
+        return convertSegment(input, Collections.singletonList(dictionary.ts_characters), 2); // maxLength = 2 for surrogate-paired characters
     }
 
     /**
@@ -691,7 +929,7 @@ public class OpenCC {
     public int zhoCheck(String input) {
         if (input == null || input.isEmpty()) return 0;
 
-        var scanLength = Math.min(input.length(), 500);
+        int scanLength = Math.min(input.length(), 500);
 
         String stripped = DictRefs.STRIP_REGEX.matcher(input.substring(0, scanLength)).replaceAll("");
         if (stripped.isEmpty()) return 0;
