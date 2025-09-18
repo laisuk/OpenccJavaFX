@@ -387,6 +387,14 @@ public class OpenCC {
                         .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
                 break;
 
+            case "t2jp":
+                refs = new DictRefs(Collections.singletonList(d.jp_variants));
+                break;
+
+            case "jp2t":
+                refs = new DictRefs(Arrays.asList(d.jps_phrases, d.jps_characters, d.jp_variants_rev));
+                break;
+
             default:
                 // unknown key -> leave refs null
                 break;
@@ -868,8 +876,8 @@ public class OpenCC {
      * @return the text converted to Japanese-style Kanji variants
      */
     public String t2jp(String input) {
-        DictRefs refs = getRefsUnionForConfig(Config.T2Jp, false);
-        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+        DictRefs refs = getDictRefs("t2jp");
+        return refs.applySegmentReplace(input, this::segmentReplace);
     }
 
     /**
@@ -879,8 +887,8 @@ public class OpenCC {
      * @return the converted Traditional Chinese text
      */
     public String jp2t(String input) {
-        DictRefs refs = getRefsUnionForConfig(Config.Jp2T, false);
-        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+        DictRefs refs = getDictRefs("jp2t");
+        return refs.applySegmentReplace(input, this::segmentReplace);
     }
 
     /**
