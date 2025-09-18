@@ -7,11 +7,12 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.0.1-beta1] - 2025-09-17
+## [1.1.0-beta1] - 2025-09-18
 
 ### Added
 
 - Add dragAndDrop text to `TextBoxSource`
+- Introduced StarterIndex and UnionCache to speed up conversion.
 
 ---
 
