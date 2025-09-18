@@ -56,7 +56,10 @@ public class ConvertCommand implements Runnable {
             String inputText;
 
             if (input != null) {
-                inputText = Files.readString(input.toPath(), Charset.forName(inEncoding));
+//                inputText = Files.readString(input.toPath(), Charset.forName(inEncoding));
+                // Java 8: no Files.readString, use readAllBytes
+                byte[] bytes = Files.readAllBytes(input.toPath());
+                inputText = new String(bytes, Charset.forName(inEncoding));
             } else {
                 Charset inputCharset = Charset.forName(inEncoding);
                 if (System.console() != null) {
@@ -71,13 +74,17 @@ public class ConvertCommand implements Runnable {
                     System.err.println("Input (Charset: " + inputCharset + ")");
                     System.err.println("Input text to convert, <Ctrl+D> (Unix) <Ctrl-Z> (Windows) to submit:");
                 }
-                inputText = new String(System.in.readAllBytes(), inputCharset);
+//                inputText = new String(System.in.readAllBytes(), inputCharset);
+                // Java 8: no InputStream.readAllBytes, use a helper
+                inputText = new String(inputStreamReadAllBytes(), inputCharset);
             }
 
             String outputText = opencc.convert(inputText, punct);
 
             if (output != null) {
-                Files.writeString(output.toPath(), outputText, Charset.forName(outEncoding));
+//                Files.writeString(output.toPath(), outputText, Charset.forName(outEncoding));
+                // Java 8: no Files.writeString, use Files.write
+                Files.write(output.toPath(), outputText.getBytes(Charset.forName(outEncoding)));
             } else {
                 Charset outputCharset = Charset.forName(outEncoding);
                 if (System.getProperty("os.name").toLowerCase().contains("win")) {
@@ -100,5 +107,15 @@ public class ConvertCommand implements Runnable {
             System.err.println("❌ Exception occurred: " + e.getMessage());
             System.exit(1);
         }
+    }
+
+    private static byte[] inputStreamReadAllBytes() throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] tmp = new byte[8192];
+        int n;
+        while ((n = System.in.read(tmp)) != -1) {
+            buffer.write(tmp, 0, n);
+        }
+        return buffer.toByteArray();
     }
 }

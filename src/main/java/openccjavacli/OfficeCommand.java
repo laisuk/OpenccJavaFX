@@ -65,7 +65,7 @@ public class OfficeCommand implements Runnable {
 
         try {
             OpenCC opencc = new OpenCC(config);
-            var result = OfficeHelper.convert(input, output, officeFormat, opencc, punct, keepFont);
+            OfficeHelper.Result result = OfficeHelper.convert(input, output, officeFormat, opencc, punct, keepFont);
 
             if (result.success) {
                 System.err.println(result.message + "\n\uD83D\uDCC1 Output saved to: " + output.getAbsolutePath());
