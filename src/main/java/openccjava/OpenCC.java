@@ -1206,16 +1206,27 @@ public class OpenCC {
     }
 
     /**
-     * Translates punctuation characters in the input string using the provided character map.
+     * Legacy helper that performed direct char-to-char punctuation substitution.
      *
-     * <p>This method performs a simple character-by-character substitution based on the map.
-     * It is typically used to convert punctuation between fullwidth Simplified/Traditional Chinese styles
-     * (e.g., 「」『』 ↔ “ ” ‘ ’).
+     * <p><b>Deprecated since 1.1.0:</b> Punctuation conversion is now handled by
+     * dictionary-driven entries ({@link DictionaryMaxlength.DictEntry}) within the
+     * shared {@link DictionaryMaxlength} and applied by the normal conversion pipeline
+     * (e.g., union keys that include punctuation variants). This approach supports
+     * multi-code-point tokens, surrogate pairs, and locale-specific variants that a
+     * simple {@code Map<Character, Character>} cannot model.</p>
+     *
+     * <p>This method is retained only for backward compatibility and tests and is not
+     * used by the current implementation. Prefer enabling punctuation in your conversion
+     * flow (via configuration/union selection or a punctuation flag on {@code convert(...)}).</p>
      *
      * @param input the original string to process
      * @param map   a mapping from source punctuation characters to their target equivalents
      * @return a new string with punctuation characters translated
+     * @deprecated Use the standard dictionary-based conversion pipeline with punctuation
+     * enabled (see {@link DictionaryMaxlength} and the conversion methods that
+     * accept a punctuation option).
      */
+    @Deprecated
     private String translatePunctuation(String input, Map<Character, Character> map) {
         StringBuilder sb = new StringBuilder(input.length());
         for (char c : input.toCharArray()) {
