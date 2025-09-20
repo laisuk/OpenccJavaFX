@@ -2,6 +2,7 @@ package org.example.openccjavafx;
 
 import openccjava.OpenCC;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,9 +22,9 @@ public class ZhoConverter {
         if (text.isEmpty())
             return 0;
 //        var stripText = text.replaceAll("[\\p{Punct}\\sA-Za-z0-9]", "");
-        var stripText = NON_ZHO.matcher(text).replaceAll("");
-        var testText = stripText.substring(0, Math.min(stripText.length(), 50));
-        var converter = new OpenCC();
+        String stripText = NON_ZHO.matcher(text).replaceAll("");
+        String testText = stripText.substring(0, Math.min(stripText.length(), 50));
+        OpenCC converter = new OpenCC();
         converter.setConfig("t2s");
         if (!testText.equals(converter.convert(testText, false))) {
             return 1; // traditional
@@ -36,28 +37,45 @@ public class ZhoConverter {
     } // zhoCheck
 
     public static String convertPunctuation(String inputText, String config) {
-        Map<String, String> s2tPunctuationChars = Map.of(
-                "“", "「",
-                "”", "」",
-                "‘", "『",
-                "’", "』"
-        ); // Use Map.of for Java 9+
+        // Build map manually (instead of Map.of)
+        Map<String, String> s2tPunctuationChars = new HashMap<>();
+        s2tPunctuationChars.put("“", "「");
+        s2tPunctuationChars.put("”", "」");
+        s2tPunctuationChars.put("‘", "『");
+        s2tPunctuationChars.put("’", "』");
 
-        Map<String, String> mapping = config.startsWith("s") ?
-                s2tPunctuationChars :
-                s2tPunctuationChars.entrySet().stream()
-                        .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+        // Choose mapping direction
+        Map<String, String> mapping;
+        if (config.startsWith("s")) {
+            mapping = s2tPunctuationChars;
+        } else {
+            mapping = s2tPunctuationChars.entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+        }
 
-        String pattern = "[" + String.join("", mapping.keySet()) + "]";
+        // Build regex pattern from keys
+        StringBuilder patternBuilder = new StringBuilder("[");
+        for (String key : mapping.keySet()) {
+            patternBuilder.append(key);
+        }
+        patternBuilder.append("]");
+        String pattern = patternBuilder.toString();
+
         return replacePattern(inputText, pattern, mapping);
     }
 
     private static String replacePattern(String text, String pattern, Map<String, String> mapping) {
         Pattern regex = Pattern.compile(pattern);
         Matcher matcher = regex.matcher(text);
-        StringBuilder sb = new StringBuilder();
+        StringBuffer sb = new StringBuffer();
         while (matcher.find()) {
-            matcher.appendReplacement(sb, mapping.get(matcher.group()));
+            String replacement = mapping.get(matcher.group());
+            if (replacement == null) {
+                replacement = matcher.group(); // fallback: keep original
+            }
+            // Escape replacement string for appendReplacement
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(sb);
         return sb.toString();

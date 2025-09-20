@@ -117,7 +117,7 @@ public class OpenccJavaFxController {
         } else {
             textAreaSource.replaceText(inputText);
             openFileName = "";
-            updateSourceInfo(openccInstance.zhoCheck(inputText));
+            updateSourceInfo(OpenCC.zhoCheck(inputText));
             lblFilename.setText("");
             lblStatus.setText("Clipboard contents pasted to source area.");
         }
@@ -185,7 +185,7 @@ public class OpenccJavaFxController {
         }
 
         if (lblSourceCode.getText().isEmpty()) {
-            updateSourceInfo(openccInstance.zhoCheck(inputText));
+            updateSourceInfo(OpenCC.zhoCheck(inputText));
         }
 
         var config = getConfig();
@@ -341,7 +341,7 @@ public class OpenccJavaFxController {
             }
             textAreaSource.replaceText(content);
             openFileName = file.toString();
-            updateSourceInfo(openccInstance.zhoCheck(content));
+            updateSourceInfo(OpenCC.zhoCheck(content));
         } catch (IOException e) {
             lblStatus.setText("Error reading file: " + e.getMessage());
         }
@@ -515,7 +515,7 @@ public class OpenccJavaFxController {
                     }
                     textAreaSource.replaceText(text);
                     openFileName = file.toString();
-                    updateSourceInfo(openccInstance.zhoCheck(text));
+                    updateSourceInfo(OpenCC.zhoCheck(text));
                     success = true;
                 } catch (Exception e) {
                     lblStatus.setText("Error: " + e.getMessage());
@@ -534,7 +534,7 @@ public class OpenccJavaFxController {
 
             textAreaSource.replaceText(text);
             openFileName = "<Dropped text>";
-            updateSourceInfo(openccInstance.zhoCheck(text));
+            updateSourceInfo(OpenCC.zhoCheck(text));
             success = true;
         }
         dragEvent.setDropCompleted(success);
@@ -581,7 +581,7 @@ public class OpenccJavaFxController {
     }
 
     public void onBthRefreshClicked() {
-        updateSourceInfo(openccInstance.zhoCheck(textAreaSource.getText()));
+        updateSourceInfo(OpenCC.zhoCheck(textAreaSource.getText()));
     }
 
     public void onCbManualClicked() {

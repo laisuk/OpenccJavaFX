@@ -111,7 +111,7 @@ public class OpenCC {
     /**
      * Set of characters considered as delimiters during segmentation.
      */
-    private final Set<Character> delimiters = DictRefs.DELIMITERS;
+    private static final Set<Character> delimiters = DictRefs.DELIMITERS;
 
     /**
      * Current conversion configuration key (e.g., s2t, t2s).
@@ -135,6 +135,84 @@ public class OpenCC {
             ThreadLocal.withInitial(() -> new StringBuilder(MAX_SB_CAPACITY));
 
     /**
+     * Provides a lazily initialized, thread-safe singleton instance of
+     * {@link DictionaryMaxlength}.
+     *
+     * <p>This holder follows the <em>Initialization-on-demand holder idiom</em>:
+     * the dictionary is not loaded until the first call to {@link #get()}.
+     * This guarantees that:</p>
+     * <ul>
+     *   <li>The dictionary is loaded exactly once per JVM.</li>
+     *   <li>Access is thread-safe without requiring explicit synchronization.</li>
+     *   <li>Subsequent calls to {@code get()} return the same shared instance.</li>
+     * </ul>
+     *
+     * <p>The dictionary is loaded in the following order:</p>
+     * <ol>
+     *   <li><b>JSON file from the file system:</b>
+     *       {@code dicts/dictionary_maxlength.json} in the current working directory.</li>
+     *   <li><b>Embedded JSON resource:</b>
+     *       {@code /dicts/dictionary_maxlength.json} from the application’s classpath
+     *       (e.g. inside the JAR).</li>
+     *   <li><b>Plain text fallback:</b>
+     *       If neither JSON source is found, falls back to loading individual
+     *       dictionary text files via {@link DictionaryMaxlength#fromDicts()}.</li>
+     * </ol>
+     *
+     * <p>If all attempts fail, a {@link RuntimeException} is thrown.</p>
+     *
+     * <h3>Usage Example:</h3>
+     * <pre>{@code
+     * DictionaryMaxlength dict = OpenCC.DictionaryHolder.get();
+     * }</pre>
+     */
+    public static final class DictionaryHolder {
+        private DictionaryHolder() {
+        }
+
+        /**
+         * Internal holder for the lazily initialized singleton.
+         */
+        private static class Holder {
+            private static final DictionaryMaxlength DEFAULT = load();
+        }
+
+        /**
+         * Returns the shared singleton {@link DictionaryMaxlength} instance.
+         * The instance is created on first invocation.
+         *
+         * @return the shared dictionary instance
+         * @throws RuntimeException if dictionary loading fails
+         */
+        public static DictionaryMaxlength get() {
+            return Holder.DEFAULT;
+        }
+
+        /**
+         * Attempts to load the dictionary from JSON (file system or classpath),
+         * falling back to plain-text sources if necessary.
+         *
+         * @return a fully loaded {@link DictionaryMaxlength}
+         * @throws RuntimeException if no dictionary source can be loaded
+         */
+        private static DictionaryMaxlength load() {
+            try {
+                Path jsonPath = Paths.get("dicts", "dictionary_maxlength.json");
+                if (Files.exists(jsonPath)) {
+                    return DictionaryMaxlength.fromJson(jsonPath.toString());
+                }
+                try (InputStream in = DictionaryMaxlength.class.getResourceAsStream(
+                        "/dicts/dictionary_maxlength.json")) {
+                    if (in != null) return DictionaryMaxlength.fromJson(in);
+                    return DictionaryMaxlength.fromDicts();
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to load dictionaries", e);
+            }
+        }
+    }
+
+    /**
      * Constructs an OpenCC instance using the default configuration ("s2t").
      */
     public OpenCC() {
@@ -144,57 +222,64 @@ public class OpenCC {
     /**
      * Constructs an {@code OpenCC} instance with the specified conversion configuration.
      *
-     * <p>The constructor attempts to load the dictionary data in the following order:</p>
+     * <p>This constructor does not reload dictionaries for each instance.
+     * Instead, it retrieves a shared singleton {@link DictionaryMaxlength}
+     * from {@link DictionaryHolder}. The dictionary is loaded lazily on
+     * first access and reused by all subsequent {@code OpenCC} instances.</p>
+     *
+     * <p>The shared dictionary is resolved in the following order (on first access only):</p>
      * <ol>
-     *   <li><b>JSON file from file system:</b>
+     *   <li><b>JSON file from the file system:</b>
      *       {@code dicts/dictionary_maxlength.json} in the current working directory.</li>
      *   <li><b>Embedded JSON resource:</b>
-     *       {@code /dicts/dictionary_maxlength.json} from the application’s classpath (e.g. inside the JAR).</li>
-     *   <li><b>Plain text fallback:</b>
-     *       If the JSON is not found, falls back to loading individual dictionary text files from
-     *       {@code dicts/} using {@link DictionaryMaxlength#fromDicts()}.</li>
+     *       {@code /dicts/dictionary_maxlength.json} from the application’s classpath
+     *       (e.g. inside the JAR).</li>
+     *   <li><b>Plain-text fallback:</b>
+     *       If neither JSON source is found, falls back to loading individual dictionary
+     *       text files from {@code dicts/} via {@link DictionaryMaxlength#fromDicts()}.</li>
      * </ol>
      *
-     * <p>Logging behavior:</p>
-     * <ul>
-     *   <li><i>INFO</i> is logged when a dictionary is successfully loaded from either file system or resource.</li>
-     *   <li><i>WARNING</i> is logged if the loader falls back to plain-text dictionaries.</li>
-     * </ul>
+     * <p><b>Important:</b> because the dictionary is a shared singleton,
+     * any modification to its contents (e.g. adding or removing entries)
+     * will affect <em>all</em> {@code OpenCC} instances within the JVM.</p>
      *
-     * <p>If all attempts fail, a {@link RuntimeException} is thrown with the cause recorded in
-     * {@link #lastError}.</p>
+     * <p>If all loading attempts fail, a {@link RuntimeException} is thrown
+     * with the underlying cause recorded in {@link #lastError}.</p>
      *
      * @param config the conversion configuration key (e.g. {@code "s2t"}, {@code "tw2sp"});
      *               see {@link Config} for supported values
      * @throws RuntimeException if no dictionary source can be loaded or parsed
      */
     public OpenCC(String config) {
+        this.dictionary = DictionaryHolder.get(); // Lazy static, loaded on first access
+        this.planCache = new ConversionPlanCache(() -> this.dictionary);
+
+        setConfig(config);
+    }
+
+    /**
+     * Constructs an OpenCC instance using plain text dictionaries from the given directory.
+     * <p>
+     * <strong>Deprecated:</strong> This constructor will be removed in the next major version.
+     * Use {@link #OpenCC(String)} instead.
+     * </p>
+     *
+     * @param config   the conversion configuration key to use
+     * @param dictPath the path to the text dictionary directory
+     * @deprecated Use {@link #OpenCC(String)} instead. This overload will be removed in the next major version.
+     */
+    @Deprecated
+    public OpenCC(String config, Path dictPath) {
         DictionaryMaxlength loaded;
         try {
-            Path jsonPath = Paths.get("dicts", "dictionary_maxlength.json");
-
-            if (Files.exists(jsonPath)) {
-                loaded = DictionaryMaxlength.fromJson(jsonPath.toString());
-                LOGGER.info("Loaded dictionary from file system.");
-            } else {
-                try (InputStream in = DictionaryMaxlength.class.getResourceAsStream("/dicts/dictionary_maxlength.json")) {
-                    if (in != null) {
-                        loaded = DictionaryMaxlength.fromJson(in);
-                        LOGGER.info("Loaded dictionary from embedded resource.");
-                    } else {
-                        loaded = DictionaryMaxlength.fromDicts();
-                        LOGGER.warning("Falling back to plain text dictionaries.");
-                    }
-                }
-            }
-
+            loaded = DictionaryMaxlength.fromDicts(dictPath.toString());
         } catch (Exception e) {
             this.lastError = e.getMessage();
-            throw new RuntimeException("Failed to load dictionaries", e);
+            throw new RuntimeException("Failed to load text dictionaries from: " + dictPath, e);
         }
 
         this.dictionary = loaded;
-        this.planCache = new ConversionPlanCache(() -> this.dictionary);
+        this.planCache = new ConversionPlanCache(() -> this.dictionary); // after dictionary
 
         setConfig(config);
     }
@@ -220,28 +305,6 @@ public class OpenCC {
      */
     public void clearPlanCache() {
         planCache.clear();
-    }
-
-    /**
-     * Constructs an OpenCC instance using plain text dictionaries from the given directory.
-     * Skips JSON and directly loads .txt files (e.g., for user-customized dictionaries).
-     *
-     * @param config   the conversion configuration key to use
-     * @param dictPath the path to the text dictionary directory
-     */
-    public OpenCC(String config, Path dictPath) {
-        DictionaryMaxlength loaded;
-        try {
-            loaded = DictionaryMaxlength.fromDicts(dictPath.toString());
-        } catch (Exception e) {
-            this.lastError = e.getMessage();
-            throw new RuntimeException("Failed to load text dictionaries from: " + dictPath, e);
-        }
-
-        this.dictionary = loaded;
-        this.planCache = new ConversionPlanCache(() -> this.dictionary); // after dictionary
-
-        setConfig(config);
     }
 
     /**
@@ -390,7 +453,7 @@ public class OpenCC {
     private DictRefs getDictRefs(String key) {
         if (configCache.containsKey(key)) return configCache.get(key);
 
-        final DictionaryMaxlength d = this.dictionary; // no 'var' in Java 8
+        final DictionaryMaxlength d = dictionary; // no 'var' in Java 8
         DictRefs refs = null;
 
         switch (key) {
@@ -518,7 +581,7 @@ public class OpenCC {
      * @param maxLength the maximum phrase length to consider
      * @return the converted segment
      */
-    public String convertSegment(String segment, List<DictEntry> dicts, int maxLength) {
+    public static String convertSegment(String segment, List<DictEntry> dicts, int maxLength) {
         if (segment.length() == 1 && delimiters.contains(segment.charAt(0))) {
             return segment;
         }
@@ -576,7 +639,7 @@ public class OpenCC {
      *                  or as separate segments ({@code false})
      * @return a list of (start, end) index ranges representing the segments
      */
-    public List<int[]> getSplitRanges(String text, boolean inclusive) {
+    private static List<int[]> getSplitRanges(String text, boolean inclusive) {
         List<int[]> result = new ArrayList<>();
         int start = 0;
         final int textLength = text.length(); // Cache text length
@@ -625,20 +688,20 @@ public class OpenCC {
         /**
          * Dictionaries containing multi-character phrases (length ≥ 3).
          */
-        final List<DictionaryMaxlength.DictEntry> phraseDicts;
+        final List<DictEntry> phraseDicts;
 
         /**
          * Dictionaries containing single-character or punctuation entries (length &lt; 3).
          */
-        final List<DictionaryMaxlength.DictEntry> singleDicts;
+        final List<DictEntry> singleDicts;
 
         /**
          * Maximum phrase length across {@link #phraseDicts}.
          */
         final int phraseMaxLen;
 
-        DictPartition(List<DictionaryMaxlength.DictEntry> phraseDicts,
-                      List<DictionaryMaxlength.DictEntry> singleDicts,
+        DictPartition(List<DictEntry> phraseDicts,
+                      List<DictEntry> singleDicts,
                       int phraseMaxLen) {
             this.phraseDicts = phraseDicts;
             this.singleDicts = singleDicts;
@@ -657,12 +720,12 @@ public class OpenCC {
      * @param dicts the dictionaries to partition
      * @return a {@link DictPartition} containing the grouped entries and maximum phrase length
      */
-    private static DictPartition partitionDicts(List<DictionaryMaxlength.DictEntry> dicts) {
-        List<DictionaryMaxlength.DictEntry> phrase = new ArrayList<>(dicts.size());
-        List<DictionaryMaxlength.DictEntry> single = new ArrayList<>(2);
+    private static DictPartition partitionDicts(List<DictEntry> dicts) {
+        List<DictEntry> phrase = new ArrayList<>(dicts.size());
+        List<DictEntry> single = new ArrayList<>(2);
         int maxLen = 0;
 
-        for (DictionaryMaxlength.DictEntry e : dicts) {
+        for (DictEntry e : dicts) {
             if (e.maxLength >= 3) {
                 phrase.add(e);
                 if (e.maxLength > maxLen) maxLen = e.maxLength;
@@ -711,7 +774,7 @@ public class OpenCC {
      * @return the converted text
      */
     public String segmentReplaceWithUnion(String text,
-                                          List<DictionaryMaxlength.DictEntry> dicts,
+                                          List<DictEntry> dicts,
                                           int maxLength,
                                           StarterUnion union) {
         if (text == null || text.isEmpty()) return text;
@@ -791,10 +854,10 @@ public class OpenCC {
      * @param union       optional {@link StarterUnion} for fast starter rejection; may be {@code null}
      * @return the converted segment
      */
-    private String convertSegmentWithUnion(String input,
-                                           DictPartition part,
-                                           int roundMaxLen,
-                                           StarterUnion union) {
+    private static String convertSegmentWithUnion(String input,
+                                                  DictPartition part,
+                                                  int roundMaxLen,
+                                                  StarterUnion union) {
         if (input.isEmpty()) return input;
 
         final int n = input.length();
@@ -821,7 +884,7 @@ public class OpenCC {
                     outer:
                     for (int len = tryMax; len >= 3; len--) {
                         final String sub = input.substring(i, i + len);
-                        for (DictionaryMaxlength.DictEntry e : part.phraseDicts) {
+                        for (DictEntry e : part.phraseDicts) {
                             if (e.maxLength < len) continue;
                             final String repl = e.dict.get(sub);
                             if (repl != null) {
@@ -837,7 +900,7 @@ public class OpenCC {
             // single-char search
             if (hit == null && !part.singleDicts.isEmpty() && i + starterLen <= n) {
                 final String sub = input.substring(i, i + starterLen);
-                for (DictionaryMaxlength.DictEntry e : part.singleDicts) {
+                for (DictEntry e : part.singleDicts) {
                     final String repl = e.dict.get(sub);
                     if (repl != null) {
                         hit = repl;
@@ -1052,8 +1115,8 @@ public class OpenCC {
      * @param input the input text in Simplified Chinese
      * @return the text converted to Traditional Chinese, character by character
      */
-    public String st(String input) {
-        return convertSegment(input, Collections.singletonList(dictionary.st_characters), 2); // maxLength = 2 for surrogate-paired characters
+    public static String st(String input) {
+        return convertSegment(input, Collections.singletonList(DictionaryHolder.get().st_characters), 2); // maxLength = 2 for surrogate-paired characters
     }
 
     /**
@@ -1065,8 +1128,8 @@ public class OpenCC {
      * @param input the input text in Traditional Chinese
      * @return the text converted to Simplified Chinese, character by character
      */
-    public String ts(String input) {
-        return convertSegment(input, Collections.singletonList(dictionary.ts_characters), 2); // maxLength = 2 for surrogate-paired characters
+    public static String ts(String input) {
+        return convertSegment(input, Collections.singletonList(DictionaryHolder.get().ts_characters), 2); // maxLength = 2 for surrogate-paired characters
     }
 
     /**
@@ -1086,7 +1149,7 @@ public class OpenCC {
      * @param input the input text to check
      * @return an integer code representing the detected Chinese variant
      */
-    public int zhoCheck(String input) {
+    public static int zhoCheck(String input) {
         if (input == null || input.isEmpty()) return 0;
 
         int scanLength = Math.min(input.length(), 500);
@@ -1104,6 +1167,42 @@ public class OpenCC {
         if (!slice.equals(ts(slice))) return 1;
         if (!slice.equals(st(slice))) return 2;
         return 0;
+    }
+
+    /**
+     * Attempts to detect whether the input text is written in Traditional or Simplified Chinese,
+     * using this {@code OpenCC} instance.
+     *
+     * <p>This instance method delegates to the static {@link #zhoCheck(String)} detection
+     * logic but is provided for convenience when working with an {@code OpenCC} object.</p>
+     *
+     * <p>Detection process:</p>
+     * <ul>
+     *   <li>Non-Chinese characters are stripped from the first portion of the text.</li>
+     *   <li>Analysis is limited to the first ~200 UTF-8 bytes (≈60–70 characters),
+     *       or 100 Unicode code points.</li>
+     *   <li>The substring is compared against its conversions to Simplified and
+     *       Traditional Chinese.</li>
+     * </ul>
+     *
+     * <p>Return codes:</p>
+     * <ul>
+     *   <li><b>0</b> – Undetermined, mixed, or non-Chinese content</li>
+     *   <li><b>1</b> – Likely Traditional Chinese</li>
+     *   <li><b>2</b> – Likely Simplified Chinese</li>
+     * </ul>
+     *
+     * @param input the input text to check (may be {@code null} or empty)
+     * @return an integer code representing the detected Chinese variant
+     * @see #zhoCheck(String)
+     * @deprecated since 1.1.0 – {@code zhoCheck} is now a static method.
+     * Use {@link #zhoCheck(String)} instead, or this method
+     * (zhoCheckInstance(String) for instance-based
+     * compatibility.
+     */
+    @Deprecated
+    public final int zhoCheckInstance(String input) {
+        return OpenCC.zhoCheck(input);
     }
 
     /**
