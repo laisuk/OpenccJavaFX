@@ -1192,12 +1192,12 @@ public class OpenCC {
      *   <li><b>2</b> – Likely Simplified Chinese</li>
      * </ul>
      *
-     * @param input the input text to check (may be {@code null} or empty)
+     * @param input the input text to check (maybe {@code null} or empty)
      * @return an integer code representing the detected Chinese variant
      * @see #zhoCheck(String)
      * @deprecated since 1.1.0 – {@code zhoCheck} is now a static method.
      * Use {@link #zhoCheck(String)} instead, or this method
-     * (zhoCheckInstance(String) for instance-based
+     * (@link zhoCheckInstance(String)) for instance-based
      * compatibility.
      */
     @Deprecated
