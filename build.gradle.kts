@@ -43,6 +43,11 @@ tasks.withType<JavaExec> {
 application {
     mainModule.set("org.example.openccjavafx")
     mainClass.set("org.example.openccjavafx.OpenccJavaFxApplication")
+    applicationDefaultJvmArgs = listOf(
+        "-Dfile.encoding=UTF-8",
+        "-XX:+IgnoreUnrecognizedVMOptions",
+        "--enable-native-access=javafx.graphics"
+    )
 }
 
 javafx {
