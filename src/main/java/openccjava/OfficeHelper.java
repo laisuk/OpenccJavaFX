@@ -182,6 +182,7 @@ public class OfficeHelper {
                     if (pattern != null) {
                         Matcher matcher = pattern.matcher(xml);
                         int counter = 0;
+                        // Using StringBuffer for Java 8+ compatible
                         StringBuffer sb = new StringBuffer();
 
                         while (matcher.find()) {
