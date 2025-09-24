@@ -1,8 +1,6 @@
 package openccjava;
 
-import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Immutable union of "starter" characters used in a single conversion round.
@@ -47,46 +45,117 @@ public final class StarterUnion {
     private final BitSet astralMask; // U+10000 to U+10FFFF, stored as (cp - 0x10000)
 
     /**
-     * Creates a new {@code StarterUnion} with the given bit masks.
+     * NEW: Per-starter length masks for fast phrase lookup.
      *
-     * @param bmp    the BMP mask (U+0000–U+FFFF)
-     * @param astral the astral mask (U+10000–U+10FFFF)
+     * <p>For each possible starter code point, these masks record which key lengths
+     * (in UTF-16 code units) are present in the loaded dictionaries:</p>
+     *
+     * <ul>
+     *   <li><b>{@code bmpLenMask}</b> – fixed-size array indexed by BMP code point
+     *       value (U+0000..U+FFFF). Each entry is a 64-bit bitmask where bit {@code L}
+     *       is set if there exists a dictionary key of length {@code L} starting with
+     *       that code point.</li>
+     *   <li><b>{@code astralLenMask}</b> – sparse map for astral plane code points
+     *       (U+10000..U+10FFFF). Each entry maps a code point to its 64-bit length mask,
+     *       using the same encoding as {@code bmpLenMask}.</li>
+     * </ul>
+     *
+     * <p>This allows the conversion loop to skip impossible substring lengths for a
+     * given starter character, avoiding wasted {@link String#substring(int, int)} calls
+     * and hash lookups. Keys longer than 63 UTF-16 units are ignored for bitmasking
+     * purposes.</p>
      */
-    private StarterUnion(BitSet bmp, BitSet astral) {
-        this.bmpMask = bmp;
-        this.astralMask = astral;
+    private final long[] bmpLenMask;              // BMP cp -> bitmask of supported lengths
+    private final Map<Integer, Long> astralLenMask; // astral cp -> bitmask
+
+    /**
+     * Creates a new {@code StarterUnion} with the given presence and length masks.
+     *
+     * <p>This constructor is normally invoked by {@link #build(List)} after scanning
+     * all dictionary keys. It encapsulates both starter presence (which code points
+     * can begin a key) and per-starter length masks (which substring lengths are valid
+     * for that starter).</p>
+     *
+     * @param bmpMask       bit mask of starter presence in the Basic Multilingual Plane
+     *                      (U+0000–U+FFFF); a set bit means at least one key starts
+     *                      with that code point
+     * @param astralMask    bit mask of starter presence in the astral planes
+     *                      (U+10000–U+10FFFF), offset by {@code BMP_LIMIT}
+     * @param bmpLenMask    array of per-starter length masks for BMP code points;
+     *                      {@code bmpLenMask[cp]} is a 64-bit bitmask where bit
+     *                      {@code L} is set if a dictionary key of length {@code L}
+     *                      starts with code point {@code cp}
+     * @param astralLenMask sparse map of astral code points (U+10000–U+10FFFF) to
+     *                      their 64-bit length masks, using the same encoding as
+     *                      {@code bmpLenMask}
+     */
+    public StarterUnion(BitSet bmpMask, BitSet astralMask,
+                        long[] bmpLenMask,
+                        Map<Integer, Long> astralLenMask) {
+        this.bmpMask = bmpMask;
+        this.astralMask = astralMask;
+        this.bmpLenMask = bmpLenMask;
+        this.astralLenMask = Collections.unmodifiableMap(astralLenMask);
     }
 
     /**
      * Builds a {@code StarterUnion} from the given list of dictionary entries.
-     * <p>
-     * Only the first code point of each dictionary key is scanned.
-     * For each such starter:
+     *
+     * <p>Only the first code point of each dictionary key is scanned. For each such starter:</p>
      * <ul>
-     *   <li>If it lies in the BMP, it is recorded in {@code bmpMask}.</li>
-     *   <li>If it lies in the astral planes, it is recorded in {@code astralMask}
-     *       at offset {@code cp - BMP_LIMIT}.</li>
+     *   <li>If it lies in the BMP (U+0000–U+FFFF), it is recorded in {@code bmpMask}.</li>
+     *   <li>If it lies in the astral planes (U+10000–U+10FFFF), it is recorded in
+     *       {@code astralMask} at offset {@code cp - BMP_LIMIT}.</li>
+     *   <li>The key length (in UTF-16 code units) is also encoded into a 64-bit
+     *       per-starter length mask:
+     *       <ul>
+     *         <li>For BMP starters, {@code bmpLenMask[cp]} holds a bitmask where
+     *             bit {@code L} is set if a key of length {@code L} begins with
+     *             code point {@code cp}.</li>
+     *         <li>For astral starters, {@code astralLenMask} maps the code point
+     *             to its 64-bit length mask, using the same encoding as
+     *             {@code bmpLenMask}.</li>
+     *       </ul>
+     *       Keys of length ≥ 64 UTF-16 units are ignored for bitmasking purposes.</li>
      * </ul>
-     * </p>
+     *
+     * <p>This enables the conversion loop to quickly reject impossible starters and
+     * impossible substring lengths before attempting expensive lookups.</p>
      *
      * @param dicts the dictionary entries to scan
-     * @return an immutable {@code StarterUnion} containing all starters
+     * @return an immutable {@code StarterUnion} containing all starters and their length masks
      */
     public static StarterUnion build(List<DictionaryMaxlength.DictEntry> dicts) {
         final BitSet bmp = new BitSet(BMP_LIMIT);
         final BitSet astral = new BitSet((UNICODE_MAX - BMP_LIMIT) + 1);
+        final long[] bmpLen = new long[BMP_LIMIT];
+        final Map<Integer, Long> astralLen = new HashMap<>();
 
         for (DictionaryMaxlength.DictEntry d : dicts) {
             final Map<String, String> map = d.dict;
             for (String k : map.keySet()) {
                 if (k == null || k.isEmpty()) continue;
-                final int cp = codePointAt(k, 0);
-                if (cp < 0) continue;
+                final int cp = Character.codePointAt(k, 0);
+                if (cp < 0 || cp > UNICODE_MAX) continue;
+
+                // presence
                 if (cp < BMP_LIMIT) bmp.set(cp);
-                else if (cp <= UNICODE_MAX) astral.set(cp - BMP_LIMIT);
+                else astral.set(cp - BMP_LIMIT);
+
+                // length bit (guard lengths >=64 to keep mask in a long)
+                final int L = k.length(); // UTF-16 units (astral counts as 2)
+                if (L >= 64) continue;
+
+                final long bit = 1L << L;
+                if (cp < BMP_LIMIT) {
+                    bmpLen[cp] |= bit;
+                } else {
+                    astralLen.merge(cp, bit, (a, b) -> a | b);
+                }
             }
         }
-        return new StarterUnion(bmp, astral);
+
+        return new StarterUnion(bmp, astral, bmpLen, astralLen);
     }
 
     /**
@@ -105,6 +174,26 @@ public final class StarterUnion {
         if (codePoint < BMP_LIMIT) return bmpMask.get(codePoint);
         if (codePoint <= UNICODE_MAX) return astralMask.get(codePoint - BMP_LIMIT);
         return false;
+    }
+
+    /**
+     * Returns the precomputed length bitmask for the given starter code point.
+     *
+     * <p>The mask encodes, in a single {@code long}, which substring lengths
+     * (measured in UTF-16 code units) are possible for dictionary keys starting
+     * with this code point. Bit {@code L} is set if at least one key of length
+     * {@code L} begins with {@code cp}. Keys longer than 63 UTF-16 units are not
+     * represented in the mask.</p>
+     *
+     * <p>This allows the conversion loop to quickly skip impossible lengths before
+     * building substrings or performing hash lookups.</p>
+     *
+     * @param cp the Unicode code point to query
+     * @return a 64-bit length mask; {@code 0} if no keys are known to start with {@code cp}
+     */
+    public long lenMask(int cp) {
+        if (cp < BMP_LIMIT) return bmpLenMask[cp];
+        return astralLenMask.getOrDefault(cp, 0L);
     }
 
     /**

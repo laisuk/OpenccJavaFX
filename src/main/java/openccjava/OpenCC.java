@@ -672,15 +672,17 @@ public class OpenCC {
 
     /**
      * Groups dictionary entries into phrase dictionaries and single-character dictionaries,
-     * with a cached maximum phrase length.
+     * with cached phrase-length bounds.
      * <p>
      * This partitioning is used internally to optimize lookup:
      * <ul>
-     *   <li><b>phraseDicts</b> – dictionaries where {@code maxLength &gt;= 3},
+     *   <li><b>phraseDicts</b> – dictionaries where {@code maxLength &ge; 3},
      *       searched longest-first during phrase matching</li>
      *   <li><b>singleDicts</b> – dictionaries where {@code maxLength &lt; 3},
      *       typically single-character or punctuation mappings</li>
      *   <li><b>phraseMaxLen</b> – the maximum key length across all phrase dictionaries</li>
+     *   <li><b>phraseMinLen</b> – the minimum key length across all phrase dictionaries
+     *       (0 if none)</li>
      * </ul>
      * </p>
      */
@@ -691,7 +693,7 @@ public class OpenCC {
         final List<DictEntry> phraseDicts;
 
         /**
-         * Dictionaries containing single-character or punctuation entries (length &lt; 3).
+         * Dictionaries containing single-character or punctuation entries (length < 3).
          */
         final List<DictEntry> singleDicts;
 
@@ -700,44 +702,79 @@ public class OpenCC {
          */
         final int phraseMaxLen;
 
+        /**
+         * Minimum phrase length across {@link #phraseDicts} (0 if no phrase dicts).
+         */
+        final int phraseMinLen;
+
+        /**
+         * Creates a new {@code DictPartition} with the given phrase and single-character
+         * dictionaries, and cached phrase length bounds.
+         *
+         * @param phraseDicts  dictionaries containing multi-character phrase entries
+         *                     (where {@code maxLength ≥ 3}); must already be wrapped
+         *                     as unmodifiable if immutability is desired
+         * @param singleDicts  dictionaries containing single-character or punctuation
+         *                     entries (where {@code maxLength < 3}); must already be
+         *                     wrapped as unmodifiable if immutability is desired
+         * @param phraseMaxLen maximum key length across all {@code phraseDicts}, or
+         *                     {@code 0} if no phrase dictionaries exist
+         * @param phraseMinLen minimum key length across all {@code phraseDicts}, or
+         *                     {@code 0} if no phrase dictionaries exist
+         */
         DictPartition(List<DictEntry> phraseDicts,
                       List<DictEntry> singleDicts,
-                      int phraseMaxLen) {
+                      int phraseMaxLen,
+                      int phraseMinLen) {
             this.phraseDicts = phraseDicts;
             this.singleDicts = singleDicts;
             this.phraseMaxLen = phraseMaxLen;
+            this.phraseMinLen = phraseMinLen;
         }
     }
 
     /**
      * Partitions a list of dictionary entries into phrase dictionaries and single-character dictionaries.
-     * <p>
-     * Entries with {@code maxLength ≥ 3} are placed in {@code phraseDicts}, and the maximum phrase
-     * length is tracked. Entries with {@code maxLength &lt; 3} are placed in {@code singleDicts}.
-     * Both lists are wrapped as unmodifiable.
-     * </p>
+     *
+     * <p>Entries with {@code maxLength ≥ 3} are placed in {@code phraseDicts}, and both the maximum
+     * and minimum key lengths across those phrase dictionaries are tracked. Entries with
+     * {@code maxLength < 3} are placed in {@code singleDicts}. Returned lists are wrapped as
+     * unmodifiable to prevent accidental modification.</p>
+     *
+     * <p>If no phrase dictionaries are present, {@code phraseMaxLen} and {@code phraseMinLen}
+     * are both normalized to {@code 0}.</p>
      *
      * @param dicts the dictionaries to partition
-     * @return a {@link DictPartition} containing the grouped entries and maximum phrase length
+     * @return a {@link DictPartition} containing grouped entries and cached phrase length bounds
      */
     private static DictPartition partitionDicts(List<DictEntry> dicts) {
         List<DictEntry> phrase = new ArrayList<>(dicts.size());
         List<DictEntry> single = new ArrayList<>(2);
-        int maxLen = 0;
+
+        int phraseMax = 0;
+        int phraseMin = Integer.MAX_VALUE;
 
         for (DictEntry e : dicts) {
             if (e.maxLength >= 3) {
                 phrase.add(e);
-                if (e.maxLength > maxLen) maxLen = e.maxLength;
+                if (e.maxLength > phraseMax) phraseMax = e.maxLength;
+                if (e.minLength < phraseMin) phraseMin = e.minLength;
             } else {
                 single.add(e);
             }
         }
 
+        if (phrase.isEmpty()) {
+            // No phrase dicts: normalize bounds to 0
+            phraseMax = 0;
+            phraseMin = 0;
+        }
+
         return new DictPartition(
                 Collections.unmodifiableList(phrase),
                 Collections.unmodifiableList(single),
-                maxLen
+                phraseMax,
+                phraseMin
         );
     }
 
@@ -815,44 +852,63 @@ public class OpenCC {
     // Internal: faster converter for a single segment using pre-partitioned dicts
 
     /**
-     * Converts a single text segment using pre-partitioned dictionaries and an optional starter union.
-     * <p>
-     * Algorithm:
-     * </p>
+     * Converts a single text segment using pre-partitioned dictionaries and an optional {@link StarterUnion}.
+     *
+     * <h3>Overview</h3>
+     * This method implements the OpenCC-style greedy, phrase-first replacement algorithm with several
+     * optimizations to minimize unnecessary lookups. It processes the input string left to right, emitting
+     * replacements or original code points as appropriate.
+     *
+     * <h3>Algorithm</h3>
      * <ol>
-     *   <li><b>Starter pre-check:</b> If a {@link StarterUnion} is provided and the current code point
-     *       is not present in the union, the character is copied through without any dictionary lookups.</li>
-     *   <li><b>Phrase-first, greedy longest match:</b> For entries with {@code maxLength ≥ 3}, try the longest
-     *       possible substring at the current index down to length 3. On the first hit, append the replacement
-     *       and advance by the matched length.</li>
-     *   <li><b>Single-character fallback:</b> If no phrase matches, attempt a single-character (or surrogate-pair)
-     *       lookup in the {@code singleDicts}. On hit, append the replacement and advance by one code point.</li>
-     *   <li><b>No match:</b> Append the original code point and advance by one code point.</li>
+     *   <li><b>Starter pre-check:</b>
+     *       If a {@link StarterUnion} is provided and the current code point is not present in its starter
+     *       mask, the code point is copied directly without performing any dictionary lookups.</li>
+     *   <li><b>Phrase-first search (greedy):</b>
+     *       <ul>
+     *         <li>Candidate lengths are bounded by both {@code phraseMaxLen}/{@code phraseMinLen}
+     *             from {@link DictPartition} and the per-starter {@code lenMask} from {@code StarterUnion}.</li>
+     *         <li>Lengths are tried longest-to-shortest to ensure deterministic greedy matching.</li>
+     *         <li>Each dictionary entry is filtered by its {@code minLength}/{@code maxLength} to skip
+     *             impossible candidates early.</li>
+     *         <li>On the first hit, the replacement is appended and the cursor advances by the matched length.</li>
+     *       </ul>
+     *   </li>
+     *   <li><b>Single-character fallback:</b>
+     *       If no phrase match is found, the algorithm attempts a lookup in {@code singleDicts} using exactly
+     *       the current code point (or surrogate pair). On hit, the replacement is appended and the cursor
+     *       advances by one code point.</li>
+     *   <li><b>No match:</b>
+     *       If neither phrase nor single dictionaries contain the key, the original code point is appended and
+     *       the cursor advances by one code point.</li>
      * </ol>
      *
-     * <p>
-     * Performance characteristics:
-     * </p>
+     * <h3>Performance notes</h3>
      * <ul>
-     *   <li>The union pre-check avoids hash lookups for impossible starters.</li>
-     *   <li>Phrase dictionaries are filtered by their {@code maxLength} to skip impossible candidates.</li>
-     *   <li>Greedy longest-match ensures deterministic results consistent with OpenCC behavior.</li>
+     *   <li><b>Union pre-check:</b> avoids creating substrings and hash lookups when no dictionary key can
+     *       start with the current code point.</li>
+     *   <li><b>Length mask:</b> skips impossible substring lengths for the current starter in O(1) time
+     *       via a 64-bit bitmask lookup.</li>
+     *   <li><b>Greedy longest-match:</b> ensures results are consistent with OpenCC reference behavior.</li>
+     *   <li>All bounds are in UTF-16 units. Surrogate pairs therefore count as length 2 and advance by
+     *       two code units.</li>
      * </ul>
      *
-     * <p>
-     * Unicode/UTF-16 notes:
-     * </p>
+     * <h3>Unicode notes</h3>
      * <ul>
-     *   <li>Iteration is by code point; {@link Character#charCount(int)} determines the number of UTF-16 units.</li>
-     *   <li>Substring bounds are in UTF-16 indices; surrogate pairs therefore advance by 2 code units.</li>
-     *   <li>No normalization is performed; keys must match the input’s exact code point sequence.</li>
+     *   <li>Iteration is performed by Unicode code point.</li>
+     *   <li>{@link Character#charCount(int)} determines how many UTF-16 units a code point consumes.</li>
+     *   <li>Substring slicing uses UTF-16 indices; keys must exactly match the input code point sequence.</li>
+     *   <li>No normalization or case-folding is performed.</li>
      * </ul>
      *
-     * @param input       the segment to convert (non-null; empty returns immediately)
-     * @param part        pre-partitioned dictionaries (phrase vs single) and phrase max length
+     * @param input       the text segment to convert (non-null; empty string is returned immediately)
+     * @param part        partitioned dictionaries ({@code phraseDicts}, {@code singleDicts})
+     *                    with cached {@code phraseMaxLen} and {@code phraseMinLen}
      * @param roundMaxLen per-round maximum phrase length limit (upper-bounds the search window)
-     * @param union       optional {@link StarterUnion} for fast starter rejection; may be {@code null}
-     * @return the converted segment
+     * @param union       optional {@link StarterUnion} for fast starter rejection and length filtering;
+     *                    may be {@code null}
+     * @return the converted string segment
      */
     private static String convertSegmentWithUnion(String input,
                                                   DictPartition part,
@@ -867,6 +923,7 @@ public class OpenCC {
             final int cp = input.codePointAt(i);
             final int starterLen = Character.charCount(cp);
 
+            // 1) Starter union pre-check
             if (union != null && !union.hasStarter(cp)) {
                 out.appendCodePoint(cp);
                 i += starterLen;
@@ -876,28 +933,37 @@ public class OpenCC {
             String hit = null;
             int hitLen = 0;
 
-            // phrase search
+            // 2) Phrase search (respects phraseMinLen, per-entry min/max, and union lenMask)
             if (!part.phraseDicts.isEmpty()) {
                 final int remaining = n - i;
                 final int tryMax = Math.min(Math.min(part.phraseMaxLen, roundMaxLen), remaining);
-                if (tryMax >= 3) {
-                    outer:
-                    for (int len = tryMax; len >= 3; len--) {
-                        final String sub = input.substring(i, i + len);
-                        for (DictEntry e : part.phraseDicts) {
-                            if (e.maxLength < len) continue;
-                            final String repl = e.dict.get(sub);
-                            if (repl != null) {
-                                hit = repl;
-                                hitLen = len;
-                                break outer;
+                if (tryMax >= 1) {
+                    final int tryMin = Math.max(1, Math.min(part.phraseMinLen, remaining));
+                    if (tryMax >= tryMin) {
+                        final long lMask = (union != null) ? union.lenMask(cp) : ~0L; // no union ⇒ allow all
+                        if (lMask != 0L) {
+                            outer:
+                            for (int len = tryMax; len >= tryMin; len--) {
+                                // Skip impossible lengths for this starter (mask covers up to 63 UTF-16 units)
+                                if (len < 64 && ((lMask >>> len) & 1L) == 0L) continue;
+
+                                final String sub = input.substring(i, i + len);
+                                for (DictEntry e : part.phraseDicts) {
+                                    if (len < e.minLength || len > e.maxLength) continue;
+                                    final String repl = e.dict.get(sub);
+                                    if (repl != null) {
+                                        hit = repl;
+                                        hitLen = len;
+                                        break outer;
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // single-char search
+            // 3) Single-char (or surrogate pair) fallback
             if (hit == null && !part.singleDicts.isEmpty() && i + starterLen <= n) {
                 final String sub = input.substring(i, i + starterLen);
                 for (DictEntry e : part.singleDicts) {
@@ -910,6 +976,7 @@ public class OpenCC {
                 }
             }
 
+            // 4) Emit
             if (hit != null) {
                 out.append(hit);
                 i += hitLen;

@@ -53,12 +53,18 @@ public class DictionaryMaxlength {
         public int maxLength;
 
         /**
+         * Minimum phrase length in this dictionary
+         */
+        public int minLength;
+
+        /**
          * Constructs an empty dictionary entry.
          * <p>Kept for potential future serialization frameworks or manual instantiation.</p>
          */
         public DictEntry() {
             this.dict = new HashMap<>();
             this.maxLength = 0;
+            this.minLength = 0;
         }
 
         /**
@@ -66,10 +72,12 @@ public class DictionaryMaxlength {
          *
          * @param dict      The dictionary mapping strings.
          * @param maxLength The maximum key length in the dictionary.
+         * @param minLength The minimum key length in the dictionary.
          */
-        public DictEntry(Map<String, String> dict, int maxLength) {
+        public DictEntry(Map<String, String> dict, int maxLength, int minLength) {
             this.dict = new HashMap<>(dict);
             this.maxLength = maxLength;
+            this.minLength = minLength;
         }
     }
 
@@ -409,17 +417,17 @@ public class DictionaryMaxlength {
      * to the conversion logic.</p>
      *
      * @param br a reader supplying UTF-8 text
-     * @return a {@link DictEntry} containing the parsed key–value pairs and maximum phrase length
+     * @return a {@link DictEntry} containing the parsed key–value pairs and maximum + minimum phrase length
      * @throws IOException if an I/O error occurs while reading
      */
     private static DictEntry loadDictionaryMaxlength(BufferedReader br) throws IOException {
         Map<String, String> dict = new HashMap<>();
-        int maxLength = 1;
+        int maxLength = 0;
+        int minLength = Integer.MAX_VALUE;
         int lineNo = 0;
 
         for (String raw; (raw = br.readLine()) != null; ) {
             lineNo++;
-//            String line = raw.strip();
             String line = raw.trim();
             if (line.isEmpty() || line.startsWith("#") || line.startsWith("//")) continue;
 
@@ -430,7 +438,9 @@ public class DictionaryMaxlength {
             }
 
             String key = line.substring(0, tab);
-            if (lineNo == 1 && !key.isEmpty() && key.charAt(0) == '\uFEFF') key = key.substring(1);
+            if (lineNo == 1 && !key.isEmpty() && key.charAt(0) == '\uFEFF') {
+                key = key.substring(1); // strip BOM
+            }
 
             // first token after TAB (space OR tab ends it)
             String val = getRestString(line, tab);
@@ -441,9 +451,19 @@ public class DictionaryMaxlength {
             }
 
             dict.put(key, val);
-            if (key.length() > maxLength) maxLength = key.length(); // UTF-16 length (keep non-BMA as 2)
+
+            int len = key.length(); // UTF-16 length (non-BMP counts as 2)
+            if (len > maxLength) maxLength = len;
+            if (len < minLength) minLength = len;
         }
-        return new DictEntry(dict, maxLength);
+
+        if (dict.isEmpty()) {
+            // empty dict → both lengths 0
+            maxLength = 0;
+            minLength = 0;
+        }
+
+        return new DictEntry(dict, maxLength, minLength);
     }
 
     /**

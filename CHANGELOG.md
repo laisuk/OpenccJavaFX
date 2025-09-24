@@ -7,7 +7,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.1.0-beta1] - 2025-09-20
+## [1.1.0-beta1] - 2025-09-24
 
 ### Added
 
@@ -29,6 +29,8 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
   Use one of:
     - `OpenCC.zhoCheck(text)` – preferred static usage.
     - `myOpenCC.zhoCheckInstance(text)` – for backward-compatible instance style.
+
+- Add Starter Length Mask for faster dictionary lookup
 
 ### Migration Notes
 
