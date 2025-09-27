@@ -271,6 +271,12 @@ public class DictRefs {
      */
     public static final Set<Character> DELIMITERS;
 
+    /**
+     * 65,536-bit lookup table for delimiters in the BMP (U+0000..U+FFFF).
+     * Each long holds 64 characters.
+     */
+    private static final long[] DELIM_BMP = new long[1024];
+
     static {
         // Use LinkedHashSet to preserve order (optional, but deterministic)
         Set<Character> s = new LinkedHashSet<>(Arrays.asList(
@@ -281,6 +287,22 @@ public class DictRefs {
                 '｛', '︷', '｝', '︸', '﹃', '﹄', '【', '︻', '】', '︼', '　', '～', '．', '，', '；', '：'
         ));
         DELIMITERS = Collections.unmodifiableSet(s);
+        // Fill the bitset
+        for (char c : s) {
+            int idx = (int) c >>> 6;      // which long
+            int bit = (int) c & 63;       // which bit in the long
+            DELIM_BMP[idx] |= (1L << bit);
+        }
+    }
+
+    /**
+     * Bit-level delimiter check: O(1) and allocation-free.
+     *
+     * @param c the character to test
+     * @return true if {@code c} is a delimiter
+     */
+    public static boolean isDelimiter(char c) {
+        return ((DELIM_BMP[(int) c >>> 6] >>> ((int) c & 63)) & 1L) != 0L;
     }
 
     /**

@@ -8,9 +8,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.IntStream;
-
 import java.util.logging.Logger;
 import java.util.logging.Level;
+
+import static openccjava.DictRefs.isDelimiter;
 
 
 /**
@@ -539,6 +540,8 @@ public class OpenCC {
 
         // Use parallel stream if input is large or highly segmented
         boolean useParallel = text.length() > 10_000 || numSegments > 100;
+        int sbCapacity = text.length() + (text.length() >> 4);
+        StringBuilder sb = new StringBuilder(sbCapacity);
 
         if (useParallel) {
             String[] segments = new String[numSegments];
@@ -550,21 +553,17 @@ public class OpenCC {
             });
 
             // Join all converted segments
-            StringBuilder sb = new StringBuilder(text.length());
             for (String seg : segments) {
                 sb.append(seg);
             }
-
-            return sb.toString();
         } else {
             // Fallback: sequential processing
-            StringBuilder sb = new StringBuilder(text.length());
             for (int[] range : ranges) {
                 String segment = text.substring(range[0], range[1]);
                 sb.append(convertSegment(segment, dicts, maxLength));
             }
-            return sb.toString();
         }
+        return sb.toString();
     }
 
     /**
@@ -582,13 +581,14 @@ public class OpenCC {
      * @return the converted segment
      */
     public static String convertSegment(String segment, List<DictEntry> dicts, int maxLength) {
-        if (segment.length() == 1 && delimiters.contains(segment.charAt(0))) {
+        if (segment.length() == 1 && isDelimiter(segment.charAt(0))) {
             return segment;
         }
 
         int segLen = segment.length();
         StringBuilder sb = threadLocalSb.get();
         sb.setLength(0); // reset for reuse
+        sb.ensureCapacity(segLen + (segLen >> 4));  // ~+6.25%
 
         int i = 0;
         while (i < segLen) {
@@ -600,7 +600,7 @@ public class OpenCC {
                 final int end = i + len;
                 String word = segment.substring(i, end);
                 for (DictEntry entry : dicts) {
-                    if (entry.maxLength < len) continue;
+                    if (entry.maxLength < len || entry.minLength > len) continue;
 
                     String value = entry.dict.get(word);
                     if (value != null) {
@@ -645,7 +645,7 @@ public class OpenCC {
         final int textLength = text.length(); // Cache text length
 
         for (int i = 0; i < textLength; i++) {
-            if (delimiters.contains(text.charAt(i))) {
+            if (isDelimiter(text.charAt(i))) {
                 if (inclusive) {
                     // Optimized: Directly add the inclusive range
                     result.add(new int[]{start, i + 1});
@@ -827,24 +827,22 @@ public class OpenCC {
             return convertSegmentWithUnion(text, part, maxLength, union);
         }
 
-        boolean useParallel = text.length() > 10_000 || numSegments > 100;
+        boolean useParallel = text.length() > 1_000_000 || numSegments > 256;
 
-        if (useParallel) {
+        if (!useParallel) {
+            return (convertSegmentWithUnion(text, part, maxLength, union));
+        } else {
+            int sbCapacity = text.length() + (text.length() >> 4);
+            StringBuilder sb = new StringBuilder(sbCapacity);
             String[] segments = new String[numSegments];
+
             IntStream.range(0, numSegments).parallel().forEach(i -> {
                 int[] range = ranges.get(i);
                 String seg = text.substring(range[0], range[1]);
                 segments[i] = convertSegmentWithUnion(seg, part, maxLength, union);
             });
-            StringBuilder sb = new StringBuilder(text.length());
+
             for (String seg : segments) sb.append(seg);
-            return sb.toString();
-        } else {
-            StringBuilder sb = new StringBuilder(text.length());
-            for (int[] range : ranges) {
-                String seg = text.substring(range[0], range[1]);
-                sb.append(convertSegmentWithUnion(seg, part, maxLength, union));
-            }
             return sb.toString();
         }
     }
@@ -910,16 +908,24 @@ public class OpenCC {
      *                    may be {@code null}
      * @return the converted string segment
      */
-    private static String convertSegmentWithUnion(String input,
-                                                  DictPartition part,
-                                                  int roundMaxLen,
-                                                  StarterUnion union) {
-        if (input.isEmpty()) return input;
-
+    private static String convertSegmentWithUnion(
+            String input,
+            DictPartition part,
+            int roundMaxLen,
+            StarterUnion union
+    ) {
         final int n = input.length();
-        final StringBuilder out = new StringBuilder(n + (n >> 3));
+        if (n == 0) return input;
 
-        for (int i = 0; i < n; ) {
+        final StringBuilder out = new StringBuilder(n + (n >> 4));
+
+        // Hoist these to avoid repeated virtual calls
+        final boolean hasPhrases = !part.phraseDicts.isEmpty();
+        final boolean hasSingles = !part.singleDicts.isEmpty();
+
+        int i = 0;
+        while (i < n) {
+            // --- Starter code point (safe: we're inside a single String segment) ---
             final int cp = input.codePointAt(i);
             final int starterLen = Character.charCount(cp);
 
@@ -934,7 +940,7 @@ public class OpenCC {
             int hitLen = 0;
 
             // 2) Phrase search (respects phraseMinLen, per-entry min/max, and union lenMask)
-            if (!part.phraseDicts.isEmpty()) {
+            if (hasPhrases) {
                 final int remaining = n - i;
                 final int tryMax = Math.min(Math.min(part.phraseMaxLen, roundMaxLen), remaining);
                 if (tryMax >= 1) {
@@ -944,10 +950,14 @@ public class OpenCC {
                         if (lMask != 0L) {
                             outer:
                             for (int len = tryMax; len >= tryMin; len--) {
-                                // Skip impossible lengths for this starter (mask covers up to 63 UTF-16 units)
+                                // Skip impossible lengths per union mask (mask covers lengths 0..63)
                                 if (len < 64 && ((lMask >>> len) & 1L) == 0L) continue;
 
-                                final String sub = input.substring(i, i + len);
+                                final int j = i + len;
+                                // Guard (should be redundant due to tryMax/remaining, but cheap & safe)
+                                if (j > n) continue;
+
+                                final String sub = input.substring(i, j);
                                 for (DictEntry e : part.phraseDicts) {
                                     if (len < e.minLength || len > e.maxLength) continue;
                                     final String repl = e.dict.get(sub);
@@ -964,14 +974,19 @@ public class OpenCC {
             }
 
             // 3) Single-char (or surrogate pair) fallback
-            if (hit == null && !part.singleDicts.isEmpty() && i + starterLen <= n) {
-                final String sub = input.substring(i, i + starterLen);
-                for (DictEntry e : part.singleDicts) {
-                    final String repl = e.dict.get(sub);
-                    if (repl != null) {
-                        hit = repl;
-                        hitLen = starterLen;
-                        break;
+            if (hit == null && hasSingles) {
+                // i + starterLen <= n is guaranteed by how starterLen is formed,
+                // but keep a minimal guard for clarity.
+                final int j = i + starterLen;
+                if (j <= n) {
+                    final String sub = input.substring(i, j);
+                    for (DictEntry e : part.singleDicts) {
+                        final String repl = e.dict.get(sub);
+                        if (repl != null) {
+                            hit = repl;
+                            hitLen = starterLen;
+                            break;
+                        }
                     }
                 }
             }
