@@ -62,7 +62,7 @@ public final class StarterUnion {
      *
      * <p>This allows the conversion loop to skip impossible substring lengths for a
      * given starter character, avoiding wasted {@link String#substring(int, int)} calls
-     * and hash lookups. Keys longer than 63 UTF-16 units are ignored for bitmasking
+     * and hash lookups. Keys longer than 63 UTF-16 units are ignored for bit-masking
      * purposes.</p>
      */
     private final long[] bmpLenMask;              // BMP cp -> bitmask of supported lengths
@@ -116,7 +116,7 @@ public final class StarterUnion {
      *             to its 64-bit length mask, using the same encoding as
      *             {@code bmpLenMask}.</li>
      *       </ul>
-     *       Keys of length ≥ 64 UTF-16 units are ignored for bitmasking purposes.</li>
+     *       Keys of length ≥ 64 UTF-16 units are ignored for bit-masking purposes.</li>
      * </ul>
      *
      * <p>This enables the conversion loop to quickly reject impossible starters and
