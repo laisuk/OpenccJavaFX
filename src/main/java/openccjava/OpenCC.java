@@ -827,13 +827,11 @@ public class OpenCC {
             return convertSegmentWithUnion(text, part, maxLength, union);
         }
 
-        boolean useParallel = text.length() > 1_000_000 || numSegments > 256;
+        boolean useParallel = text.length() > 1_000_000 || numSegments > 1000;
+        int sbCapacity = text.length() + (text.length() >> 4);
+        StringBuilder sb = new StringBuilder(sbCapacity);
 
-        if (!useParallel) {
-            return (convertSegmentWithUnion(text, part, maxLength, union));
-        } else {
-            int sbCapacity = text.length() + (text.length() >> 4);
-            StringBuilder sb = new StringBuilder(sbCapacity);
+        if (useParallel) {
             String[] segments = new String[numSegments];
 
             IntStream.range(0, numSegments).parallel().forEach(i -> {
@@ -843,8 +841,13 @@ public class OpenCC {
             });
 
             for (String seg : segments) sb.append(seg);
-            return sb.toString();
+        } else {
+            for (int[] range : ranges) {
+                String segment = text.substring(range[0], range[1]);
+                sb.append(convertSegmentWithUnion(segment, part, maxLength, union));
+            }
         }
+        return sb.toString();
     }
 
     // Internal: faster converter for a single segment using pre-partitioned dicts
