@@ -827,7 +827,7 @@ public class OpenCC {
             return convertSegmentWithUnion(text, part, maxLength, union);
         }
 
-        boolean useParallel = text.length() > 1_000_000 || numSegments > 1000;
+        boolean useParallel = text.length() > 1_000_000 || numSegments > 1_000;
         int sbCapacity = text.length() + (text.length() >> 4);
         StringBuilder sb = new StringBuilder(sbCapacity);
 
