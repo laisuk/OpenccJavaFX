@@ -530,17 +530,18 @@ public class OpenCC {
 
         List<int[]> ranges = getSplitRanges(text, true);
         int numSegments = ranges.size();
+        int textLength = text.length();
 
         // Fast path: entire text is one uninterrupted segment
         if (numSegments == 1 &&
                 ranges.get(0)[0] == 0 &&
-                ranges.get(0)[1] == text.length()) {
+                ranges.get(0)[1] == textLength) {
             return convertSegment(text, dicts, maxLength);
         }
 
         // Use parallel stream if input is large or highly segmented
-        boolean useParallel = text.length() > 10_000 || numSegments > 100;
-        int sbCapacity = text.length() + (text.length() >> 4);
+        boolean useParallel = textLength > 10_000 || numSegments > 100;
+        int sbCapacity = textLength + (textLength >> 4);
         StringBuilder sb = new StringBuilder(sbCapacity);
 
         if (useParallel) {
@@ -817,18 +818,19 @@ public class OpenCC {
         if (text == null || text.isEmpty()) return text;
 
         DictPartition part = partitionDicts(dicts);
+        int textLen = text.length();
 
         List<int[]> ranges = getSplitRanges(text, true);
         int numSegments = ranges.size();
 
         if (numSegments == 1 &&
                 ranges.get(0)[0] == 0 &&
-                ranges.get(0)[1] == text.length()) {
+                ranges.get(0)[1] == textLen) {
             return convertSegmentWithUnion(text, part, maxLength, union);
         }
 
-        boolean useParallel = text.length() > 1_000_000 || numSegments > 1_000;
-        int sbCapacity = text.length() + (text.length() >> 4);
+        boolean useParallel = textLen > 100_000 || numSegments > 1_000;
+        int sbCapacity = textLen + (textLen >> 4);
         StringBuilder sb = new StringBuilder(sbCapacity);
 
         if (useParallel) {
