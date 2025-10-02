@@ -34,7 +34,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Migration Notes
 
-#### Before (v1.0.2)
+#### Before (v1.0.3)
 
 ```java
 OpenCC cc = new OpenCC("s2t");
