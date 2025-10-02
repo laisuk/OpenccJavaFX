@@ -35,6 +35,7 @@ tasks.withType<JavaCompile> {
 
 tasks.withType<JavaExec> {
     jvmArgs = listOf(
+        "-XX:+IgnoreUnrecognizedVMOptions",
         "--enable-native-access=javafx.graphics",
         "-Dfile.encoding=UTF-8"
     )

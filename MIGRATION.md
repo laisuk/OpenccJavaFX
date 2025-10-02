@@ -4,11 +4,11 @@ This document helps users migrate between versions of **OpenCC Java**.
 
 ---
 
-## From v1.0.2 → v1.1.0
+## From v1.0.3 → v1.1.0
 
 ### 1. Static Dictionary
 
-- In **v1.0.2**, each `OpenCC` instance could load its own dictionary.
+- In **v1.0.3**, each `OpenCC` instance could load its own dictionary.
 - In **v1.1.0**, dictionaries are now **loaded once per JVM** (via `DictionaryHolder`) and shared by all instances.
 
 #### Benefits
@@ -29,7 +29,7 @@ Any modifications will affect all `OpenCC` instances in the same JVM.
 
 ### 2. `zhoCheck` is now static
 
-- In **v1.0.2**, `zhoCheck` was an instance method:
+- In **v1.0.3**, `zhoCheck` was an instance method:
   ```java
   OpenCC cc = new OpenCC("s2t");
   int result = cc.zhoCheck("汉字");
@@ -64,11 +64,11 @@ String converted = cc.convert("汉字");
 
 #### Office document helpers
 
-Pass the shared dictionary or an `OpenCC` instance:
+Pass the `OpenCC` instance:
 
-```ignorelang
-OfficeHelper helper = new OfficeHelper(OpenCC.DictionaryHolder.get());
-helper.convertDoc(inputPath, outputPath, "s2t", true);
+```java
+OpenCC instance = new OpenCC("s2t");
+OfficeHelper.Resault result = OfficeHelper.convert(inputPath, outputPath, "docx", instance, /* punctuation */ true, /* keepFont */ true);
 ```
 
 ### 4. When to Use Instance Dictionary

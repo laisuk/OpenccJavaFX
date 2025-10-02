@@ -24,8 +24,6 @@ import java.util.*;
 import openccjava.OpenCC;
 //import org.fxmisc.richtext.LineNumberFactory;
 
-import static openccjava.OfficeHelper.OFFICE_FORMATS;
-
 public class OpenccJavaFxController {
     private static final Set<String> FILE_EXTENSIONS = new HashSet<>(Arrays.asList(
             ".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2",
@@ -241,7 +239,7 @@ public class OpenccJavaFxController {
             Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
 
             try {
-                if (OFFICE_FORMATS.contains(extNoDot)) {
+                if (OfficeHelper.OFFICE_FORMATS.contains(extNoDot)) {
                     // Office file: use OfficeDocHelper
                     OfficeHelper.Result result = OfficeHelper.convert(
                             sourceFilePath,
@@ -548,7 +546,7 @@ public class OpenccJavaFxController {
 
     private boolean isOfficeFile(File file) {
         String fileExtension = getFileExtension(file.getName());
-        return file.isFile() && OFFICE_FORMATS.contains(fileExtension.toLowerCase(Locale.ROOT).substring(1));
+        return file.isFile() && OfficeHelper.OFFICE_FORMATS.contains(fileExtension.toLowerCase(Locale.ROOT).substring(1));
     }
 
     public void onLivSourceDragOver(DragEvent dragEvent) {
