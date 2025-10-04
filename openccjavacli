@@ -4,8 +4,9 @@ set -e
 JAVA=java
 LIB="lib"
 
-# Find the most recent JAR file in build/libs (sorted by modification time)
-APP=$(ls -t build/libs/*.jar 2>/dev/null | head -n 1)
+# Find the most recent JAR file in build/libs (handles spaces & non-ASCII safely)
+APP=$(find build/libs -maxdepth 1 -type f -name "*.jar" -printf "%T@ %p\n" 2>/dev/null \
+  | sort -nr | head -n 1 | cut -d' ' -f2-)
 
 # Check if a JAR file was found
 if [ -z "$APP" ]; then
