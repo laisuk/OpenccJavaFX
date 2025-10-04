@@ -1,8 +1,19 @@
 #!/bin/bash
+set -e
 
 JAVA=java
 LIB="lib"
-APP="build/libs/openccjavafx-1.0.0.jar"
+
+# Find the most recent JAR file in build/libs (sorted by modification time)
+APP=$(ls -t build/libs/*.jar 2>/dev/null | head -n 1)
+
+# Check if a JAR file was found
+if [ -z "$APP" ]; then
+  echo "❌ No JAR file found in build/libs/"
+  exit 1
+fi
+
+echo "Using latest JAR: $APP"
 
 # Run the CLI (no JavaFX or module system required)
 "$JAVA" \
