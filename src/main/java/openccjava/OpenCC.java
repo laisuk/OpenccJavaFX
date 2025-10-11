@@ -213,6 +213,22 @@ public class OpenCC {
         }
     }
 
+    // ---------- Static helpers ----------
+
+    /**
+     * Creates a new {@link OpenCC} instance with the given configuration.
+     * If the provided config is invalid, {@code "s2t"} is used instead.
+     *
+     * @param config the configuration key (e.g., {@code "s2t"}, {@code "tw2s"})
+     * @return a new {@link OpenCC} instance using the provided (or defaulted) config
+     * @since 1.1.0
+     */
+    public static OpenCC fromConfig(String config) {
+        return new OpenCC(config);
+    }
+
+    // ---------- Instance constructors + API ----------
+
     /**
      * Constructs an OpenCC instance using the default configuration ("s2t").
      */
