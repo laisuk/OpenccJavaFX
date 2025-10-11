@@ -272,6 +272,14 @@ public class DictionaryMaxlength {
         // ----- assignment table (ordered, then wrapped unmodifiable) -----
         final Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> assign = getAssign();
 
+        files.keySet().forEach(name -> {
+            if (!assign.containsKey(name)) {
+                throw new IllegalStateException(
+                        "Missing assignment mapping for dictionary '" + name +
+                                "' (filename=" + files.get(name) + ")");
+            }
+        });
+
         for (Map.Entry<String, String> kv : files.entrySet()) {
             final String dictName = kv.getKey();
             final String filename = kv.getValue();
