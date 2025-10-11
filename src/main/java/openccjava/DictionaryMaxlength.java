@@ -288,7 +288,9 @@ public class DictionaryMaxlength {
             try {
                 final DictEntry entry;
                 if (Files.exists(fsPath)) {
-                    entry = loadDictionaryMaxlength(fsPath);
+                    try (BufferedReader br = Files.newBufferedReader(fsPath, StandardCharsets.UTF_8)) {
+                        entry = loadDictionaryMaxlength(br);
+                    }
                 } else {
                     final String resPath = "/" + basePath + "/" + filename;
                     try (InputStream in = DictionaryMaxlength.class.getResourceAsStream(resPath)) {
