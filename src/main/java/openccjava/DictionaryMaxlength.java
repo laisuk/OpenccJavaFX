@@ -284,8 +284,12 @@ public class DictionaryMaxlength {
                 } else {
                     final String resPath = "/" + basePath + "/" + filename;
                     try (InputStream in = DictionaryMaxlength.class.getResourceAsStream(resPath)) {
-                        if (in == null) throw new FileNotFoundException(filename);
-                        entry = loadDictionaryMaxlength(in);
+                        if (in == null) throw new FileNotFoundException("Missing resource: " + resPath +
+                                " (also checked FS: " + fsPath.toAbsolutePath() + ")");
+                        try (BufferedReader br = new BufferedReader(
+                                new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                            entry = loadDictionaryMaxlength(br);
+                        }
                     }
                 }
 
