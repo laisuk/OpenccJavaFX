@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -186,7 +187,7 @@ public class OpenccJavaFxController {
             updateSourceInfo(OpenCC.zhoCheck(inputText));
         }
 
-        var config = getConfig();
+        String config = getConfig();
         openccInstance.setConfig(config);
 
         long startTime = System.nanoTime(); // Start timer before convert()
@@ -255,11 +256,15 @@ public class OpenccJavaFxController {
 
                 } else if (FILE_EXTENSIONS.contains(ext)) {
                     // Regular file: convert as plain text
-                    String contents = Files.readString(sourceFilePath.toPath());
+                    Path sourcePath = sourceFilePath.toPath();
+                    // Read file content (UTF-8)
+                    String contents = new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
+                    // Convert text
                     String convertedText = openccInstance.convert(contents, cbPunctuation.isSelected());
-                    Files.writeString(outputFilePath, convertedText);
-                    textAreaPreview.appendText(String.format("%d : %s -> [Done].\n", counter, outputFilePath));
+                    // Write result (UTF-8)
+                    Files.write(outputFilePath, convertedText.getBytes(StandardCharsets.UTF_8));
 
+                    textAreaPreview.appendText(String.format("%d : %s -> [Done].%n", counter, outputFilePath));
                 } else {
                     // Unsupported file
                     textAreaPreview.appendText(String.format("%d : [Skipped] %s -> Not a valid file format.\n", counter, file));
@@ -332,11 +337,14 @@ public class OpenccJavaFxController {
 
     private void displayFileContents(File file) {
         try {
-            String content = Files.readString(file.toPath());
+            byte[] bytes = Files.readAllBytes(file.toPath());
+            String content = new String(bytes, StandardCharsets.UTF_8);
+
             // Remove BOM if present
             if (content.startsWith("\uFEFF")) {
                 content = content.substring(1);
             }
+
             textAreaSource.replaceText(content);
             openFileName = file.toString();
             updateSourceInfo(OpenCC.zhoCheck(content));
@@ -430,7 +438,8 @@ public class OpenccJavaFxController {
             String fileExtension = getFileExtension(file.getName());
             if (file.isFile() && FILE_EXTENSIONS.contains(fileExtension.toLowerCase())) {
                 try {
-                    String content = Files.readString(file.toPath());
+                    byte[] bytes = Files.readAllBytes(file.toPath());
+                    String content = new String(bytes, StandardCharsets.UTF_8);
 //                    textAreaPreview.setText(content);
                     textAreaPreview.replaceText(content);
                     lblStatus.setText(String.format("File Preview: %s", selectedItem));
@@ -475,7 +484,8 @@ public class OpenccJavaFxController {
             try {
                 String contents = textAreaDestination.getText();
                 // Write string contents to the file with UTF-8 encoding
-                Files.writeString(selectedFile.toPath(), contents);
+//                Files.writeString(selectedFile.toPath(), contents);
+                Files.write(selectedFile.toPath(), contents.getBytes(StandardCharsets.UTF_8));
                 lblStatus.setText(String.format("Output contents saved to: %s", selectedFile));
             } catch (Exception e) {
                 lblStatus.setText(String.format("Error writing output file: %s", selectedFile));
