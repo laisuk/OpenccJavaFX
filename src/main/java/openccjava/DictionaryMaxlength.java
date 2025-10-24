@@ -561,8 +561,12 @@ public class DictionaryMaxlength {
      * Unions are built only when first requested via {@link #unionFor(UnionKey)}
      * and cached in this container for reuse.
      * </p>
+     * <p>
+     * This field is marked {@code transient} to exclude it from serialization,
+     * since unions can always be recomputed after loading.
+     * </p>
      */
-    private Unions unions = new Unions();
+    private transient Unions unions = new Unions();
 
     /**
      * Clears all cached {@link StarterUnion} instances.
@@ -717,6 +721,62 @@ public class DictionaryMaxlength {
         // JP
         final AtomicReference<StarterUnion> jp_variants_only = new AtomicReference<>();
         final AtomicReference<StarterUnion> jp_rev_triple = new AtomicReference<>();
+    }
+
+    // NEW: Plan Cache in DictionaryMaxlength itself
+
+    /**
+     * Derived caches for this dictionary instance.
+     * <p>
+     * These caches store runtime-only data structures that accelerate
+     * conversion without affecting serialization or persisted state.
+     * </p>
+     * <ul>
+     *   <li>{@link ConversionPlanCache} – caches prepared {@link DictRefs}
+     *       for each {@link OpenCC.Config} and punctuation mode.</li>
+     *   <li>{@link Unions} – caches lazily built {@link StarterUnion}
+     *       sets for each {@link UnionKey}.</li>
+     * </ul>
+     * <p>
+     * Both caches are marked {@code transient} to exclude them from
+     * serialization. They are automatically reinitialized when the
+     * dictionary is deserialized or reconstructed.
+     * </p>
+     */
+    private transient final ConversionPlanCache planCache = new ConversionPlanCache(() -> this);
+
+    /**
+     * Retrieves (or lazily builds) the {@link DictRefs} for the specified
+     * configuration and punctuation mode.
+     * <p>
+     * If a cached plan already exists, it is returned immediately;
+     * otherwise a new one is constructed, cached, and reused for future calls.
+     * </p>
+     *
+     * @param cfg         the conversion configuration
+     * @param punctuation whether punctuation conversion is enabled
+     * @return the cached or newly built {@link DictRefs} instance
+     */
+    public DictRefs getPlan(OpenCC.Config cfg, boolean punctuation) {
+        return planCache.getPlan(cfg, punctuation);
+    }
+
+    /**
+     * Clears all runtime caches associated with this dictionary.
+     * <p>
+     * This removes any cached {@link DictRefs} from the internal
+     * {@link ConversionPlanCache} and resets all {@link StarterUnion}
+     * instances. Subsequent conversions will rebuild these structures
+     * lazily as needed.
+     * </p>
+     * <p>
+     * This method does <strong>not</strong> modify or unload the core
+     * dictionary data itself.
+     * </p>
+     */
+    public void clearCaches() {
+        planCache.clear();
+        clearUnions();
     }
 
 }
