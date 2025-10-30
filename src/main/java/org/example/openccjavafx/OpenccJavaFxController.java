@@ -206,7 +206,7 @@ public class OpenccJavaFxController {
             lblDestinationCode.setText(lblSourceCode.getText());
         }
 
-        lblStatus.setText("Conversion completed in " + elapsedMillis + " ms. [ " + config + " ]");
+        lblStatus.setText(String.format("Conversion completed in %,d ms. [ %s ]", elapsedMillis, config));
     }
 
 
@@ -219,21 +219,28 @@ public class OpenccJavaFxController {
 
         String outputDirectory = textFieldPath.getText();
         Path outputDirectoryPath = Paths.get(outputDirectory);
-        if (outputDirectory.isEmpty() || !Files.isDirectory(outputDirectoryPath)) {
+        if (outputDirectory.isEmpty()) {
+            textAreaPreview.appendText("Output directory is empty.\n");
+            return;
+        }
+        if (!Files.isDirectory(outputDirectoryPath)) {
             textAreaPreview.appendText(String.format("Output directory [ %s ] does not exist.\n", outputDirectory));
             return;
         }
+
         textAreaPreview.clear();
         final String config = getConfig();
         openccInstance.setConfig(config);
         int counter = 0;
+
+        long startTime = System.currentTimeMillis(); // ⏱️ Start timer
 
         for (String file : fileList) {
             counter++;
             String ext = getFileExtension(file).toLowerCase();
             String extNoDot = ext.substring(1);
             File sourceFilePath = new File(file);
-            String outputFilename = buildConvertedFilename(sourceFilePath.getName(), config); // ✅ use new helper
+            String outputFilename = buildConvertedFilename(sourceFilePath.getName(), config);
             if (cbConvertFilename.isSelected()) {
                 outputFilename = openccInstance.convert(outputFilename);
             }
@@ -245,36 +252,42 @@ public class OpenccJavaFxController {
                     OfficeHelper.Result result = OfficeHelper.convert(
                             sourceFilePath,
                             outputFilePath.toFile(),
-                            extNoDot, // Remove leading dot
+                            extNoDot,
                             openccInstance,
                             cbPunctuation.isSelected(),
                             true // Keep font
                     );
 
-                    textAreaPreview.appendText(String.format("%d : %s -> [%s] %s\n", counter, result.success ? outputFilePath : file,
-                            result.success ? "Done" : "Skipped", result.message));
+                    textAreaPreview.appendText(String.format(
+                            "[%d][%s] %s -> %s%n",
+                            counter,
+                            result.success ? "Done" : "Skipped",
+                            result.success ? outputFilePath : file,
+                            result.message
+                    ));
 
                 } else if (FILE_EXTENSIONS.contains(ext)) {
                     // Regular file: convert as plain text
                     Path sourcePath = sourceFilePath.toPath();
-                    // Read file content (UTF-8)
                     String contents = new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
-                    // Convert text
                     String convertedText = openccInstance.convert(contents, cbPunctuation.isSelected());
-                    // Write result (UTF-8)
                     Files.write(outputFilePath, convertedText.getBytes(StandardCharsets.UTF_8));
 
-                    textAreaPreview.appendText(String.format("%d : %s -> [Done].%n", counter, outputFilePath));
+                    textAreaPreview.appendText(String.format("[%d][Done] -> %s%n", counter, outputFilePath));
                 } else {
                     // Unsupported file
-                    textAreaPreview.appendText(String.format("%d : [Skipped] %s -> Not a valid file format.\n", counter, file));
+                    textAreaPreview.appendText(String.format("[%d][Skipped] %s -> Not a valid file format%n", counter, file));
                 }
             } catch (Exception e) {
-                textAreaPreview.appendText(String.format("%d : [Skipped] %s -> Error: %s\n", counter, file, e.getMessage()));
+                textAreaPreview.appendText(String.format("[%d][Skipped] %s -> Error: %s%n", counter, file, e.getMessage()));
             }
         }
-        textAreaPreview.appendText("Process completed.\n");
-        lblStatus.setText("Batch conversion process completed.");
+
+        long endTime = System.currentTimeMillis(); // ⏱️ End timer
+        long elapsed = endTime - startTime;
+
+        textAreaPreview.appendText(String.format("Process completed in %,d ms.%n", elapsed));
+        lblStatus.setText(String.format("Batch conversion completed in %,d ms.", elapsed));
     }
 
     private void updateSourceInfo(int textCode) {
