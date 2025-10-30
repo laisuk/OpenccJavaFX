@@ -2,6 +2,8 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/laisuk/OpenccJavaFX?display_name=tag&sort=semver)](https://github.com/laisuk/OpenccJavaFX/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Total Downloads](https://img.shields.io/github/downloads/laisuk/openccjavafx/total.svg)](https://github.com/laisuk/openccjavafx/releases)
+[![Latest Downloads](https://img.shields.io/github/downloads/laisuk/openccjavafx/latest/total.svg)](https://github.com/laisuk/openccjavafx/releases/latest)
 
 **OpenccJavaFX** is a Chinese text conversion application built with JavaFX and the FXML design pattern. It leverages
 the [OpenccJava](https://github.com/laisuk/OpenccJava) library to provide simplified and traditional Chinese conversion.

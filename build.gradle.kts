@@ -33,14 +33,6 @@ tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
 
-tasks.withType<JavaExec> {
-    jvmArgs = listOf(
-        "-XX:+IgnoreUnrecognizedVMOptions",
-        "--enable-native-access=javafx.graphics",
-        "-Dfile.encoding=UTF-8"
-    )
-}
-
 application {
     mainModule.set("org.example.openccjavafx")
     mainClass.set("org.example.openccjavafx.OpenccJavaFxApplication")
@@ -51,8 +43,13 @@ application {
     )
 }
 
+// Dev-only (optional). If you want run-task to match exactly:
+tasks.withType<JavaExec> {
+    jvmArgs = application.applicationDefaultJvmArgs.toMutableList()
+}
+
 javafx {
-    version = "21.0.8"
+    version = "21.0.9"
     modules("javafx.controls", "javafx.fxml")
 }
 
@@ -90,7 +87,7 @@ val isLinux = os?.isLinux
 // Notes: Use --compress=zip-6 for JDK 21+, otherwise use 2
 jlink {
     imageZip = project.file("${layout.buildDirectory}/distributions/app-${javafx.platform.classifier}.zip")
-    options = listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages")
+    options = listOf("--strip-debug", "--compress", "zip-6", "--no-header-files", "--no-man-pages")
 
     launcher {
         name = "OpenccJavaFX"
