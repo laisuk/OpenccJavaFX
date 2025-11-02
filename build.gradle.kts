@@ -87,7 +87,7 @@ val isLinux = os?.isLinux
 // Notes: Use --compress=zip-6 for JDK 21+, otherwise use 2
 jlink {
     imageZip = project.file("${layout.buildDirectory}/distributions/app-${javafx.platform.classifier}.zip")
-    options = listOf("--strip-debug", "--compress", "zip-6", "--no-header-files", "--no-man-pages")
+    options = listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages")
 
     launcher {
         name = "OpenccJavaFX"

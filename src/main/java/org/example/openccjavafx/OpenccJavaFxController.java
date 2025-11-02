@@ -483,6 +483,10 @@ public class OpenccJavaFxController {
     }
 
     public void onBtnSaveAsClicked() {
+        if (textAreaDestination.getText().isEmpty()){
+            lblStatus.setText("Target content is empty.");
+            return;
+        }
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Text File");
         fileChooser.setInitialDirectory(new File("."));
@@ -616,11 +620,13 @@ public class OpenccJavaFxController {
         lblFilename.setText("");
         lblSourceCode.setText("");
         lblSourceCharCount.setText("");
+        lblStatus.setText("Source content has been cleared.");
     }
 
     public void onBthClearDestinationClicked() {
         textAreaDestination.clear();
         textAreaDestination.getUndoManager().forgetHistory();
         lblDestinationCode.setText("");
+        lblStatus.setText("Destination content has been cleared.");
     }
 } // class DemoFxController

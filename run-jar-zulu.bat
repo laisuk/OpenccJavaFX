@@ -2,7 +2,7 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 rem --- Config you might tweak ---
-set "JAVA=C:\Java\zulu21.44.17-ca-fx-jdk21.0.8-win_x64\bin\java.exe"
+set "JAVA=C:\Java\zulu21.46.19-ca-fx-jdk21.0.9-win_x64\bin\java.exe"
 set "LIB=lib"
 set "RICH=c:\Java\richtextfx"
 set "APP_DIR=build\libs"
