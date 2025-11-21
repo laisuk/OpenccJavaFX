@@ -249,7 +249,7 @@ public class OpenccJavaFxController {
             try {
                 if (OfficeHelper.OFFICE_FORMATS.contains(extNoDot)) {
                     // Office file: use OfficeDocHelper
-                    OfficeHelper.Result result = OfficeHelper.convert(
+                    OfficeHelper.FileResult result = OfficeHelper.convert(
                             sourceFilePath,
                             outputFilePath.toFile(),
                             extNoDot,
