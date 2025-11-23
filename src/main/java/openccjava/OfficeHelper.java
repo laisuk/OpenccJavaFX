@@ -97,23 +97,41 @@ public class OfficeHelper {
     /**
      * Base type for Office/EPUB conversion results.
      *
-     * <p>Subtypes:
-     * <ul>
-     *   <li>{@link FileResult} – file-in/file-out usage, no in-memory payload</li>
-     *   <li>{@link MemoryResult} – in-memory usage, exposes converted {@code byte[]}</li>
-     * </ul>
+     * <p>This abstract class represents the outcome of a conversion operation.
+     * Subclasses provide additional details depending on whether the conversion
+     * was performed on files ({@link FileResult}) or in-memory data
+     * ({@link MemoryResult}).</p>
+     *
+     * <p>The {@code success} flag indicates whether the conversion completed
+     * without errors, while {@code message} contains any accompanying description,
+     * such as warnings, error information, or status notes.</p>
      */
     public abstract static class Result {
         /**
-         * Whether the conversion succeeded.
+         * Indicates whether the conversion succeeded.
+         * <p>
+         * A value of {@code true} means the conversion completed normally.
+         * A value of {@code false} typically indicates a failure or that
+         * the operation was skipped due to unsupported format or invalid input.
+         * </p>
          */
         public final boolean success;
 
         /**
-         * Message describing success, warning, or failure details.
+         * Descriptive message associated with the conversion result.
+         * <p>
+         * May contain an informational note, a warning description,
+         * or a detailed failure explanation. Never {@code null}.
+         * </p>
          */
         public final String message;
 
+        /**
+         * Creates a new result instance.
+         *
+         * @param success whether the conversion succeeded
+         * @param message descriptive message explaining the result
+         */
         protected Result(boolean success, String message) {
             this.success = success;
             this.message = message;
