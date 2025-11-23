@@ -7,6 +7,15 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.1.1] - 2025-11-25
+
+### Changed
+- Refactored `OfficeHelper` to include a core `byte[]`-based `convert()` API for in-memory document processing.
+- Updated conversion result handling: introduced unified abstract `Result` base class with concrete `FileResult` and `MemoryResult` subtypes.
+- Ensured backward compatibility: legacy `Result` return type remains valid and unchanged for existing users.
+
+---
+
 ## [1.1.0] - 2025-10.02
 
 ### Added

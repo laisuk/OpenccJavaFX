@@ -65,10 +65,11 @@ public class OfficeCommand implements Runnable {
 
         try {
             OpenCC opencc = new OpenCC(config);
-            OfficeHelper.Result result = OfficeHelper.convert(input, output, officeFormat, opencc, punct, keepFont);
+            OfficeHelper.FileResult result = OfficeHelper.convert(input, output, officeFormat, opencc, punct, keepFont);
 
             if (result.success) {
-                System.err.println(result.message + "\n\uD83D\uDCC1 Output saved to: " + output.getAbsolutePath());
+                System.err.println(result.message + "\n" +
+                        "📁 Output saved to: " + output.getAbsolutePath());
             } else {
                 System.err.println("❌ Office document conversion failed: " + result.message);
                 System.exit(1);

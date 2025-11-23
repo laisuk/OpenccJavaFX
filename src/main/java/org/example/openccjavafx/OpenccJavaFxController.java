@@ -102,6 +102,8 @@ public class OpenccJavaFxController {
         cbManual.getSelectionModel().selectFirst();
 //        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
 //        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
+        String javaVersion = System.getProperty("java.version");
+        lblStatus.setText("OpenccJavaFX @ Java " + javaVersion);
     }
 
     private boolean isOpenFileDisabled = false;
