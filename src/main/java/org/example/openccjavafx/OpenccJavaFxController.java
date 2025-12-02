@@ -2,6 +2,7 @@ package org.example.openccjavafx;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -9,6 +10,7 @@ import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.scene.control.ProgressBar;
 import openccjava.OfficeHelper;
 import org.fxmisc.richtext.CodeArea;
 
@@ -23,6 +25,8 @@ import java.nio.file.Paths;
 import java.util.*;
 
 import openccjava.OpenCC;
+import pdfboxhelper.PdfBoxHelper;
+import pdfboxhelper.PdfReflowHelper;
 //import org.fxmisc.richtext.LineNumberFactory;
 
 public class OpenccJavaFxController {
@@ -48,6 +52,11 @@ public class OpenccJavaFxController {
             "hk2t (繁港->繁)",
             "t2jp (日舊->日新)",
             "jp2t (日新->日舊)");
+
+    private static final List<String> SAVE_TARGET_LIST = Arrays.asList(
+            "Source",
+            "Destination");
+
     @FXML
 //    private TextArea textAreaSource;
     private CodeArea textAreaSource;
@@ -95,6 +104,16 @@ public class OpenccJavaFxController {
     private TextField textFieldPath;
     @FXML
     private ComboBox<String> cbManual;
+    @FXML
+    private ComboBox<String> cbSaveTarget;
+    @FXML
+    private Label lblPdfOptions;
+    @FXML
+    private CheckBox cbAddPageHeader;
+    @FXML
+    private CheckBox cbCompactPdfText;
+    @FXML
+    private CheckBox cbAutoReflow;
 
     @FXML
     public void initialize() {
@@ -102,8 +121,50 @@ public class OpenccJavaFxController {
         cbManual.getSelectionModel().selectFirst();
 //        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
 //        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
+        cbSaveTarget.getItems().addAll(SAVE_TARGET_LIST);
+        cbSaveTarget.getSelectionModel().select(1);
+        // Hover status display
+        lblPdfOptions.setOnMouseEntered(event ->
+                lblStatus.setText("Click to toggle PDF options"));
+
+        lblPdfOptions.setOnMouseExited(event ->
+                lblStatus.setText(""));
         String javaVersion = System.getProperty("java.version");
         lblStatus.setText("OpenccJavaFX @ Java " + javaVersion);
+        setPdfOptionsEnabled(false);
+    }
+
+    @FXML
+    private void onPdfOptionsToggle() {
+        // 睇下依家係咪 enabled（用其中一個 checkbox 作準）
+        boolean currentlyEnabled = !cbAddPageHeader.isDisable();
+        boolean enable = !currentlyEnabled;
+
+        setPdfOptionsEnabled(enable);
+
+        lblStatus.setText(enable
+                ? "PDF options enabled."
+                : "PDF options disabled.");
+    }
+
+    @FXML
+    private ProgressBar buildProgressBar;
+
+    private void showProgressBarIndeterminate(String status) {
+        lblStatus.setText(status);
+        if (buildProgressBar != null) {
+            buildProgressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+            buildProgressBar.setVisible(true);
+            buildProgressBar.setManaged(true);
+        }
+    }
+
+    private void hideProgressBar(String status) {
+        lblStatus.setText(status);
+        if (buildProgressBar != null) {
+            buildProgressBar.setVisible(false);
+            buildProgressBar.setManaged(false);
+        }
     }
 
     private boolean isOpenFileDisabled = false;
@@ -333,39 +394,123 @@ public class OpenccJavaFxController {
 
     public void onBtnOpenFileClicked() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Open Text File");
+        fileChooser.setTitle("Open Text or PDF File");
         fileChooser.setInitialDirectory(new File("."));
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("Subtitle Files", Arrays.asList("*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2")),
-                new FileChooser.ExtensionFilter("All Files", "*.*"));
-        File selectedFile = fileChooser.showOpenDialog(null);
+                new FileChooser.ExtensionFilter("Subtitle Files",
+                        Arrays.asList("*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2")),
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf"),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
 
-        if (selectedFile != null) {
-            if (selectedFile.isFile() && selectedFile.exists()) {
-                displayFileContents(selectedFile);
-            } else {
-                lblStatus.setText("Selected file is not valid.");
-            }
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile != null && selectedFile.isFile() && selectedFile.exists()) {
+            startLoadFileTask(selectedFile);
+        } else if (selectedFile != null) {
+            lblStatus.setText("Selected file is not valid.");
         }
     }
 
-    private void displayFileContents(File file) {
-        try {
-            byte[] bytes = Files.readAllBytes(file.toPath());
-            String content = new String(bytes, StandardCharsets.UTF_8);
+    /**
+     * Loads a text or PDF file in a background thread.
+     * <p>
+     * UI behaviour:
+     * - Shows an indeterminate progress bar immediately.
+     * - Performs file I/O, PDF extraction, and reflow *off* the JavaFX UI thread.
+     * - When done, updates UI components back on the FX thread (via succeeded()).
+     * - Ensures the UI stays responsive and progress bar animation remains visible.
+     */
+    private void startLoadFileTask(File file) {
+        // Show progress bar immediately (UI thread)
+        showProgressBarIndeterminate(String.format("Loading file ( %s ) ...", getFileExtension(file.toString())));
 
-            // Remove BOM if present
-            if (content.startsWith("\uFEFF")) {
-                content = content.substring(1);
+        Task<String> task = new Task<String>() {
+
+            // These values are passed to succeeded() after background work finishes
+            private boolean enablePdfOptions;
+            private String statusAfter;
+
+            @Override
+            protected String call() throws Exception {
+                // Heavy work runs here in a background thread
+                String fileNameLower = file.getName().toLowerCase(Locale.ROOT);
+
+                // -------- PDF Handling --------
+                if (fileNameLower.endsWith(".pdf")) {
+                    enablePdfOptions = true;
+
+                    boolean autoReflow = cbAutoReflow.isSelected();
+                    boolean addHeader = cbAddPageHeader.isSelected();
+                    boolean compact = cbCompactPdfText.isSelected();
+
+                    // Extract PDF text (with or without headers)
+                    String raw = addHeader
+                            ? PdfBoxHelper.extractTextWithHeaders(file)
+                            : PdfBoxHelper.extractText(file);
+
+                    // Optional CJK paragraph reflow
+                    String finalText = raw;
+                    if (autoReflow) {
+                        finalText = PdfReflowHelper.reflowCjkParagraphs(raw, addHeader, compact);
+                    }
+
+                    statusAfter = "PDF loaded.";
+                    return finalText;
+                }
+
+                // -------- Plain Text Handling --------
+                enablePdfOptions = false;
+
+                byte[] bytes = Files.readAllBytes(file.toPath());
+                String content = new String(bytes, StandardCharsets.UTF_8);
+
+                // Remove BOM if present
+                if (content.startsWith("\uFEFF")) {
+                    content = content.substring(1);
+                }
+
+                statusAfter = "Text file loaded.";
+                return content;
             }
 
-            textAreaSource.replaceText(content);
-            openFileName = file.toString();
-            updateSourceInfo(OpenCC.zhoCheck(content));
-        } catch (IOException e) {
-            lblStatus.setText("Error reading file: " + e.getMessage());
-        }
+            @Override
+            protected void succeeded() {
+                // Now running back on the JavaFX UI thread
+                try {
+                    String text = get(); // get result from call()
+
+                    // Enable or disable PDF controls depending on file type
+                    setPdfOptionsEnabled(enablePdfOptions);
+
+                    // Update UI content
+                    textAreaSource.replaceText(text);
+                    openFileName = file.toString();
+                    updateSourceInfo(OpenCC.zhoCheck(text));
+
+                    // Hide progress bar and set final status
+                    hideProgressBar(statusAfter);
+
+                } catch (Exception ex) {
+                    failed(); // fallback to error handler
+                }
+            }
+
+            @Override
+            protected void failed() {
+                // Runs on FX thread if background execution failed
+                Throwable ex = getException();
+                hideProgressBar("Error reading file.");
+
+                lblStatus.setText("Error reading file: " +
+                        (ex != null ? ex.getMessage() : "Unknown error"));
+            }
+        };
+
+        // Start background thread
+        Thread t = new Thread(task);
+        t.setDaemon(true); // allow JVM to exit cleanly
+        t.start();
     }
 
     public void onSourceTextChanged() {
@@ -485,31 +630,63 @@ public class OpenccJavaFxController {
     }
 
     public void onBtnSaveAsClicked() {
-        if (textAreaDestination.getText().isEmpty()){
-            lblStatus.setText("Target content is empty.");
+        String target = cbSaveTarget.getValue();
+        if (target == null) {
+            lblStatus.setText("Please select a save target.");
             return;
         }
+
+        // 根據 comboBox 決定用邊個 TextArea
+        String content;
+        String suggestedName;
+        switch (target) {
+            case "Source":
+                content = textAreaSource.getText();
+                suggestedName = "Source.txt";
+                break;
+            case "Destination":
+                content = textAreaDestination.getText();
+                suggestedName = "Destination.txt";
+                break;
+            default:
+                lblStatus.setText("Unknown save target.");
+                return;
+        }
+
+        if (content == null || content.isEmpty()) {
+            lblStatus.setText(target + " content is empty.");
+            return;
+        }
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Text File");
-        fileChooser.setInitialDirectory(new File("."));
-        fileChooser.setInitialFileName("File.txt");
+        fileChooser.setInitialDirectory(new File(".")); // current dir
+        fileChooser.setInitialFileName(suggestedName);
+
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("Subtitle Files", "*.srt;*.vtt;*.ass;*.xml;*.ttml2"),
-                new FileChooser.ExtensionFilter("All Files", "*.*"));
+                new FileChooser.ExtensionFilter("Subtitle Files",
+                        "*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2"),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
+
         File selectedFile = fileChooser.showSaveDialog(null);
 
         if (selectedFile != null) {
             try {
-                String contents = textAreaDestination.getText();
-                // Write string contents to the file with UTF-8 encoding
-//                Files.writeString(selectedFile.toPath(), contents);
-                Files.write(selectedFile.toPath(), contents.getBytes(StandardCharsets.UTF_8));
-                lblStatus.setText(String.format("Output contents saved to: %s", selectedFile));
+                // Java 8 friendly 寫法
+                Files.write(selectedFile.toPath(), content.getBytes(StandardCharsets.UTF_8));
+                lblStatus.setText(String.format("%s saved to: %s", target, selectedFile));
             } catch (Exception e) {
-                lblStatus.setText(String.format("Error writing output file: %s", selectedFile));
+                lblStatus.setText(String.format("Error saving %s: %s", target, selectedFile));
             }
         }
+    }
+
+    private void setPdfOptionsEnabled(boolean enabled) {
+        cbAddPageHeader.setDisable(!enabled);
+        cbCompactPdfText.setDisable(!enabled);
+        cbAutoReflow.setDisable(!enabled);
     }
 
     public void onTaSourceDragOver(DragEvent dragEvent) {
@@ -608,7 +785,26 @@ public class OpenccJavaFxController {
     }
 
     public void onBthRefreshClicked() {
-        updateSourceInfo(OpenCC.zhoCheck(textAreaSource.getText()));
+        String sourceText = textAreaSource.getText();
+        if (sourceText == null || sourceText.trim().isEmpty()) {
+            lblStatus.setText("Source text is empty, nothing to reflow.");
+            return;
+        }
+
+        // 根據 PDF Options checkbox 做 reflow 行為
+        boolean addHeader = cbAddPageHeader.isSelected();
+        boolean compact = cbCompactPdfText.isSelected();
+
+        // 用你嘅 Java 版 Reflow helper
+        String reflowed = PdfReflowHelper.reflowCjkParagraphs(sourceText, addHeader, compact);
+
+        // 回寫到 Source textbox
+        textAreaSource.replaceText(reflowed);
+
+        // 更新 Source info（字數 / 語種等）
+        updateSourceInfo(OpenCC.zhoCheck(reflowed));
+
+        lblStatus.setText("Source text has been reflowed.");
     }
 
     public void onCbManualClicked() {

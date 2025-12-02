@@ -1,0 +1,13 @@
+/* Base style */
+.pdf-options-label {
+    -fx-text-fill: #444444;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+/* Hover style */
+.pdf-options-label:hover {
+    -fx-text-fill: #3b8eea; /* Soft VSCode Blue */
+    -fx-cursor: hand;
+}
+

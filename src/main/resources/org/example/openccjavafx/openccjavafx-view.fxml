@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
@@ -21,7 +22,7 @@
 <?import org.fxmisc.flowless.VirtualizedScrollPane?>
 <?import org.fxmisc.richtext.CodeArea?>
 
-<VBox alignment="CENTER" prefHeight="720.0" prefWidth="1000.0" spacing="20.0" xmlns="http://javafx.com/javafx/21.0.8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.OpenccJavaFxController">
+<VBox alignment="CENTER" prefHeight="720.0" prefWidth="1000.0" spacing="20.0" xmlns="http://javafx.com/javafx/21.0.9" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.OpenccJavaFxController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
@@ -104,6 +105,7 @@
                                 <rowConstraints>
                                     <RowConstraints minHeight="100.0" prefHeight="200.0" vgrow="ALWAYS" />
                                     <RowConstraints minHeight="32.0" prefHeight="32.0" vgrow="NEVER" />
+                           <RowConstraints minHeight="32.0" prefHeight="32.0" vgrow="NEVER" />
                                 </rowConstraints>
                                 <children>
                                     <Button fx:id="btnPaste" onMouseClicked="#onBtnPasteClick" prefHeight="20.0" prefWidth="60.0" text="Paste" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
@@ -228,6 +230,47 @@
                                             <Insets right="65.0" top="5.0" />
                                         </GridPane.margin>
                                     </Button>
+                           <ComboBox fx:id="cbSaveTarget" prefWidth="110.0" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                              <GridPane.margin>
+                                 <Insets right="135.0" />
+                              </GridPane.margin>
+                           </ComboBox>
+                           <HBox fx:id="hbPdfOptions" alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnSpan="2" GridPane.rowIndex="2">
+                              <children>
+                                 <Label fx:id="lblPdfOptions" onMouseClicked="#onPdfOptionsToggle" styleClass="pdf-options-label" stylesheets="@styles.css" text="PDF Options:">
+                                    <font>
+                                       <Font name="System Bold" size="14.0" />
+                                    </font>
+                                    <HBox.margin>
+                                       <Insets right="5.0" />
+                                    </HBox.margin>
+                                 </Label>
+                                 <CheckBox fx:id="cbAddPageHeader" mnemonicParsing="false" text="PDF Page Header">
+                                    <font>
+                                       <Font size="14.0" />
+                                    </font>
+                                    <HBox.margin>
+                                       <Insets right="5.0" />
+                                    </HBox.margin>
+                                 </CheckBox>
+                                 <CheckBox fx:id="cbCompactPdfText" mnemonicParsing="false" text="Compact PDF Text">
+                                    <font>
+                                       <Font size="14.0" />
+                                    </font>
+                                    <HBox.margin>
+                                       <Insets right="5.0" />
+                                    </HBox.margin>
+                                 </CheckBox>
+                                 <CheckBox fx:id="cbAutoReflow" mnemonicParsing="false" selected="true" text="Auto-Reflow PDF Text">
+                                    <font>
+                                       <Font size="14.0" />
+                                    </font>
+                                    <HBox.margin>
+                                       <Insets right="5.0" />
+                                    </HBox.margin>
+                                 </CheckBox>
+                              </children>
+                           </HBox>
                                 </children>
                             </GridPane>
                         </children>
@@ -383,7 +426,7 @@
                     <Insets />
                 </GridPane.margin>
             </Button>
-            <Label fx:id="lblFilename">
+            <Label fx:id="lblFilename" GridPane.columnSpan="2">
                 <GridPane.margin>
                     <Insets left="90.0" top="15.0" />
                 </GridPane.margin>
@@ -401,11 +444,19 @@
             <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <Label fx:id="lblStatus" text="OpenccJavaFX">
-                <GridPane.margin>
-                    <Insets top="10.0" />
-                </GridPane.margin>
-            </Label>
+         <HBox alignment="BOTTOM_LEFT" prefHeight="100.0" prefWidth="200.0">
+            <children>
+                  <Label fx:id="lblStatus" text="OpenccJavaFX">
+                  <padding>
+                     <Insets right="10.0" top="5.0" />
+                  </padding>
+                  </Label>
+               <ProgressBar fx:id="buildProgressBar" prefWidth="200.0" progress="0.0" visible="false" />
+            </children>
+            <GridPane.margin>
+               <Insets top="5.0" />
+            </GridPane.margin>
+         </HBox>
         </children>
     </GridPane>
 </VBox>

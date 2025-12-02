@@ -66,6 +66,10 @@ dependencies {
     // Core CLI parser
     implementation("info.picocli:picocli:4.7.7")
     annotationProcessor("info.picocli:picocli-codegen:4.7.7")
+
+    //PDFBox
+    implementation("org.apache.pdfbox:pdfbox:3.0.6")
+    implementation("commons-logging:commons-logging:1.3.5")
 }
 
 tasks.withType<Jar> {
