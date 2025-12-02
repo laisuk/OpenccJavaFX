@@ -426,7 +426,7 @@
                     <Insets />
                 </GridPane.margin>
             </Button>
-            <Label fx:id="lblFilename" GridPane.columnSpan="2">
+            <Label fx:id="lblFilename">
                 <GridPane.margin>
                     <Insets left="90.0" top="15.0" />
                 </GridPane.margin>

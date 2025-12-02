@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import openccjava.OpenCC;
 import pdfboxhelper.PdfBoxHelper;
@@ -114,6 +115,12 @@ public class OpenccJavaFxController {
     private CheckBox cbCompactPdfText;
     @FXML
     private CheckBox cbAutoReflow;
+    @FXML
+    private Button btnRefresh;
+    @FXML
+    private Button btnSaveAs;
+    @FXML
+    private Button btnStart;
 
     @FXML
     public void initialize() {
@@ -124,11 +131,11 @@ public class OpenccJavaFxController {
         cbSaveTarget.getItems().addAll(SAVE_TARGET_LIST);
         cbSaveTarget.getSelectionModel().select(1);
         // Hover status display
-        lblPdfOptions.setOnMouseEntered(event ->
-                lblStatus.setText("Click to toggle PDF options"));
-
-        lblPdfOptions.setOnMouseExited(event ->
-                lblStatus.setText(""));
+        StatusHoverHelper.bind(btnOpenFile, lblStatus, "Open a file");
+        StatusHoverHelper.bind(btnSaveAs, lblStatus, "Save current text in Source/Destination");
+        StatusHoverHelper.bind(btnRefresh, lblStatus, "Reflow PDF CJK Text ");
+        StatusHoverHelper.bind(lblPdfOptions, lblStatus, "Click to toggle PDF options");
+        StatusHoverHelper.bind(btnStart, lblStatus, "Start convert text with OpenCC");
         String javaVersion = System.getProperty("java.version");
         lblStatus.setText("OpenccJavaFX @ Java " + javaVersion);
         setPdfOptionsEnabled(false);
