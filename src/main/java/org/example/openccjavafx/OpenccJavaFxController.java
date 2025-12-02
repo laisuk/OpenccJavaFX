@@ -1,5 +1,6 @@
 package org.example.openccjavafx;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -219,6 +220,13 @@ public class OpenccJavaFxController {
                 : "";
     }
 
+    private static Path replaceExtension(Path original, String newExtensionWithDot) {
+        String fileName = original.getFileName().toString();
+        int dot = fileName.lastIndexOf('.');
+        String base = (dot > 0) ? fileName.substring(0, dot) : fileName;
+        return original.resolveSibling(base + newExtensionWithDot);
+    }
+
     private static String buildConvertedFilename(String originalFilename, String config) {
         if (originalFilename == null || originalFilename.isEmpty()) return config;
 
@@ -279,7 +287,6 @@ public class OpenccJavaFxController {
         lblStatus.setText(String.format("Conversion completed in %,d ms. [ %s ]", elapsedMillis, config));
     }
 
-
     private void startBatchConversion() {
         ObservableList<String> fileList = listViewSource.getItems();
         if (fileList.isEmpty()) {
@@ -298,67 +305,129 @@ public class OpenccJavaFxController {
             return;
         }
 
-        textAreaPreview.clear();
+        // Prepare config once
         final String config = getConfig();
         openccInstance.setConfig(config);
-        int counter = 0;
 
-        long startTime = System.currentTimeMillis(); // ⏱️ Start timer
+        textAreaPreview.clear();
+        lblStatus.setText("Batch conversion in progress...");
 
-        for (String file : fileList) {
-            counter++;
-            String ext = getFileExtension(file).toLowerCase();
-            String extNoDot = ext.substring(1);
-            File sourceFilePath = new File(file);
-            String outputFilename = buildConvertedFilename(sourceFilePath.getName(), config);
-            if (cbConvertFilename.isSelected()) {
-                outputFilename = openccInstance.convert(outputFilename);
-            }
-            Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
+        // Disable Start button while running (optional)
+        btnStart.setDisable(true);
 
-            try {
-                if (OfficeHelper.OFFICE_FORMATS.contains(extNoDot)) {
-                    // Office file: use OfficeDocHelper
-                    OfficeHelper.FileResult result = OfficeHelper.convert(
-                            sourceFilePath,
-                            outputFilePath.toFile(),
-                            extNoDot,
-                            openccInstance,
-                            cbPunctuation.isSelected(),
-                            true // Keep font
-                    );
+        Task<Void> task = new Task<Void>() {
+            @Override
+            protected Void call() {
+                long startTime = System.currentTimeMillis();
+                int counter = 0;
 
-                    textAreaPreview.appendText(String.format(
-                            "[%d][%s] %s -> %s%n",
-                            counter,
-                            result.success ? "Done" : "Skipped",
-                            result.success ? outputFilePath : file,
-                            result.message
-                    ));
+                for (String file : fileList) {
+                    counter++;
 
-                } else if (FILE_EXTENSIONS.contains(ext)) {
-                    // Regular file: convert as plain text
-                    Path sourcePath = sourceFilePath.toPath();
-                    String contents = new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
-                    String convertedText = openccInstance.convert(contents, cbPunctuation.isSelected());
-                    Files.write(outputFilePath, convertedText.getBytes(StandardCharsets.UTF_8));
+                    String ext = getFileExtension(file).toLowerCase();   // e.g. ".pdf"
+                    String extNoDot = ext.startsWith(".") ? ext.substring(1) : ext;  // "pdf"
+                    File sourceFilePath = new File(file);
 
-                    textAreaPreview.appendText(String.format("[%d][Done] -> %s%n", counter, outputFilePath));
-                } else {
-                    // Unsupported file
-                    textAreaPreview.appendText(String.format("[%d][Skipped] %s -> Not a valid file format%n", counter, file));
+                    String outputFilename = buildConvertedFilename(sourceFilePath.getName(), config);
+                    if (cbConvertFilename.isSelected()) {
+                        outputFilename = openccInstance.convert(outputFilename);
+                    }
+                    Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
+
+                    try {
+                        if (OfficeHelper.OFFICE_FORMATS.contains(extNoDot)) {
+                            // Office
+                            OfficeHelper.FileResult result = OfficeHelper.convert(
+                                    sourceFilePath,
+                                    outputFilePath.toFile(),
+                                    extNoDot,
+                                    openccInstance,
+                                    cbPunctuation.isSelected(),
+                                    true // Keep font
+                            );
+
+                            final String msg = String.format(
+                                    "[%d][%s] %s -> %s%n",
+                                    counter,
+                                    result.success ? "Done" : "Skipped",
+                                    result.success ? outputFilePath : file,
+                                    result.message
+                            );
+                            Platform.runLater(() -> textAreaPreview.appendText(msg));
+
+                        } else if ("pdf".equals(extNoDot)) {
+                            // PDF → extract + reflow + OpenCC → .txt
+                            boolean autoReflow = cbAutoReflow.isSelected();
+                            boolean addHeader = cbAddPageHeader.isSelected();
+                            boolean compact = cbCompactPdfText.isSelected();
+
+                            String raw = PdfBoxHelper.extractText(sourceFilePath, addHeader);
+
+                            String reflowed = raw;
+                            if (autoReflow) {
+                                reflowed = PdfReflowHelper.reflowCjkParagraphs(raw, addHeader, compact);
+                            }
+
+                            String converted = openccInstance.convert(reflowed, cbPunctuation.isSelected());
+
+                            Path txtOutputPath = replaceExtension(outputFilePath, ".txt");
+                            Files.write(txtOutputPath, converted.getBytes(StandardCharsets.UTF_8));
+
+                            final int idx = counter;
+                            final Path finalPath = txtOutputPath;
+                            Platform.runLater(() ->
+                                    textAreaPreview.appendText(String.format("[%d][Done] -> %s%n", idx, finalPath)));
+
+                        } else if (FILE_EXTENSIONS.contains(ext)) {
+                            // Plain text file
+                            Path sourcePath = sourceFilePath.toPath();
+//                            String contents = Files.readString(sourcePath, StandardCharsets.UTF_8);
+                            String contents = new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
+                            String convertedText = openccInstance.convert(contents, cbPunctuation.isSelected());
+                            Files.write(outputFilePath, convertedText.getBytes(StandardCharsets.UTF_8));
+
+                            final int idx = counter;
+                            final Path finalPath = outputFilePath;
+                            Platform.runLater(() ->
+                                    textAreaPreview.appendText(String.format("[%d][Done] -> %s%n", idx, finalPath)));
+
+                        } else {
+                            final int idx = counter;
+                            final String fileName = file;
+                            Platform.runLater(() ->
+                                    textAreaPreview.appendText(String.format(
+                                            "[%d][Skipped] %s -> Not a valid file format%n",
+                                            idx, fileName)));
+                        }
+                    } catch (Exception e) {
+                        final int idx = counter;
+                        final String fileName = file;
+                        final String err = e.getMessage();
+                        Platform.runLater(() ->
+                                textAreaPreview.appendText(String.format(
+                                        "[%d][Skipped] %s -> Error: %s%n",
+                                        idx, fileName, err)));
+                    }
                 }
-            } catch (Exception e) {
-                textAreaPreview.appendText(String.format("[%d][Skipped] %s -> Error: %s%n", counter, file, e.getMessage()));
+
+                long endTime = System.currentTimeMillis();
+                long elapsed = endTime - startTime;
+
+                Platform.runLater(() -> {
+                    textAreaPreview.appendText(String.format("Process completed in %,d ms.%n", elapsed));
+                    lblStatus.setText(String.format("Batch conversion completed in %,d ms.", elapsed));
+                    btnStart.setDisable(false);
+                });
+
+                return null;
             }
-        }
+        };
 
-        long endTime = System.currentTimeMillis(); // ⏱️ End timer
-        long elapsed = endTime - startTime;
-
-        textAreaPreview.appendText(String.format("Process completed in %,d ms.%n", elapsed));
-        lblStatus.setText(String.format("Batch conversion completed in %,d ms.", elapsed));
+        Thread t = new Thread(task, "batch-convert-thread");
+        t.setDaemon(true);
+        t.start();
     }
+
 
     private void updateSourceInfo(int textCode) {
         switch (textCode) {
@@ -556,6 +625,7 @@ public class OpenccJavaFxController {
 
     public void onBtnAddClicked() {
         ObservableList<String> currentFileList = listViewSource.getItems();
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select Files");
         fileChooser.setInitialDirectory(new File("."));
@@ -563,20 +633,40 @@ public class OpenccJavaFxController {
                 new FileChooser.ExtensionFilter("Text Files", "*.txt"),
                 new FileChooser.ExtensionFilter("Subtitle Files", Arrays.asList("*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2")),
                 new FileChooser.ExtensionFilter("Office Files", Arrays.asList("*.docx", "*.xlsx", "*.pptx", "*.odt", "*.ods", "*.odp", "*.epub")),
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf"),
                 new FileChooser.ExtensionFilter("All Files", "*.*")
         );
+
         List<File> selectedFiles = fileChooser.showOpenMultipleDialog(null);
         if (selectedFiles != null) {
-            // Check for duplicate files and add only new files to the list
             int count = 0;
+
             for (File file : selectedFiles) {
-                if (!currentFileList.contains(file.getAbsolutePath())) {
-                    currentFileList.add(file.getAbsolutePath());
+                String path = file.getAbsolutePath();
+                if (!currentFileList.contains(path)) {
+                    currentFileList.add(path);
                     count++;
                 }
             }
-            FXCollections.sort(currentFileList, null);
-            listViewSource.setItems(currentFileList);
+            // --- Sort: non-PDF first, PDF last ---
+            List<String> pdfList = new ArrayList<>();
+            List<String> otherList = new ArrayList<>();
+
+            for (String path : currentFileList) {
+                if (getFileExtension(path).equals(".pdf")) {
+                    pdfList.add(path);
+                } else {
+                    otherList.add(path);
+                }
+            }
+            // Sort only non-PDF files alphabetically
+            Collections.sort(otherList);
+            // Merge back: others first, then PDFs
+            ObservableList<String> merged = FXCollections.observableArrayList();
+            merged.addAll(otherList);
+            merged.addAll(pdfList);
+
+            listViewSource.setItems(merged);
             lblStatus.setText(String.format("No of file added to list: %d", count));
         }
     }

@@ -117,6 +117,20 @@ public final class PdfBoxHelper {
     }
 
     /**
+     * Extracts the full text of the given PDF file as a single string,
+     * with/without page headers.
+     *
+     * @param file PDF file to read; must not be {@code null}
+     * @param withHeader whether to add {@code === [Page x/n] ===} page markers
+     * @return extracted text with zero-width characters stripped
+     * @throws IOException if loading or parsing the PDF fails
+     */
+    public static String extractText(File file, boolean withHeader) throws IOException {
+        Objects.requireNonNull(file, "file must not be null");
+        return extractTextInternal(file, withHeader);
+    }
+
+    /**
      * Extracts the full text of the given PDF file and adds a simple header
      * before each page:
      *
