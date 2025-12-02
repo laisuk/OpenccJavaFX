@@ -455,7 +455,7 @@ public class OpenccJavaFxController {
                         finalText = PdfReflowHelper.reflowCjkParagraphs(raw, addHeader, compact);
                     }
 
-                    statusAfter = "PDF loaded.";
+                    statusAfter = String.format("PDF loaded %s: %s", autoReflow ? "(Auto-Reflow)" : "", file);
                     return finalText;
                 }
 
@@ -470,7 +470,7 @@ public class OpenccJavaFxController {
                     content = content.substring(1);
                 }
 
-                statusAfter = "Text file loaded.";
+                statusAfter = String.format("Text file loaded: %s", file);
                 return content;
             }
 
