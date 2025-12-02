@@ -23,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 import openccjava.OpenCC;
 import pdfboxhelper.PdfBoxHelper;
@@ -133,9 +132,10 @@ public class OpenccJavaFxController {
         // Hover status display
         StatusHoverHelper.bind(btnOpenFile, lblStatus, "Open a file");
         StatusHoverHelper.bind(btnSaveAs, lblStatus, "Save current text in Source/Destination");
+        StatusHoverHelper.bind(cbSaveTarget, lblStatus, "Select target text for saving");
         StatusHoverHelper.bind(btnRefresh, lblStatus, "Reflow PDF CJK Text ");
         StatusHoverHelper.bind(lblPdfOptions, lblStatus, "Click to toggle PDF options");
-        StatusHoverHelper.bind(btnStart, lblStatus, "Start convert text with OpenCC");
+        StatusHoverHelper.bind(btnStart, lblStatus, "Start convert text with OpenccJava");
         String javaVersion = System.getProperty("java.version");
         lblStatus.setText("OpenccJavaFX @ Java " + javaVersion);
         setPdfOptionsEnabled(false);
