@@ -324,31 +324,46 @@ public final class PdfReflowHelper {
 
         // Short line fallback (Rule A/B)
         if (len <= 15) {
+
             boolean hasNonAscii = false;
             boolean allAscii = true;
             boolean hasLetter = false;
+            boolean allAsciiDigits = true; // NEW FLAG
 
             for (int i = 0; i < len; i++) {
                 char ch = s.charAt(i);
+                // Any non-ASCII → both allAscii + allAsciiDigits false
                 if (ch > 0x7F) {
                     hasNonAscii = true;
                     allAscii = false;
+                    allAsciiDigits = false;
+                    continue;
                 }
+                // ASCII range:
+                if (!Character.isDigit(ch)) {
+                    allAsciiDigits = false;
+                }
+
                 if (Character.isLetter(ch)) {
                     hasLetter = true;
                 }
             }
+            // NEW RULE: Pure ASCII digits (1, 007, 23, 128, etc.)
+            if (allAsciiDigits) {
+                return true;
+            }
 
-            // Rule A
+            // Rule A: short CJK or mixed, and not ending with comma
             if (hasNonAscii && last != '，' && last != ',') {
                 return true;
             }
 
-            // Rule B
+            // Rule B: pure ASCII but must contain letters
             return allAscii && hasLetter;
         }
 
         return false;
+
     }
 
     private static boolean hasUnclosedBracket(String s) {

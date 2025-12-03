@@ -11,6 +11,7 @@ import picocli.CommandLine.Command;
         subcommands = {
                 ConvertCommand.class,
                 OfficeCommand.class,
+                PdfCommand.class,
                 DictgenCommand.class
         }
 )
@@ -19,7 +20,7 @@ public class Main implements Runnable {
     @Override
     public void run() {
         // Called when no subcommand is provided
-        System.out.println("Use --help or a subcommand (convert / office / dictgen)");
+        System.out.println("Use --help or a subcommand (convert / office / pdf / dictgen)");
     }
 
     public static void main(String[] args) {

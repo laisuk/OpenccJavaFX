@@ -370,7 +370,8 @@ public class OpenccJavaFxController {
 
                             String converted = openccInstance.convert(reflowed, cbPunctuation.isSelected());
 
-                            Path txtOutputPath = replaceExtension(outputFilePath, ".txt");
+                            String txtExt = ".txt";
+                            Path txtOutputPath = replaceExtension(outputFilePath, txtExt);
                             Files.write(txtOutputPath, converted.getBytes(StandardCharsets.UTF_8));
 
                             final int idx = counter;

@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -113,21 +114,44 @@ public final class PdfBoxHelper {
      */
     public static String extractText(File file) throws IOException {
         Objects.requireNonNull(file, "file must not be null");
-        return extractTextInternal(file, false);
+        return extractTextInternal(file, false, null);
     }
 
     /**
      * Extracts the full text of the given PDF file as a single string,
      * with/without page headers.
      *
-     * @param file PDF file to read; must not be {@code null}
+     * @param file       PDF file to read; must not be {@code null}
      * @param withHeader whether to add {@code === [Page x/n] ===} page markers
      * @return extracted text with zero-width characters stripped
      * @throws IOException if loading or parsing the PDF fails
      */
     public static String extractText(File file, boolean withHeader) throws IOException {
         Objects.requireNonNull(file, "file must not be null");
-        return extractTextInternal(file, withHeader);
+        return extractTextInternal(file, withHeader, null);
+    }
+
+    /**
+     * Extracts the full text of the given PDF file as a single string,
+     * with/without page headers and an optional progress callback.
+     *
+     * <p>The {@code progressCallback}, if non-null, is invoked once per page with:
+     * <ul>
+     *   <li>{@code currentPage} – 1-based page index</li>
+     *   <li>{@code totalPages}  – total number of pages in the document</li>
+     * </ul>
+     *
+     * @param file             PDF file to read; must not be {@code null}
+     * @param withHeader       whether to add {@code === [Page x/n] ===} page markers
+     * @param progressCallback optional callback for (currentPage, totalPages)
+     * @return extracted text with zero-width characters stripped
+     * @throws IOException if loading or parsing the PDF fails
+     */
+    public static String extractText(File file,
+                                     boolean withHeader,
+                                     BiConsumer<Integer, Integer> progressCallback) throws IOException {
+        Objects.requireNonNull(file, "file must not be null");
+        return extractTextInternal(file, withHeader, progressCallback);
     }
 
     /**
@@ -148,7 +172,7 @@ public final class PdfBoxHelper {
      */
     public static String extractTextWithHeaders(File file) throws IOException {
         Objects.requireNonNull(file, "file must not be null");
-        return extractTextInternal(file, true);
+        return extractTextInternal(file, true, null);
     }
 
     /**
@@ -185,24 +209,31 @@ public final class PdfBoxHelper {
     }
 
     /**
-     * Internal helper used by {@link #extractText(File)} and
+     * Internal helper used by {@link #extractText(File)},
+     * {@link #extractText(File, boolean)} and
      * {@link #extractTextWithHeaders(File)}.
      *
-     * @param file       PDF file to read
-     * @param withHeader whether to add {@code === [Page x/n] ===} page markers
+     * @param file             PDF file to read
+     * @param withHeader       whether to add {@code === [Page x/n] ===} page markers
+     * @param progressCallback optional callback for (currentPage, totalPages);
+     *                         may be {@code null}
      */
-    private static String extractTextInternal(File file, boolean withHeader) throws IOException {
+    private static String extractTextInternal(File file,
+                                              boolean withHeader,
+                                              BiConsumer<Integer, Integer> progressCallback) throws IOException {
         try (PDDocument doc = Loader.loadPDF(file)) {
             ensureNotEncrypted(doc);
 
-            if (!withHeader) {
-                // Simple "whole document" extraction
+            // Fast path: no headers, no progress → original "whole document" extraction
+            if (!withHeader && progressCallback == null) {
                 PDFTextStripper stripper = createStripper();
                 String text = stripper.getText(doc);
                 return cleanText(text);
             }
 
-            // Per-page extraction with headers
+            // Per-page extraction:
+            // - used whenever headers are requested, OR
+            // - when a progress callback is provided.
             PDFTextStripper stripper = createStripper();
             int total = doc.getNumberOfPages();
             StringBuilder sb = new StringBuilder(8192);
@@ -214,23 +245,25 @@ public final class PdfBoxHelper {
                 String pageText = stripper.getText(doc);
                 pageText = cleanText(pageText != null ? pageText.trim() : "");
 
-                // Skip completely empty pages (optional; adjust if you want)
-                // if (pageText.isEmpty()) {
-                //     continue;
-                // }
-
                 if (sb.length() != 0) {
                     sb.append(System.lineSeparator()).append(System.lineSeparator());
                 }
 
-                sb.append("=== [Page ")
-                        .append(i)
-                        .append("/")
-                        .append(total)
-                        .append("] ===")
-                        .append(System.lineSeparator())
-                        .append(System.lineSeparator())
-                        .append(pageText);
+                if (withHeader) {
+                    sb.append("=== [Page ")
+                            .append(i)
+                            .append("/")
+                            .append(total)
+                            .append("] ===")
+                            .append(System.lineSeparator())
+                            .append(System.lineSeparator());
+                }
+
+                sb.append(pageText);
+
+                if (progressCallback != null) {
+                    progressCallback.accept(i, total);
+                }
             }
 
             return sb.toString();
