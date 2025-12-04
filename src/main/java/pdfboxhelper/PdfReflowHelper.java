@@ -88,6 +88,7 @@ public final class PdfReflowHelper {
             // 2) Logical form for heading detection
             String headingProbe = trimStartSpacesAndFullWidth(stripped);
             boolean isTitleHeading = TITLE_HEADING_REGEX.matcher(headingProbe).find();
+            boolean isShortHeading = isHeadingLike(stripped);
 
             // Style-layer repeated titles
             if (isTitleHeading) {
@@ -124,26 +125,42 @@ public final class PdfReflowHelper {
                 continue;
             }
 
-            // --- Titles ---
-//            if (isTitleHeading) {
-//                if (buffer.length() > 0) {
-//                    segments.add(buffer.toString());
-//                    buffer.setLength(0);
-//                    dialogState.reset();
-//                }
-//                segments.add(stripped);
-//                continue;
-//            }
-            // --- Titles / heading-like short lines (including numeric headings like "1", "007") ---
-            if (isTitleHeading || isHeadingLike(stripped)) {
+            // --- Titles (force flushing) ---
+            if (isTitleHeading) {
                 if (buffer.length() > 0) {
                     segments.add(buffer.toString());
                     buffer.setLength(0);
                     dialogState.reset();
                 }
-                // 章節標題 / "1" / "2" / "第X章 夜色" 等 → 獨立段落
                 segments.add(stripped);
                 continue;
+            }
+
+            // 3b) 弱 heading-like：需檢查上一行是否逗號結尾
+            if (isShortHeading) {
+                if (buffer.length() > 0) {
+                    String bt = buffer.toString().replaceAll("\\s+$", "");
+                    if (!bt.isEmpty()) {
+                        char last = bt.charAt(bt.length() - 1);
+                        if (last == '，' || last == ',') {
+                            // 上一行逗號 → 當續句，唔斷段
+                        } else {
+                            segments.add(buffer.toString());
+                            buffer.setLength(0);
+                            dialogState.reset();
+                            segments.add(stripped);
+                            continue;
+                        }
+                    } else {
+                        // buffer 只係空白 → 可以當 heading
+                        segments.add(stripped);
+                        continue;
+                    }
+                } else {
+                    // buffer 空 → 直接 heading
+                    segments.add(stripped);
+                    continue;
+                }
             }
 
             // Check dialog start
