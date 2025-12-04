@@ -361,6 +361,10 @@ public class OpenccJavaFxController {
                             boolean addHeader = cbAddPageHeader.isSelected();
                             boolean compact = cbCompactPdfText.isSelected();
 
+                            final int idx = counter;
+                            Platform.runLater(() ->
+                                    textAreaPreview.appendText(String.format("[%d] Processing PDF... Please wait...%n",idx)));
+
                             String raw = PdfBoxHelper.extractText(sourceFilePath, addHeader);
 
                             String reflowed = raw;
@@ -374,7 +378,7 @@ public class OpenccJavaFxController {
                             Path txtOutputPath = replaceExtension(outputFilePath, txtExt);
                             Files.write(txtOutputPath, converted.getBytes(StandardCharsets.UTF_8));
 
-                            final int idx = counter;
+//                            final int idx = counter;
                             final Path finalPath = txtOutputPath;
                             Platform.runLater(() ->
                                     textAreaPreview.appendText(String.format("[%d][Done] -> %s%n", idx, finalPath)));
