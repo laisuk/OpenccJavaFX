@@ -125,12 +125,23 @@ public final class PdfReflowHelper {
             }
 
             // --- Titles ---
-            if (isTitleHeading) {
+//            if (isTitleHeading) {
+//                if (buffer.length() > 0) {
+//                    segments.add(buffer.toString());
+//                    buffer.setLength(0);
+//                    dialogState.reset();
+//                }
+//                segments.add(stripped);
+//                continue;
+//            }
+            // --- Titles / heading-like short lines (including numeric headings like "1", "007") ---
+            if (isTitleHeading || isHeadingLike(stripped)) {
                 if (buffer.length() > 0) {
                     segments.add(buffer.toString());
                     buffer.setLength(0);
                     dialogState.reset();
                 }
+                // 章節標題 / "1" / "2" / "第X章 夜色" 等 → 獨立段落
                 segments.add(stripped);
                 continue;
             }
@@ -181,14 +192,14 @@ public final class PdfReflowHelper {
             }
 
             // --- Previous is heading-like ---
-            if (isHeadingLike(bufferText)) {
-                segments.add(bufferText);
-                buffer.setLength(0);
-                buffer.append(stripped);
-                dialogState.reset();
-                dialogState.update(stripped);
-                continue;
-            }
+//            if (isHeadingLike(bufferText)) {
+//                segments.add(bufferText);
+//                buffer.setLength(0);
+//                buffer.append(stripped);
+//                dialogState.reset();
+//                dialogState.update(stripped);
+//                continue;
+//            }
 
             // --- Indentation → new paragraph ---
             if (INDENT_REGEX.matcher(rawLine).find()) {
@@ -308,38 +319,46 @@ public final class PdfReflowHelper {
 
     private static boolean isHeadingLike(String s) {
         if (s == null) return false;
+
         s = s.trim();
         if (s.isEmpty()) return false;
 
-        if (s.startsWith("=== ") && s.endsWith("===")) return false;
+        // keep page markers intact
+        if (s.startsWith("=== ") && s.endsWith("===")) {
+            return false;
+        }
 
-        // If ends with punctuation → not heading
+        // If *ends* with CJK punctuation → not heading
         char last = s.charAt(s.length() - 1);
-        if (indexOf(last) >= 0) return false;
+        if (indexOf(last) >= 0) { // uses CJK_PUNCT_END_CHARS
+            return false;
+        }
 
-        // Reject headings containing unclosed brackets
-        if (hasUnclosedBracket(s)) return false;
+        // Reject headings with unclosed brackets
+        if (hasUnclosedBracket(s)) {
+            return false;
+        }
 
         int len = s.length();
 
-        // Short line fallback (Rule A/B)
+        // Short line heuristics (<= 15 chars)
         if (len <= 15) {
 
             boolean hasNonAscii = false;
             boolean allAscii = true;
             boolean hasLetter = false;
-            boolean allAsciiDigits = true; // NEW FLAG
+            boolean allAsciiDigits = true;
 
             for (int i = 0; i < len; i++) {
                 char ch = s.charAt(i);
-                // Any non-ASCII → both allAscii + allAsciiDigits false
+
                 if (ch > 0x7F) {
                     hasNonAscii = true;
                     allAscii = false;
                     allAsciiDigits = false;
                     continue;
                 }
-                // ASCII range:
+
                 if (!Character.isDigit(ch)) {
                     allAsciiDigits = false;
                 }
@@ -348,22 +367,25 @@ public final class PdfReflowHelper {
                     hasLetter = true;
                 }
             }
-            // NEW RULE: Pure ASCII digits (1, 007, 23, 128, etc.)
+
+            // Re-read last (we didn't modify s)
+            last = s.charAt(len - 1);
+
+            // Rule C: pure ASCII digits → heading
             if (allAsciiDigits) {
                 return true;
             }
 
-            // Rule A: short CJK or mixed, and not ending with comma
+            // Rule A: CJK/mixed short line, not ending with comma
             if (hasNonAscii && last != '，' && last != ',') {
                 return true;
             }
 
-            // Rule B: pure ASCII but must contain letters
+            // Rule B: pure ASCII short line with at least one letter
             return allAscii && hasLetter;
         }
 
         return false;
-
     }
 
     private static boolean hasUnclosedBracket(String s) {
