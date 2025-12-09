@@ -147,18 +147,13 @@ public final class PdfReflowHelper {
             // 1) Visual form: trim right, remove half-width indent
             String stripped = trimEnd(rawLine);
             stripped = stripHalfWidthIndentKeepFullWidth(stripped);
+            stripped = collapseRepeatedSegments(stripped);
 
             // 2) Logical form for heading detection
             String headingProbe = trimStartSpacesAndFullWidth(stripped);
             boolean isTitleHeading = TITLE_HEADING_REGEX.matcher(headingProbe).find();
             boolean isShortHeading = isHeadingLike(stripped);
             boolean isMetadata = isMetadataLine(stripped);
-
-
-            // Style-layer repeated titles
-            if (isTitleHeading) {
-                stripped = collapseRepeatedSegments(stripped);
-            }
 
             // --- Empty line ---
             if (stripped.isEmpty()) {
@@ -614,12 +609,36 @@ public final class PdfReflowHelper {
         return s.substring(start);
     }
 
+    /**
+     * Style-layer repeat collapse for PDF headings / title lines.
+     * <p>
+     * Conceptually similar to the regex:
+     *     (.{4,10}?)\1{2,3}
+     * <p>
+     * but implemented with token- and phrase-aware logic so that
+     * CJK headings such as:
+     * <p>
+     *   "背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟"
+     * <p>
+     * collapse cleanly to a single phrase.
+     * <p>
+     * This also avoids collapsing natural text such as "哈哈哈哈哈哈"
+     * by enforcing a base-unit length of 4–10 and at least 3 repeats.
+     */
     private static String collapseRepeatedSegments(String line) {
-        if (line == null || line.isEmpty()) return line;
+        if (line == null || line.isEmpty())
+            return line;
 
+        // split by whitespace
         String[] parts = line.trim().split("[ \t]+");
-        if (parts.length == 0) return line;
+        if (parts.length == 0)
+            return line;
 
+        // 1) collapse repeated *word sequences*
+        parts = collapseRepeatedWordSequences(parts);
+
+        // 2) collapse repeated patterns *inside a token*
+        //    only if unitLen is between 4..10 and N >= 3
         for (int i = 0; i < parts.length; i++) {
             parts[i] = collapseRepeatedToken(parts[i]);
         }
@@ -627,14 +646,103 @@ public final class PdfReflowHelper {
         return String.join(" ", parts);
     }
 
+
+    /**
+     * Collapses repeated sequences of tokens (phrases).
+     * <p>
+     * Example:
+     *   ["背负着一切的麒麟", "背负着一切的麒麟", "背负着一切的麒麟", "背负着一切的麒麟"]
+     * becomes:
+     *   ["背负着一切的麒麟"]
+     * <p>
+     * Very conservative & safe.
+     */
+    private static String[] collapseRepeatedWordSequences(String[] parts) {
+        final int minRepeats = 3;     // require ≥ 3 repeats
+        final int maxPhraseLen = 8;   // typical heading phrases are short
+
+        final int n = parts.length;
+        if (n < minRepeats)
+            return parts;
+
+        for (int start = 0; start < n; start++) {
+            for (int phraseLen = 1; phraseLen <= maxPhraseLen && start + phraseLen <= n; phraseLen++) {
+
+                int count = 1;
+
+                while (true) {
+                    int nextStart = start + count * phraseLen;
+                    if (nextStart + phraseLen > n)
+                        break;
+
+                    boolean equal = true;
+                    for (int k = 0; k < phraseLen; k++) {
+                        if (!parts[start + k].equals(parts[nextStart + k])) {
+                            equal = false;
+                            break;
+                        }
+                    }
+
+                    if (!equal)
+                        break;
+
+                    count++;
+                }
+
+                if (count >= minRepeats) {
+                    // collapse
+                    int newSize = n - (count - 1) * phraseLen;
+                    String[] result = new String[newSize];
+
+                    int idx = 0;
+
+                    // prefix
+                    for (int i = 0; i < start; i++)
+                        result[idx++] = parts[i];
+
+                    // one copy of the repeated phrase
+                    for (int k = 0; k < phraseLen; k++)
+                        result[idx++] = parts[start + k];
+
+                    // tail
+                    int tailStart = start + count * phraseLen;
+                    for (int i = tailStart; i < n; i++)
+                        result[idx++] = parts[i];
+
+                    return result;
+                }
+            }
+        }
+
+        return parts;
+    }
+
+
+    /**
+     * Collapses repeated substring patterns inside a single token.
+     * <p>
+     * Only applies when:
+     *   - token length ≥ 4 (avoid collapsing "哈哈哈哈", etc.)
+     *   - base unit length between 4..10
+     *   - the token consists of N ≥ 3 consecutive repeats
+     * <p>
+     * Examples:
+     *   "abcdabcdabcd" → "abcd"
+     *   "第一季大结局第一季大结局第一季大结局" → "第一季大结局"
+     */
     private static String collapseRepeatedToken(String token) {
-        if (token == null) return null;
+        if (token == null)
+            return null;
 
         int len = token.length();
-        if (len < 4 || len > 200) return token;
+        if (len < 4 || len > 200)
+            return token;
 
-        for (int unitLen = 2; unitLen <= 20 && unitLen <= len / 2; unitLen++) {
-            if (len % unitLen != 0) continue;
+        // Require at least 3 repeats (so unitLen <= len / 3)
+        for (int unitLen = 4; unitLen <= 10 && unitLen <= len / 3; unitLen++) {
+
+            if (len % unitLen != 0)
+                continue;
 
             String unit = token.substring(0, unitLen);
             boolean allMatch = true;
@@ -646,8 +754,11 @@ public final class PdfReflowHelper {
                 }
             }
 
-            if (allMatch) return unit;
+            if (allMatch) {
+                return unit;
+            }
         }
+
         return token;
     }
 
