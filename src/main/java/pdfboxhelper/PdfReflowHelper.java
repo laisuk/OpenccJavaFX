@@ -1,8 +1,6 @@
 package pdfboxhelper;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -22,14 +20,14 @@ public final class PdfReflowHelper {
      */
     private static final char[] CJK_PUNCT_END_CHARS = {
             '。', '！', '？', '；', '：', '…', '—', '”', '」', '’', '』', '.',
-            '）', '】', '》', '〗', '〔', '〉', '」', '』', '］', '｝',
+            '）', '】', '》', '〗', '〔', '〉', '」', '』', '］', '｝', ':', ')',
     };
 
     /**
      * Chapter / heading detection
      */
     private static final Pattern TITLE_HEADING_REGEX = Pattern.compile(
-            "^(?=.{0,60}$)(前言|序章|终章|尾声|后记|番外|尾聲|後記|第.{0,10}?([章节部卷節回]))"
+            "(?x)^ (?=.{0,60}$)(前言|序章|终章|尾声|后记|番外|尾聲|後記|.{0,20}?第.{0,10}?([章节部卷節回][^分合]).{0,20}?)"
     );
 
     /**
@@ -42,11 +40,76 @@ public final class PdfReflowHelper {
      */
     private static final String DIALOG_OPENERS = "“‘「『";
 
+    private static boolean isDialogOpener(char ch) {
+        return DIALOG_OPENERS.indexOf(ch) >= 0;
+    }
+
     /**
      * Bracket sets
      */
     private static final String OPEN_BRACKETS = "（([【《";
     private static final String CLOSE_BRACKETS = "）)]】》";
+
+    // Metadata key-value separators
+    private static final char[] METADATA_SEPARATORS = new char[]{
+            '：', // full-width colon
+            ':', // ASCII colon
+            '　' // full-width ideographic space (U+3000)
+    };
+
+    private static final Set<String> METADATA_KEYS = new HashSet<>(
+            Arrays.asList(
+                    // ===== 1. Title / Author / Publishing =====
+                    "書名", "书名",
+                    "作者",
+                    "譯者", "译者",
+                    "校訂", "校订",
+                    "出版社",
+                    "出版時間", "出版时间",
+                    "出版日期",
+
+                    // ===== 2. Copyright / License =====
+                    "版權", "版权",
+                    "版權頁", "版权页",
+                    "版權信息", "版权信息",
+
+                    // ===== 3. Editor / Pricing =====
+                    "責任編輯", "责任编辑",
+                    "編輯", "编辑",
+                    "責編", "责编",
+                    "定價", "定价",
+
+                    // ===== 4. Descriptions / Forewords =====
+                    // "內容簡介", "内容简介",
+                    // "作者簡介", "作者简介",
+                    "前言",
+                    "序章",
+                    "終章", "终章",
+                    "尾聲", "尾声",
+                    "後記", "后记",
+
+                    // ===== 5. Digital Publishing =====
+                    "品牌方",
+                    "出品方",
+                    "授權方", "授权方",
+                    "電子版權", "数字版权",
+                    "掃描", "扫描",
+                    "OCR",
+
+                    // ===== 6. CIP / Cataloging =====
+                    "CIP",
+                    "在版編目", "在版编目",
+                    "分類號", "分类号",
+                    "主題詞", "主题词",
+
+                    // ===== 7. Publishing Cycle =====
+                    "發行日", "发行日",
+                    "初版",
+
+                    // ===== 8. Common keys without variants =====
+                    "ISBN"
+            )
+    );
 
     private PdfReflowHelper() {
     }
@@ -89,6 +152,8 @@ public final class PdfReflowHelper {
             String headingProbe = trimStartSpacesAndFullWidth(stripped);
             boolean isTitleHeading = TITLE_HEADING_REGEX.matcher(headingProbe).find();
             boolean isShortHeading = isHeadingLike(stripped);
+            boolean isMetadata = isMetadataLine(stripped);
+
 
             // Style-layer repeated titles
             if (isTitleHeading) {
@@ -101,7 +166,7 @@ public final class PdfReflowHelper {
                 if (!addPdfPageHeader && buffer.length() > 0) {
                     char lastChar = buffer.charAt(buffer.length() - 1);
                     // Page-break-like empty line
-                    if (indexOf(lastChar) < 0) {
+                    if (indexOfChar(CJK_PUNCT_END_CHARS, lastChar) < 0) {
                         continue;
                     }
                 }
@@ -136,28 +201,73 @@ public final class PdfReflowHelper {
                 continue;
             }
 
-            // 3b) 弱 heading-like：需檢查上一行是否逗號結尾
-            if (isShortHeading) {
+            // 3b) Metadata
+            if (isMetadata) {
                 if (buffer.length() > 0) {
-                    String bt = buffer.toString().replaceAll("\\s+$", "");
-                    if (!bt.isEmpty()) {
-                        char last = bt.charAt(bt.length() - 1);
-                        if (last == '，' || last == ',') {
-                            // 上一行逗號 → 當續句，唔斷段
+                    segments.add(buffer.toString());
+                    buffer.setLength(0);
+                    dialogState.reset();
+                }
+
+                // Metadata 每行獨立存放（之後你可以決定係 skip、折疊、顯示）
+                segments.add(stripped);
+                continue;
+            }
+
+            // 3c) 弱 heading-like：只在「上一段安全」且「上一段尾部像一句話的結束」時才生效
+            if (isShortHeading) {
+
+                // 判斷當前行是否「全 CJK」（忽略空白）
+                boolean isAllCjk = true;
+                for (int i = 0; i < stripped.length(); i++) {
+                    char ch = stripped.charAt(i);
+                    if (Character.isWhitespace(ch)) {
+                        continue;
+                    }
+                    if (ch <= 0x7F) {
+                        isAllCjk = false;
+                        break;
+                    }
+                }
+
+                if (buffer.length() > 0) {
+                    String bufText = buffer.toString();
+
+                    // 🔐 1) 若上一段仍有未配對括號／書名號 → 必定是續行，不能當 heading
+                    if (hasUnclosedBracket(bufText)) {
+                        // fall through → 當普通行，由後面的 merge 邏輯處理
+                    } else {
+                        String bt = rtrim(bufText);
+                        if (!bt.isEmpty()) {
+                            char last = bt.charAt(bt.length() - 1);
+
+                            // 🔸 2) 上一行逗號結尾 → 視作續句，不當 heading
+                            if (last == '，' || last == ',') {
+                                // fall through → default merge
+                            }
+                            // 🔸 3) 對於「全 CJK 的短 heading-like」，
+                            //     如果上一行 *不是* 以 CJK 句末符號結束，也當續句，不切段。
+                            else if (isAllCjk && indexOfChar(CJK_PUNCT_END_CHARS, last) < 0) {
+                                // e.g.:
+                                //   内容简介： 《盗
+                                //   墓笔记:吴邪的盗墓笔   ← 雖然像短 heading，但上一行未「句號收尾」
+                                // fall through → 當續行
+                            } else {
+                                // ✅ 真 heading-like → flush 舊段，再把當前行當作獨立 heading
+                                segments.add(bufText);
+                                buffer.setLength(0);
+                                dialogState.reset();
+                                segments.add(stripped);
+                                continue;
+                            }
                         } else {
-                            segments.add(buffer.toString());
-                            buffer.setLength(0);
-                            dialogState.reset();
+                            // buffer 有長度但全空白，其實等同無 → 直接當 heading
                             segments.add(stripped);
                             continue;
                         }
-                    } else {
-                        // buffer 只係空白 → 可以當 heading
-                        segments.add(stripped);
-                        continue;
                     }
                 } else {
-                    // buffer 空 → 直接 heading
+                    // buffer 空（文件開頭／上一段剛 flush 完）→ 允許短 heading 單獨出現
                     segments.add(stripped);
                     continue;
                 }
@@ -176,14 +286,34 @@ public final class PdfReflowHelper {
 
             String bufferText = buffer.toString();
 
-            // --- Dialog starter → force new paragraph ---
-            if (currentIsDialogStart) {
-                segments.add(bufferText);
-                buffer.setLength(0);
-                buffer.append(stripped);
-                dialogState.reset();
-                dialogState.update(stripped);
-                continue;
+            // 🔸 NEW RULE: If previous line ends with comma,
+            //     do NOT flush even if this line starts dialog.
+            //     (comma-ending means the sentence is not finished)
+            if (!bufferText.isEmpty()) {
+                String trimmed = rtrim(bufferText);
+                char last = trimmed.isEmpty() ? '\0' : trimmed.charAt(trimmed.length() - 1);
+
+                if (last == '，' || last == ',') {
+                    // fall through → treat as continuation
+                    // do NOT flush here, even if currentIsDialogStart == true
+                } else if (currentIsDialogStart) {
+                    // *** DIALOG: if this line starts a dialog,
+                    //     flush previous paragraph (only if safe)
+                    segments.add(bufferText);
+                    buffer.setLength(0);
+                    buffer.append(stripped);
+                    dialogState.reset();
+                    dialogState.update(stripped);
+                    continue;
+                }
+            } else {
+                // buffer empty, just add new dialog line
+                if (currentIsDialogStart) {
+                    buffer.append(stripped);
+                    dialogState.reset();
+                    dialogState.update(stripped);
+                    continue;
+                }
             }
 
             // --- Colon + dialog continuation ---
@@ -197,7 +327,7 @@ public final class PdfReflowHelper {
 
             // --- CJK punctuation → paragraph end ---
             if (!bufferText.isEmpty()
-                    && indexOf(bufferText.charAt(bufferText.length() - 1)) >= 0
+                    && indexOfChar(CJK_PUNCT_END_CHARS, bufferText.charAt(bufferText.length() - 1)) >= 0
                     && !dialogState.isUnclosed()) {
 
                 segments.add(bufferText);
@@ -347,7 +477,7 @@ public final class PdfReflowHelper {
 
         // If *ends* with CJK punctuation → not heading
         char last = s.charAt(s.length() - 1);
-        if (indexOf(last) >= 0) { // uses CJK_PUNCT_END_CHARS
+        if (indexOfChar(CJK_PUNCT_END_CHARS, last) >= 0) { // uses CJK_PUNCT_END_CHARS
             return false;
         }
 
@@ -359,7 +489,7 @@ public final class PdfReflowHelper {
         int len = s.length();
 
         // Short line heuristics (<= 15 chars)
-        if (len <= 15) {
+        if (len <= 10) {
 
             boolean hasNonAscii = false;
             boolean allAscii = true;
@@ -403,6 +533,46 @@ public final class PdfReflowHelper {
         }
 
         return false;
+    }
+
+    static boolean isMetadataLine(String line) {
+        if (line == null) {
+            return false;
+        }
+
+        // A) whitespace / blank
+        if (line.trim().isEmpty()) {
+            return false;
+        }
+
+        // B) length limit
+        if (line.length() > 30) {
+            return false;
+        }
+
+        // C) find first separator
+        int idx = indexOfAny(line, METADATA_SEPARATORS);
+        if (idx <= 0 || idx > 10) {
+            return false;
+        }
+
+        // D) extract key
+        String key = line.substring(0, idx).trim();
+        if (!METADATA_KEYS.contains(key)) {
+            return false;
+        }
+
+        // E) get next non-space character
+        int j = idx + 1;
+        while (j < line.length() && Character.isWhitespace(line.charAt(j))) {
+            j++;
+        }
+        if (j >= line.length()) {
+            return false;
+        }
+
+        // F) must NOT be dialog opener
+        return !isDialogOpener(line.charAt(j));
     }
 
     private static boolean hasUnclosedBracket(String s) {
@@ -490,10 +660,37 @@ public final class PdfReflowHelper {
         return s.substring(0, end);
     }
 
-    private static int indexOf(char ch) {
-        for (int i = 0; i < CJK_PUNCT_END_CHARS.length; i++) {
-            if (CJK_PUNCT_END_CHARS[i] == ch) return i;
+    private static int indexOfAny(String text, char[] chars) {
+        if (text == null || text.isEmpty()) {
+            return -1;
+        }
+        final int len = text.length();
+        for (int i = 0; i < len; i++) {
+            char ch = text.charAt(i);
+            for (char c : chars) {
+                if (ch == c) {
+                    return i;
+                }
+            }
         }
         return -1;
     }
+
+    private static String rtrim(String s) {
+        int end = s.length();
+        while (end > 0 && Character.isWhitespace(s.charAt(end - 1))) {
+            end--;
+        }
+        return (end == s.length()) ? s : s.substring(0, end);
+    }
+
+    private static int indexOfChar(char[] array, char ch) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] == ch) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
 }

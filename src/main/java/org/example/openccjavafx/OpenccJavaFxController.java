@@ -363,7 +363,7 @@ public class OpenccJavaFxController {
 
                             final int idx = counter;
                             Platform.runLater(() ->
-                                    textAreaPreview.appendText(String.format("[%d] Processing PDF... Please wait...%n",idx)));
+                                    textAreaPreview.appendText(String.format("[%d] Processing PDF... Please wait...%n", idx)));
 
                             String raw = PdfBoxHelper.extractText(sourceFilePath, addHeader);
 
@@ -496,7 +496,7 @@ public class OpenccJavaFxController {
     /**
      * Loads a text or PDF file in a background thread.
      * <p>
-     * UI behaviour:
+     * UI behavior:
      * - Shows an indeterminate progress bar immediately.
      * - Performs file I/O, PDF extraction, and reflow *off* the JavaFX UI thread.
      * - When done, updates UI components back on the FX thread (via succeeded()).
@@ -709,7 +709,7 @@ public class OpenccJavaFxController {
                     textAreaPreview.replaceText("Error reading file: " + e.getMessage());
                 }
             } else {
-                textAreaPreview.replaceText("Selected file is not a valid text file.");
+                textAreaPreview.replaceText(String.format("Selected file (%s) is not a valid text file.", getFileExtension(file.getName())));
             }
         }
     }
@@ -805,7 +805,9 @@ public class OpenccJavaFxController {
         boolean success = false;
         if (dragboard.hasFiles()) {
             File file = dragboard.getFiles().get(0);
-            if (isTextFile(file)) {
+            if (isPdfFile(file)) {
+                startLoadFileTask(file);
+            } else if (isTextFile(file)) {
                 try {
                     BufferedReader reader = new BufferedReader(new FileReader(file));
                     String line;
@@ -857,6 +859,13 @@ public class OpenccJavaFxController {
         return file.isFile() && OfficeHelper.OFFICE_FORMATS.contains(fileExtension.toLowerCase(Locale.ROOT).substring(1));
     }
 
+    private static boolean isPdfFile(File file) {
+        if (file == null) return false;
+        String name = file.getName().toLowerCase();
+        return name.endsWith(".pdf");
+    }
+
+
     public void onLivSourceDragOver(DragEvent dragEvent) {
         if (dragEvent.getGestureSource() != listViewSource && dragEvent.getDragboard().hasFiles()) {
             dragEvent.acceptTransferModes(TransferMode.COPY);
@@ -872,7 +881,7 @@ public class OpenccJavaFxController {
             List<File> files = dragboard.getFiles();
             int count = 0;
             for (File file : files) {
-                if ((isTextFile(file) || isOfficeFile(file)) && !fileList.contains(file.getAbsolutePath())) {
+                if ((isTextFile(file) || isOfficeFile(file) || isPdfFile(file)) && !fileList.contains(file.getAbsolutePath())) {
                     fileList.add(file.getAbsolutePath());
                     count++;
                     success = true;

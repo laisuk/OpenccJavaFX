@@ -75,7 +75,7 @@ public final class PdfBoxHelper {
      * Creates a {@link PDFTextStripper} instance with predictable defaults.
      *
      * <p>If you need to tune line/paragraph separators or spacing,
-     * centralize that here so behaviour is consistent across all
+     * centralize that here so behavior is consistent across all
      * extraction methods.</p>
      */
     private static PDFTextStripper createStripper() throws IOException {
