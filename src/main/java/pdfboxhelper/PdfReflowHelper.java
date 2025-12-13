@@ -27,7 +27,7 @@ public final class PdfReflowHelper {
      * Chapter / heading detection
      */
     private static final Pattern TITLE_HEADING_REGEX = Pattern.compile(
-            "(?x)^ (?=.{0,60}$)(前言|序章|终章|尾声|后记|番外|尾聲|後記|.{0,20}?第.{0,10}?([章节部卷節回][^分合]).{0,20}?)"
+            "(?x)^ (?=.{0,60}$)(前言|序章|终章|尾声|后记|番外.{0,10}?|尾聲|後記|.{0,20}?第.{0,10}?([章节部卷節回][^分合]).{0,20}?)"
     );
 
     /**
@@ -483,8 +483,10 @@ public final class PdfReflowHelper {
 
         int len = s.length();
 
+        int maxLen = isAllAscii(s) ? 16 : 8;
+
         // Short line heuristics (<= 15 chars)
-        if (len <= 10) {
+        if (len <= maxLen) {
 
             boolean hasNonAscii = false;
             boolean allAscii = true;
@@ -613,12 +615,12 @@ public final class PdfReflowHelper {
      * Style-layer repeat collapse for PDF headings / title lines.
      * <p>
      * Conceptually similar to the regex:
-     *     (.{4,10}?)\1{2,3}
+     * (.{4,10}?)\1{2,3}
      * <p>
      * but implemented with token- and phrase-aware logic so that
      * CJK headings such as:
      * <p>
-     *   "背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟"
+     * "背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟"
      * <p>
      * collapse cleanly to a single phrase.
      * <p>
@@ -651,9 +653,9 @@ public final class PdfReflowHelper {
      * Collapses repeated sequences of tokens (phrases).
      * <p>
      * Example:
-     *   ["背负着一切的麒麟", "背负着一切的麒麟", "背负着一切的麒麟", "背负着一切的麒麟"]
+     * ["背负着一切的麒麟", "背负着一切的麒麟", "背负着一切的麒麟", "背负着一切的麒麟"]
      * becomes:
-     *   ["背负着一切的麒麟"]
+     * ["背负着一切的麒麟"]
      * <p>
      * Very conservative & safe.
      */
@@ -722,13 +724,13 @@ public final class PdfReflowHelper {
      * Collapses repeated substring patterns inside a single token.
      * <p>
      * Only applies when:
-     *   - token length ≥ 4 (avoid collapsing "哈哈哈哈", etc.)
-     *   - base unit length between 4..10
-     *   - the token consists of N ≥ 3 consecutive repeats
+     * - token length ≥ 4 (avoid collapsing "哈哈哈哈", etc.)
+     * - base unit length between 4..10
+     * - the token consists of N ≥ 3 consecutive repeats
      * <p>
      * Examples:
-     *   "abcdabcdabcd" → "abcd"
-     *   "第一季大结局第一季大结局第一季大结局" → "第一季大结局"
+     * "abcdabcdabcd" → "abcd"
+     * "第一季大结局第一季大结局第一季大结局" → "第一季大结局"
      */
     private static String collapseRepeatedToken(String token) {
         if (token == null)
@@ -802,6 +804,13 @@ public final class PdfReflowHelper {
             }
         }
         return -1;
+    }
+
+    private static boolean isAllAscii(String s) {
+        for (int i = 0; i < s.length(); i++)
+            if (s.charAt(i) > 0x7F)
+                return false;
+        return true;
     }
 
 }
