@@ -20,14 +20,14 @@ public final class PdfReflowHelper {
      */
     private static final char[] CJK_PUNCT_END_CHARS = {
             '。', '！', '？', '；', '：', '…', '—', '”', '」', '’', '』', '.',
-            '）', '】', '》', '〗', '〔', '〉', '」', '』', '］', '｝', ':', ')',
+            '）', '】', '》', '〗', '〔', '〉', '」', '』', '］', '｝', ':', ')', '!'
     };
 
     /**
      * Chapter / heading detection
      */
     private static final Pattern TITLE_HEADING_REGEX = Pattern.compile(
-            "(?x)^ (?=.{0,60}$)(前言|序章|终章|尾声|后记|番外.{0,10}?|尾聲|後記|.{0,20}?第.{0,10}?([章节部卷節回][^分合]).{0,20}?)"
+            "(?x)^ (?=.{0,50}$)(前言|序章|终章|尾声|后记|番外.{0,10}?|尾聲|後記|.{0,10}?第.{0,5}?([章节部卷節回][^分合]).{0,20}?)"
     );
 
     /**
@@ -47,13 +47,14 @@ public final class PdfReflowHelper {
     /**
      * Bracket sets
      */
-    private static final String OPEN_BRACKETS = "（([【《";
-    private static final String CLOSE_BRACKETS = "）)]】》";
+    private static final String OPEN_BRACKETS = "（([【《{<";
+    private static final String CLOSE_BRACKETS = "）)]】》}>";
 
     // Metadata key-value separators
     private static final char[] METADATA_SEPARATORS = new char[]{
             '：', // full-width colon
             ':', // ASCII colon
+            '・',
             '　' // full-width ideographic space (U+3000)
     };
 
@@ -84,6 +85,7 @@ public final class PdfReflowHelper {
                     // "作者簡介", "作者简介",
                     "前言",
                     "序章",
+                    "簡介", "简介",
                     "終章", "终章",
                     "尾聲", "尾声",
                     "後記", "后记",
@@ -147,9 +149,25 @@ public final class PdfReflowHelper {
             // 1) Visual form: trim right, remove half-width indent
             String stripped = trimEnd(rawLine);
             stripped = stripHalfWidthIndentKeepFullWidth(stripped);
+
+            // 2) Probe form (for structural / heading detection): remove all indentation
+            String probe = trimStartSpacesAndFullWidth(stripped);
+
+            // 🧱 ABSOLUTE STRUCTURAL RULE — must be first (run on probe, output stripped)
+            if (isBoxDrawingLine(probe)) {
+                if (buffer.length() > 0) {
+                    segments.add(buffer.toString());
+                    buffer.setLength(0);
+                    dialogState.reset();
+                }
+
+                segments.add(stripped);
+                continue;
+            }
+
             stripped = collapseRepeatedSegments(stripped);
 
-            // 2) Logical form for heading detection
+            // 3) Logical form for heading detection
             String headingProbe = trimStartSpacesAndFullWidth(stripped);
             boolean isTitleHeading = TITLE_HEADING_REGEX.matcher(headingProbe).find();
             boolean isShortHeading = isHeadingLike(stripped);
@@ -288,7 +306,7 @@ public final class PdfReflowHelper {
                 String trimmed = rtrim(bufferText);
                 char last = trimmed.isEmpty() ? '\0' : trimmed.charAt(trimmed.length() - 1);
 
-                if (last == '，' || last == ',') {
+                if (last == '，' || last == ',' || last == '、') {
                     // fall through → treat as continuation
                     // do NOT flush here, even if currentIsDialogStart == true
                 } else if (currentIsDialogStart) {
@@ -333,16 +351,6 @@ public final class PdfReflowHelper {
                 continue;
             }
 
-            // --- Previous is heading-like ---
-//            if (isHeadingLike(bufferText)) {
-//                segments.add(bufferText);
-//                buffer.setLength(0);
-//                buffer.append(stripped);
-//                dialogState.reset();
-//                dialogState.update(stripped);
-//                continue;
-//            }
-
             // --- Indentation → new paragraph ---
             if (INDENT_REGEX.matcher(rawLine).find()) {
                 segments.add(bufferText);
@@ -355,7 +363,7 @@ public final class PdfReflowHelper {
 
             // --- Chapter-like short endings ---
             if (bufferText.length() <= 12 &&
-                    Pattern.compile("([章节部卷節回])[】》〗〕〉」』）]*$")
+                    Pattern.compile("([章节部卷節回])[】》〗〕〉」』）}]*$")
                             .matcher(bufferText).find()) {
 
                 segments.add(bufferText);
@@ -470,20 +478,22 @@ public final class PdfReflowHelper {
             return false;
         }
 
-        // If *ends* with CJK punctuation → not heading
-        char last = s.charAt(s.length() - 1);
-        if (indexOfChar(CJK_PUNCT_END_CHARS, last) >= 0) { // uses CJK_PUNCT_END_CHARS
-            return false;
-        }
-
         // Reject headings with unclosed brackets
         if (hasUnclosedBracket(s)) {
             return false;
         }
 
         int len = s.length();
-
         int maxLen = isAllAscii(s) ? 16 : 8;
+        char last = s.charAt(len - 1);
+        // Short circuit for item title-like: "物品准备："
+        if ((last == ':' || last == '：') && len <= maxLen && isAllCjk(s.substring(0, len - 1))) {
+            return true;
+        }
+        // If *ends* with CJK punctuation → not heading
+        if (indexOfChar(CJK_PUNCT_END_CHARS, last) >= 0) { // uses CJK_PUNCT_END_CHARS
+            return false;
+        }
 
         // Short line heuristics (<= 15 chars)
         if (len <= maxLen) {
@@ -609,6 +619,50 @@ public final class PdfReflowHelper {
             }
         }
         return s.substring(start);
+    }
+
+    /**
+     * Detects visual separator / divider lines such as:
+     * ──────
+     * ======
+     * ------
+     * or mixed variants (e.g. ───===───).
+     *
+     * <p>This method is intended to run on a <b>probe</b> string
+     * (indentation already removed). Whitespace is ignored.</p>
+     *
+     * <p>These lines represent layout boundaries and must always
+     * force paragraph breaks during reflow.</p>
+     */
+    private static boolean isBoxDrawingLine(String s) {
+        if (s == null || s.trim().isEmpty())
+            return false;
+
+        int total = 0;
+
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
+
+            // Ignore whitespace completely (probe may still contain gaps)
+            if (Character.isWhitespace(ch))
+                continue;
+
+            total++;
+
+            // Unicode box drawing block (U+2500–U+257F)
+            if (ch >= '─' && ch <= '╿')
+                continue;
+
+            // ASCII visual separators (common in TXT / OCR)
+            if (ch == '-' || ch == '=' || ch == '_' || ch == '~')
+                continue;
+
+            // Any real text → not a pure visual divider
+            return false;
+        }
+
+        // Require minimal visual length to avoid accidental triggers
+        return total >= 3;
     }
 
     /**
@@ -812,5 +866,42 @@ public final class PdfReflowHelper {
                 return false;
         return true;
     }
+
+    private static boolean isAllCjk(String s) {
+        if (s == null || s.isEmpty())
+            return false;
+
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
+
+            // Treat any whitespace (including full-width space) as NOT CJK heading content
+            if (Character.isWhitespace(ch))
+                return false;
+
+            if (!isCjk(ch))
+                return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Minimal CJK checker (BMP focused).
+     * Designed for heading / structure heuristics, not full Unicode linguistics.
+     */
+    private static boolean isCjk(char ch) {
+
+        // CJK Unified Ideographs Extension A (U+3400–U+4DBF)
+        if ((int) ch >= 0x3400 && (int) ch <= 0x4DBF)
+            return true;
+
+        // CJK Unified Ideographs (U+4E00–U+9FFF)
+        if ((int) ch >= 0x4E00 && (int) ch <= 0x9FFF)
+            return true;
+
+        // CJK Compatibility Ideographs (U+F900–U+FAFF)
+        return (int) ch >= 0xF900 && (int) ch <= 0xFAFF;
+    }
+
 
 }
