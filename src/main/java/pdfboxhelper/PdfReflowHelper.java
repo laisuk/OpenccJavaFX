@@ -227,63 +227,53 @@ public final class PdfReflowHelper {
                 continue;
             }
 
-            // 3c) 弱 heading-like：只在「上一段安全」且「上一段尾部像一句話的結束」時才生效
+            // 3c) Weak heading-like: only active when previous paragraph is "safe" AND looks ended.
             if (isShortHeading) {
 
-                // 判斷當前行是否「全 CJK」（忽略空白）
-                boolean isAllCjk = true;
-                for (int i = 0; i < stripped.length(); i++) {
-                    char ch = stripped.charAt(i);
-                    if (Character.isWhitespace(ch)) {
-                        continue;
-                    }
-                    if (ch <= 0x7F) {
-                        isAllCjk = false;
-                        break;
+                final boolean allCjk = isAllCjkIgnoringWhitespace(stripped);
+
+                // Decide if current short line should become a standalone heading (and cause a split)
+                boolean splitAsHeading;
+
+                if (buffer.length() == 0) {
+                    // file start / just flushed -> allow heading alone
+                    splitAsHeading = true;
+                } else {
+                    final String bufText = buffer.toString();
+
+                    if (hasUnclosedBracket(bufText)) {
+                        // previous paragraph is "unsafe" -> must treat as continuation
+                        splitAsHeading = false;
+                    } else {
+                        final String bt = rtrim(bufText);
+
+                        if (bt.isEmpty()) {
+                            // buffer has only whitespace -> treat like no previous paragraph
+                            splitAsHeading = true;
+                        } else {
+                            final char last = bt.charAt(bt.length() - 1);
+
+                            // previous ends with comma -> continuation
+                            if (last == '，' || last == ',') {
+                                splitAsHeading = false;
+                            }
+                            // all-CJK short heading line + previous not ended by sentence punctuation -> continuation
+                            else splitAsHeading = !allCjk || indexOfChar(CJK_PUNCT_END_CHARS, last) >= 0;
+                        }
                     }
                 }
 
-                if (buffer.length() > 0) {
-                    String bufText = buffer.toString();
-
-                    // 🔐 1) 若上一段仍有未配對括號／書名號 → 必定是續行，不能當 heading
-                    if (hasUnclosedBracket(bufText)) {
-                        // fall through → 當普通行，由後面的 merge 邏輯處理
-                    } else {
-                        String bt = rtrim(bufText);
-                        if (!bt.isEmpty()) {
-                            char last = bt.charAt(bt.length() - 1);
-
-                            // 🔸 2) 上一行逗號結尾 → 視作續句，不當 heading
-                            if (last == '，' || last == ',') {
-                                // fall through → default merge
-                            }
-                            // 🔸 3) 對於「全 CJK 的短 heading-like」，
-                            //     如果上一行 *不是* 以 CJK 句末符號結束，也當續句，不切段。
-                            else if (isAllCjk && indexOfChar(CJK_PUNCT_END_CHARS, last) < 0) {
-                                // e.g.:
-                                //   内容简介： 《盗
-                                //   墓笔记:吴邪的盗墓笔   ← 雖然像短 heading，但上一行未「句號收尾」
-                                // fall through → 當續行
-                            } else {
-                                // ✅ 真 heading-like → flush 舊段，再把當前行當作獨立 heading
-                                segments.add(bufText);
-                                buffer.setLength(0);
-                                dialogState.reset();
-                                segments.add(stripped);
-                                continue;
-                            }
-                        } else {
-                            // buffer 有長度但全空白，其實等同無 → 直接當 heading
-                            segments.add(stripped);
-                            continue;
-                        }
+                if (splitAsHeading) {
+                    if (buffer.length() > 0) {
+                        segments.add(buffer.toString());
+                        buffer.setLength(0);
+                        dialogState.reset();
                     }
-                } else {
-                    // buffer 空（文件開頭／上一段剛 flush 完）→ 允許短 heading 單獨出現
                     segments.add(stripped);
                     continue;
                 }
+
+                // else: fall through -> normal merge logic below
             }
 
             // Check dialog start
@@ -302,31 +292,27 @@ public final class PdfReflowHelper {
             // 🔸 NEW RULE: If previous line ends with comma,
             //     do NOT flush even if this line starts dialog.
             //     (comma-ending means the sentence is not finished)
-            if (!bufferText.isEmpty()) {
-                String trimmed = rtrim(bufferText);
-                char last = trimmed.isEmpty() ? '\0' : trimmed.charAt(trimmed.length() - 1);
+            if (currentIsDialogStart) {
+                // previous paragraph exists?
+                if (!bufferText.isEmpty()) {
+                    String trimmed = rtrim(bufferText);
+                    char last = trimmed.isEmpty() ? '\0' : trimmed.charAt(trimmed.length() - 1);
 
-                if (last == '，' || last == ',' || last == '、') {
-                    // fall through → treat as continuation
-                    // do NOT flush here, even if currentIsDialogStart == true
-                } else if (currentIsDialogStart) {
-                    // *** DIALOG: if this line starts a dialog,
-                    //     flush previous paragraph (only if safe)
-                    segments.add(bufferText);
-                    buffer.setLength(0);
-                    buffer.append(stripped);
-                    dialogState.reset();
-                    dialogState.update(stripped);
-                    continue;
+                    // Comma-ending means sentence continues -> do NOT flush
+                    boolean prevEndsWithCommaLike = (last == '，' || last == ',' || last == '、');
+
+                    if (!prevEndsWithCommaLike) {
+                        // flush previous paragraph, start dialog paragraph
+                        segments.add(bufferText);
+                        buffer.setLength(0);
+                    }
                 }
-            } else {
-                // buffer empty, just add new dialog line
-                if (currentIsDialogStart) {
-                    buffer.append(stripped);
-                    dialogState.reset();
-                    dialogState.update(stripped);
-                    continue;
-                }
+
+                // append current dialog start to buffer (either after flush or as continuation)
+                buffer.append(stripped);
+                dialogState.reset();
+                dialogState.update(stripped);
+                continue;
             }
 
             // --- Colon + dialog continuation ---
@@ -654,7 +640,11 @@ public final class PdfReflowHelper {
                 continue;
 
             // ASCII visual separators (common in TXT / OCR)
-            if (ch == '-' || ch == '=' || ch == '_' || ch == '~')
+            if (ch == '-' || ch == '=' || ch == '_' || ch == '~' || ch == '～')
+                continue;
+
+            // Star / asterisk-based visual dividers
+            if (ch == '*' || ch == '＊' || ch == '★' || ch == '☆')
                 continue;
 
             // Any real text → not a pure visual divider
@@ -903,5 +893,13 @@ public final class PdfReflowHelper {
         return (int) ch >= 0xF900 && (int) ch <= 0xFAFF;
     }
 
+    private static boolean isAllCjkIgnoringWhitespace(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
+            if (Character.isWhitespace(ch)) continue;
+            if (ch <= 0x7F) return false; // ASCII => not all-CJK
+        }
+        return true;
+    }
 
 }
