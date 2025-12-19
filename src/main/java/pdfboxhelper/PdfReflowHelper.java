@@ -290,25 +290,28 @@ public final class PdfReflowHelper {
             String bufferText = buffer.toString();
 
             // 🔸 NEW RULE: If previous line ends with comma,
-            //     do NOT flush even if this line starts dialog.
-            //     (comma-ending means the sentence is not finished)
+//     do NOT flush even if this line starts dialog.
+//     (comma-ending means the sentence is not finished)
             if (currentIsDialogStart) {
-                // previous paragraph exists?
-                if (!bufferText.isEmpty()) {
+
+                boolean shouldFlushPrev = !bufferText.isEmpty();
+
+                if (shouldFlushPrev) {
                     String trimmed = rtrim(bufferText);
                     char last = trimmed.isEmpty() ? '\0' : trimmed.charAt(trimmed.length() - 1);
 
-                    // Comma-ending means sentence continues -> do NOT flush
-                    boolean prevEndsWithCommaLike = (last == '，' || last == ',' || last == '、');
-
-                    if (!prevEndsWithCommaLike) {
-                        // flush previous paragraph, start dialog paragraph
-                        segments.add(bufferText);
-                        buffer.setLength(0);
-                    }
+                    shouldFlushPrev =
+                            (last != '，' && last != ',' && last != '、') &&
+                                    !dialogState.isUnclosed() &&
+                                    !hasUnclosedBracket(bufferText);
                 }
 
-                // append current dialog start to buffer (either after flush or as continuation)
+                if (shouldFlushPrev) {
+                    segments.add(bufferText);
+                    buffer.setLength(0);
+                }
+
+                // Start (or continue) the dialog paragraph
                 buffer.append(stripped);
                 dialogState.reset();
                 dialogState.update(stripped);
