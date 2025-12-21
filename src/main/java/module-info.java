@@ -16,4 +16,5 @@ module org.example.openccjavafx {
     exports org.example.openccjavafx;
     exports openccjava;
     exports pdfboxhelper;
+    exports openxmlhelper;
 }

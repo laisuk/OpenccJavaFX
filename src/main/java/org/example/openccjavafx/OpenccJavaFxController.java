@@ -13,6 +13,8 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.scene.control.ProgressBar;
 import openccjava.OfficeHelper;
+import openxmlhelper.OpenDocumentHelper;
+import openxmlhelper.OpenXmlHelper;
 import org.fxmisc.richtext.CodeArea;
 
 import java.io.BufferedReader;
@@ -476,16 +478,23 @@ public class OpenccJavaFxController {
     public void onBtnOpenFileClicked() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Open Text or PDF File");
-        fileChooser.setInitialDirectory(new File("."));
+
+        // Safer initial directory (JavaFX can throw if invalid)
+        File dir = new File(System.getProperty("user.home"));
+        if (dir.isDirectory()) {
+            fileChooser.setInitialDirectory(dir);
+        }
+
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("Subtitle Files",
-                        Arrays.asList("*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2")),
+                new FileChooser.ExtensionFilter("Text Files", "*.txt", "*.md", "*.csv"),
+                new FileChooser.ExtensionFilter("Subtitle Files", "*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2"),
+                new FileChooser.ExtensionFilter("Word Documents", "*.docx", "*.odt"),
                 new FileChooser.ExtensionFilter("PDF Files", "*.pdf"),
                 new FileChooser.ExtensionFilter("All Files", "*.*")
         );
 
-        File selectedFile = fileChooser.showOpenDialog(null);
+        // Use your window as owner (replace getStage() with your actual Stage getter)
+        File selectedFile = fileChooser.showOpenDialog(getStage());
         if (selectedFile != null && selectedFile.isFile() && selectedFile.exists()) {
             startLoadFileTask(selectedFile);
         } else if (selectedFile != null) {
@@ -493,12 +502,17 @@ public class OpenccJavaFxController {
         }
     }
 
+    // Example helper (use whatever you already have)
+    private javafx.stage.Stage getStage() {
+        return (javafx.stage.Stage) lblStatus.getScene().getWindow();
+    }
+
     /**
-     * Loads a text or PDF file in a background thread.
+     * Loads a text / PDF / DOCX / ODT file in a background thread.
      * <p>
      * UI behavior:
      * - Shows an indeterminate progress bar immediately.
-     * - Performs file I/O, PDF extraction, and reflow *off* the JavaFX UI thread.
+     * - Performs file I/O, PDF extraction, and reflow off the JavaFX UI thread.
      * - When done, updates UI components back on the FX thread (via succeeded()).
      * - Ensures the UI stays responsive and progress bar animation remains visible.
      */
@@ -540,10 +554,50 @@ public class OpenccJavaFxController {
                     return finalText;
                 }
 
+                // -------- DOCX Handling --------
+                if (fileNameLower.endsWith(".docx")) {
+                    enablePdfOptions = false;
+
+                    // IMPORTANT: DOCX is a ZIP container — must extract via OpenXml helper
+                    // includePartHeadings=false, normalizeNewlines=true is usually best for UI
+                    String text = OpenXmlHelper.extractDocxAllText(
+                            file.getAbsolutePath(),
+                            false,  // includePartHeadings
+                            true    // normalizeNewlines
+                    );
+
+                    statusAfter = String.format("DOCX loaded: %s", file);
+                    return text;
+                }
+
+                // -------- ODT Handling (optional, if you have it) --------
+                if (fileNameLower.endsWith(".odt")) {
+                    enablePdfOptions = false;
+
+                    // If your ODT extractor is also in OpenXmlHelper, call it here.
+                    // Otherwise replace with your actual helper.
+                    String text = OpenDocumentHelper.extractOdtAllText(file);
+
+                    statusAfter = String.format("ODT loaded: %s", file);
+                    return text;
+                }
+
                 // -------- Plain Text Handling --------
                 enablePdfOptions = false;
 
                 byte[] bytes = Files.readAllBytes(file.toPath());
+
+                // Quick binary sniff: avoid showing ZIP/EXE garbage as "text"
+                // (DOCX already handled above; this catches other binaries)
+                int zeros = 0;
+                int probe = Math.min(bytes.length, 4096);
+                for (int i = 0; i < probe; i++) {
+                    if (bytes[i] == 0) zeros++;
+                }
+                if (zeros > 0) {
+                    throw new IOException("This file looks like a binary file (not plain text).");
+                }
+
                 String content = new String(bytes, StandardCharsets.UTF_8);
 
                 // Remove BOM if present
@@ -593,6 +647,7 @@ public class OpenccJavaFxController {
         t.setDaemon(true); // allow JVM to exit cleanly
         t.start();
     }
+
 
     public void onSourceTextChanged() {
         lblSourceCharCount.setText(String.format("[ %,d chars ]", textAreaSource.getText().length()));

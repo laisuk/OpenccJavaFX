@@ -19,8 +19,8 @@ public final class PdfReflowHelper {
      * CJK sentence-ending punctuation characters
      */
     private static final char[] CJK_PUNCT_END_CHARS = {
-            '。', '！', '？', '；', '：', '…', '—', '”', '」', '’', '』', '.',
-            '）', '】', '》', '〗', '〔', '〉', '」', '』', '］', '｝', ':', ')', '!'
+            '。', '！', '？', '；', '：', '…', '—', '”', '’', '.',
+            '）', '】', '》', '〗', '〕', '〉', '」', '』', '］', '｝', ':', ')', '!'
     };
 
     /**
@@ -47,8 +47,8 @@ public final class PdfReflowHelper {
     /**
      * Bracket sets
      */
-    private static final String OPEN_BRACKETS = "（([【《{<";
-    private static final String CLOSE_BRACKETS = "）)]】》}>";
+    private static final String OPEN_BRACKETS = "（([【《{<｛［";
+    private static final String CLOSE_BRACKETS = "）)]】》}>｝］";
 
     // Metadata key-value separators
     private static final char[] METADATA_SEPARATORS = new char[]{
@@ -473,10 +473,10 @@ public final class PdfReflowHelper {
         }
 
         int len = s.length();
-        int maxLen = isAllAscii(s) ? 16 : 8;
+        int maxLen = isAllAscii(s) || isMixedCjkAscii(s) ? 16 : 8;
         char last = s.charAt(len - 1);
         // Short circuit for item title-like: "物品准备："
-        if ((last == ':' || last == '：') && len <= maxLen && isAllCjk(s.substring(0, len - 1))) {
+        if ((last == ':' || last == '：') && len <= maxLen && isAllCjkNoWhiteSpace(s.substring(0, len - 1))) {
             return true;
         }
         // If *ends* with CJK punctuation → not heading
@@ -860,7 +860,7 @@ public final class PdfReflowHelper {
         return true;
     }
 
-    private static boolean isAllCjk(String s) {
+    private static boolean isAllCjkNoWhiteSpace(String s) {
         if (s == null || s.isEmpty())
             return false;
 
@@ -905,4 +905,42 @@ public final class PdfReflowHelper {
         return true;
     }
 
+    /**
+     * Returns true if the string contains BOTH:
+     * - CJK (as defined by isCjk(ch)), and
+     * - ASCII all number (A-Z, a-z 0-9) OR full-width digits (０-９),
+     * while rejecting any other characters except neutral ASCII separators:
+     * space, '-', '/', ':', '.'
+     */
+    static boolean isMixedCjkAscii(String s) {
+        boolean hasCjk = false;
+        boolean hasAscii = false;
+
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
+
+            // Neutral ASCII (allowed, but doesn't count as ASCII content)
+            if (ch == ' ' || ch == '-' || ch == '/' || ch == ':' || ch == '.')
+                continue;
+
+            if (ch <= 0x7F) {
+                if (Character.isLetterOrDigit(ch)) {
+                    hasAscii = true;
+                } else {
+                    return false;
+                }
+            } else if (ch >= '０' && ch <= '９') { // Full-width digits
+                hasAscii = true;
+            } else if (isCjk(ch)) { // You already have this helper in your codebase
+                hasCjk = true;
+            } else {
+                return false;
+            }
+
+            if (hasCjk && hasAscii)
+                return true;
+        }
+
+        return false;
+    }
 }
