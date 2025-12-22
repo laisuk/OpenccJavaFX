@@ -12,6 +12,16 @@ import java.util.zip.ZipFile;
 // -----------------------------------------------------------------------------
 // Numbering support (DOCX lists: 1., 1.1, •, etc.) — Java 8 port of your C# logic
 // -----------------------------------------------------------------------------
+
+/**
+ * DOCX list numbering resolver.
+ *
+ * <p>Currently optional and safe to ignore.
+ * When not used, it produces no prefixes and does not affect text extraction.
+ *
+ * <p>Designed for future fidelity improvements (1., 1.1, •, etc.)
+ * without impacting OpenCC conversion workflows.
+ */
 final class NumberingContext {
 
     // numId -> abstractNumId
@@ -34,17 +44,17 @@ final class NumberingContext {
         counters.clear();
     }
 
-    OpenXmlHelper.ResolvedNum resolveNum(Integer directNumId, Integer directIlvl, String styleId) {
+    ResolvedNum resolveNum(Integer directNumId, Integer directIlvl, String styleId) {
         if (directNumId != null && directIlvl != null) {
-            return new OpenXmlHelper.ResolvedNum(directNumId, directIlvl);
+            return new ResolvedNum(directNumId, directIlvl);
         }
-        if (styleId != null && styleId.length() != 0) {
+        if (styleId != null && !styleId.isEmpty()) {
             StyleNum s = styleNum.get(styleId);
             if (s != null) {
-                return new OpenXmlHelper.ResolvedNum(s.numId, s.ilvl);
+                return new ResolvedNum(s.numId, s.ilvl);
             }
         }
-        return new OpenXmlHelper.ResolvedNum(null, null);
+        return new ResolvedNum(null, null);
     }
 
     String nextPrefix(int numId, int ilvl) {
@@ -61,11 +71,7 @@ final class NumberingContext {
         LevelDef def = lvls.get(ilvl);
         if (def == null) return "";
 
-        int[] arr = counters.get(numId);
-        if (arr == null) {
-            arr = new int[9];
-            counters.put(numId, arr);
-        }
+        int[] arr = counters.computeIfAbsent(numId, k -> new int[9]);
 
         // increment this level, reset deeper levels
         arr[ilvl]++;
@@ -76,7 +82,7 @@ final class NumberingContext {
             return "• ";
         }
 
-        String lvlText = (def.lvlText == null || def.lvlText.length() == 0) ? "%1." : def.lvlText;
+        String lvlText = (def.lvlText == null || def.lvlText.isEmpty()) ? "%1." : def.lvlText;
 
         // Replace %1..%9
         Matcher m = LVL_TEXT_TOKEN.matcher(lvlText);
@@ -93,7 +99,7 @@ final class NumberingContext {
                 .replace("\t", " ")
                 .replace("\u00A0", " "); // nbsp -> normal space
 
-        if (prefix.length() > 0 && !Character.isWhitespace(prefix.charAt(prefix.length() - 1))) {
+        if (!prefix.isEmpty() && !Character.isWhitespace(prefix.charAt(prefix.length() - 1))) {
             prefix += " ";
         }
         return prefix;
@@ -112,8 +118,7 @@ final class NumberingContext {
         ZipEntry entry = zip.getEntry("word/numbering.xml");
         if (entry == null) return;
 
-        InputStream stream = zip.getInputStream(entry);
-        try {
+        try (InputStream stream = zip.getInputStream(entry)) {
             XMLInputFactory factory = XMLInputFactory.newInstance();
             Utils.trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
             Utils.trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
@@ -160,7 +165,7 @@ final class NumberingContext {
                             if (absId != null) {
                                 currentAbstractId = absId;
                                 if (!abstractLevels.containsKey(absId)) {
-                                    abstractLevels.put(absId, new HashMap<Integer, LevelDef>());
+                                    abstractLevels.put(absId, new HashMap<>());
                                 }
                             }
                             continue;
@@ -197,7 +202,6 @@ final class NumberingContext {
                                 HashMap<Integer, LevelDef> map = abstractLevels.get(currentAbstractId);
                                 if (map != null) map.get(currentLevel).lvlText = val;
                             }
-                            continue;
                         }
                     } else if (ev == XMLStreamConstants.END_ELEMENT) {
                         if (!NS_W.equals(r.getNamespaceURI())) continue;
@@ -212,10 +216,11 @@ final class NumberingContext {
                     }
                 }
             } finally {
-                try { r.close(); } catch (Exception ignore) {}
+                try {
+                    r.close();
+                } catch (Exception ignore) {
+                }
             }
-        } finally {
-            stream.close();
         }
     }
 
@@ -225,8 +230,7 @@ final class NumberingContext {
         ZipEntry entry = zip.getEntry("word/styles.xml");
         if (entry == null) return;
 
-        InputStream stream = zip.getInputStream(entry);
-        try {
+        try (InputStream stream = zip.getInputStream(entry)) {
             XMLInputFactory factory = XMLInputFactory.newInstance();
             Utils.trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
             Utils.trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
@@ -264,13 +268,12 @@ final class NumberingContext {
                             if (currentStyleId != null) {
                                 styleIlvl = Utils.tryParseInt(Utils.getAttrAny(r, NS_W, "val"));
                             }
-                            continue;
                         }
                     } else if (ev == XMLStreamConstants.END_ELEMENT) {
                         if (!NS_W.equals(r.getNamespaceURI())) continue;
 
                         if ("style".equals(r.getLocalName())) {
-                            if (currentStyleId != null && currentStyleId.length() != 0
+                            if (currentStyleId != null && !currentStyleId.isEmpty()
                                     && styleNumId != null && styleIlvl != null) {
                                 styleNum.put(currentStyleId, new StyleNum(styleNumId, styleIlvl));
                             }
@@ -281,10 +284,25 @@ final class NumberingContext {
                     }
                 }
             } finally {
-                try { r.close(); } catch (Exception ignore) {}
+                try {
+                    r.close();
+                } catch (Exception ignore) {
+                }
             }
-        } finally {
-            stream.close();
+        }
+    }
+
+    static final class ResolvedNum {
+        final Integer numId;
+        final Integer ilvl;
+
+        ResolvedNum(Integer numId, Integer ilvl) {
+            this.numId = numId;
+            this.ilvl = ilvl;
+        }
+
+        boolean isValid() {
+            return numId != null && ilvl != null;
         }
     }
 
@@ -295,6 +313,7 @@ final class NumberingContext {
     private static final class StyleNum {
         final int numId;
         final int ilvl;
+
         StyleNum(int numId, int ilvl) {
             this.numId = numId;
             this.ilvl = ilvl;

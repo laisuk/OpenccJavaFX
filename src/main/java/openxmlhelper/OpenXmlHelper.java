@@ -331,14 +331,8 @@ public final class OpenXmlHelper {
                     }
 
                     if ("tr".equals(local)) {
-                        if (inRow && currentRowCells != null) {
-                            // Join with tabs
-                            for (int i = 0; i < currentRowCells.size(); i++) {
-                                if (i > 0) sb.append('\t');
-                                sb.append(currentRowCells.get(i));
-                            }
-                            sb.append('\n');
-
+                        if (inRow) {
+                            Utils.appendRowAsTsvLine(sb, currentRowCells);
                             currentRowCells = null;
                             inRow = false;
                         }
@@ -409,22 +403,12 @@ public final class OpenXmlHelper {
         void resetCountersForPart() {
         }
 
-        ResolvedNum resolveNum(Integer paraNumId, Integer paraIlvl, String paraStyleId) {
-            return new ResolvedNum(null, null);
+        openxmlhelper.NumberingContext.ResolvedNum resolveNum(Integer paraNumId, Integer paraIlvl, String paraStyleId) {
+            return new openxmlhelper.NumberingContext.ResolvedNum(null, null);
         }
 
         String nextPrefix(int numId, int ilvl) {
             return "";
-        }
-    }
-
-    static final class ResolvedNum {
-        final Integer numId;
-        final Integer ilvl;
-
-        ResolvedNum(Integer numId, Integer ilvl) {
-            this.numId = numId;
-            this.ilvl = ilvl;
         }
     }
 
@@ -444,7 +428,7 @@ public final class OpenXmlHelper {
     ) {
         if (!inParagraph || paraPrefixEmitted) return paraPrefixEmitted;
 
-        ResolvedNum rn = ctx.resolveNum(paraNumId, paraIlvl, paraStyleId);
+        openxmlhelper.NumberingContext.ResolvedNum rn = ctx.resolveNum(paraNumId, paraIlvl, paraStyleId);
         if (rn.numId != null && rn.ilvl != null) {
             String prefix = ctx.nextPrefix(rn.numId, rn.ilvl);
             if (!prefix.isEmpty()) {

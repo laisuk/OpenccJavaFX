@@ -144,17 +144,13 @@ public final class OpenDocumentHelper {
 
                     // End row => join cells with tabs, append newline
                     if (NS_TABLE.equals(ns) && "table-row".equals(local)) {
-                        if (inRow && currentRowCells != null) {
-                            for (int i = 0; i < currentRowCells.size(); i++) {
-                                if (i > 0) out.append('\t');
-                                out.append(currentRowCells.get(i));
-                            }
-                            out.append('\n');
-
+                        if (inRow) {
+                            Utils.appendRowAsTsvLine(out, currentRowCells);
                             currentRowCells = null;
                             inRow = false;
                         }
                     }
+
                 }
             }
         } finally {

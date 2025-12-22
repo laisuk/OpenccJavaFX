@@ -575,7 +575,7 @@ public class OpenccJavaFxController {
                     enablePdfOptions = false;
 
                     // If your ODT extractor is also in OpenXmlHelper, call it here.
-                    // Otherwise replace with your actual helper.
+                    // Otherwise, replace with your actual helper.
                     String text = OpenDocumentHelper.extractOdtAllText(file);
 
                     statusAfter = String.format("ODT loaded: %s", file);

@@ -116,6 +116,24 @@ public final class Utils {
     }
 
     static boolean equalsIgnoreCase(String a, String b) {
-        return a != null && b != null && a.equalsIgnoreCase(b);
+        return a != null && a.equalsIgnoreCase(b);
+    }
+
+    /**
+     * Flushes a collected table row into the output:
+     * joins cells with TAB, then appends LF.
+     *
+     * @param out      output buffer
+     * @param rowCells cells collected for the current row (maybe null)
+     */
+    static void appendRowAsTsvLine(StringBuilder out, List<String> rowCells) {
+        if (rowCells == null) return;
+
+        for (int i = 0; i < rowCells.size(); i++) {
+            if (i > 0) out.append('\t');
+            String cell = rowCells.get(i);
+            if (cell != null) out.append(cell);
+        }
+        out.append('\n');
     }
 }
