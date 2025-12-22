@@ -40,8 +40,8 @@ public final class OpenDocumentHelper {
     private static String extractOdfContentXml(InputStream xmlStream) throws XMLStreamException {
         XMLInputFactory factory = XMLInputFactory.newInstance();
         // Security hardening
-        trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
-        trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
+        Utils.trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
+        Utils.trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
 
         XMLStreamReader r = factory.createXMLStreamReader(xmlStream, StandardCharsets.UTF_8.name());
 
@@ -87,19 +87,19 @@ public final class OpenDocumentHelper {
                         }
 
                         if ("tab".equals(local)) {
-                            currentTarget(inCell, currentCell, out).append('\t');
+                            Utils.currentTarget(inCell, currentCell, out).append('\t');
                             continue;
                         }
 
                         if ("line-break".equals(local)) {
-                            currentTarget(inCell, currentCell, out).append('\n');
+                            Utils.currentTarget(inCell, currentCell, out).append('\n');
                             continue;
                         }
 
                         // <text:s text:c="N"/> : repeated spaces
                         if ("s".equals(local)) {
                             int count = 1;
-                            String c = getAttrAny(r, NS_TEXT, "c"); // attribute is usually "text:c"
+                            String c = Utils.getAttrAny(r, NS_TEXT, "c"); // attribute is usually "text:c"
                             if (c != null) {
                                 try {
                                     count = Integer.parseInt(c.trim());
@@ -107,7 +107,7 @@ public final class OpenDocumentHelper {
                                 }
                             }
                             if (count < 1) count = 1;
-                            StringBuilder tgt = currentTarget(inCell, currentCell, out);
+                            StringBuilder tgt = Utils.currentTarget(inCell, currentCell, out);
                             for (int i = 0; i < count; i++) tgt.append(' ');
                             continue;
                         }
@@ -116,7 +116,7 @@ public final class OpenDocumentHelper {
                 } else if (ev == XMLStreamConstants.CHARACTERS || ev == XMLStreamConstants.CDATA) {
                     String txt = r.getText();
                     if (txt != null && !txt.isEmpty()) {
-                        currentTarget(inCell, currentCell, out).append(txt);
+                        Utils.currentTarget(inCell, currentCell, out).append(txt);
                     }
 
                 } else if (ev == XMLStreamConstants.END_ELEMENT) {
@@ -126,7 +126,7 @@ public final class OpenDocumentHelper {
                     // End of paragraph-like blocks => newline
                     if (NS_TEXT.equals(ns) && ("p".equals(local) || "h".equals(local))) {
                         if (inParagraphLike) {
-                            currentTarget(inCell, currentCell, out).append('\n');
+                            Utils.currentTarget(inCell, currentCell, out).append('\n');
                             inParagraphLike = false;
                         }
                         continue;
@@ -135,7 +135,7 @@ public final class OpenDocumentHelper {
                     // End cell => store trimmed cell text
                     if (NS_TABLE.equals(ns) && "table-cell".equals(local)) {
                         if (inCell && currentRowCells != null && currentCell != null) {
-                            currentRowCells.add(trimTrailingNewlines(currentCell.toString()));
+                            currentRowCells.add(Utils.trimTrailingNewlines(currentCell.toString()));
                             currentCell = null;
                             inCell = false;
                         }
@@ -167,33 +167,4 @@ public final class OpenDocumentHelper {
         return out.toString();
     }
 
-    private static StringBuilder currentTarget(boolean inCell, StringBuilder cell, StringBuilder out) {
-        return (inCell && cell != null) ? cell : out;
-    }
-
-    private static void trySet(XMLInputFactory f, String key, Object value) {
-        try {
-            f.setProperty(key, value);
-        } catch (Exception ignore) {
-        }
-    }
-
-    private static String getAttrAny(XMLStreamReader r, String ns, String localName) {
-        String v = r.getAttributeValue(ns, localName);
-        if (v != null) return v;
-        for (int i = 0; i < r.getAttributeCount(); i++) {
-            if (localName.equals(r.getAttributeLocalName(i))) return r.getAttributeValue(i);
-        }
-        return null;
-    }
-
-    private static String trimTrailingNewlines(String s) {
-        int i = s.length();
-        while (i > 0) {
-            char c = s.charAt(i - 1);
-            if (c == '\n' || c == '\r') i--;
-            else break;
-        }
-        return (i == s.length()) ? s : s.substring(0, i);
-    }
 }

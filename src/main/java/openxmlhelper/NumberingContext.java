@@ -72,7 +72,7 @@ final class NumberingContext {
         for (int d = ilvl + 1; d < arr.length; d++) arr[d] = 0;
 
         // bullets
-        if (equalsIgnoreCase(def.numFmt, "bullet")) {
+        if (Utils.equalsIgnoreCase(def.numFmt, "bullet")) {
             return "• ";
         }
 
@@ -115,8 +115,8 @@ final class NumberingContext {
         InputStream stream = zip.getInputStream(entry);
         try {
             XMLInputFactory factory = XMLInputFactory.newInstance();
-            trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
-            trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
+            Utils.trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
+            Utils.trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
 
             XMLStreamReader r = factory.createXMLStreamReader(stream, StandardCharsets.UTF_8.name());
 
@@ -133,7 +133,7 @@ final class NumberingContext {
                         String local = r.getLocalName();
 
                         if ("num".equals(local)) {
-                            Integer numId = tryParseInt(getAttrAny(r, NS_W, "numId"));
+                            Integer numId = Utils.tryParseInt(Utils.getAttrAny(r, NS_W, "numId"));
                             if (numId != null) {
                                 // Read inside <w:num> ... </w:num> to find <w:abstractNumId w:val="X"/>
                                 int depth = 1;
@@ -141,7 +141,7 @@ final class NumberingContext {
                                     int ev2 = r.next();
                                     if (ev2 == XMLStreamConstants.START_ELEMENT) {
                                         if (NS_W.equals(r.getNamespaceURI()) && "abstractNumId".equals(r.getLocalName())) {
-                                            Integer absId = tryParseInt(getAttrAny(r, NS_W, "val"));
+                                            Integer absId = Utils.tryParseInt(Utils.getAttrAny(r, NS_W, "val"));
                                             if (absId != null) {
                                                 numToAbstract.put(numId, absId);
                                             }
@@ -156,7 +156,7 @@ final class NumberingContext {
                         }
 
                         if ("abstractNum".equals(local)) {
-                            Integer absId = tryParseInt(getAttrAny(r, NS_W, "abstractNumId"));
+                            Integer absId = Utils.tryParseInt(Utils.getAttrAny(r, NS_W, "abstractNumId"));
                             if (absId != null) {
                                 currentAbstractId = absId;
                                 if (!abstractLevels.containsKey(absId)) {
@@ -168,7 +168,7 @@ final class NumberingContext {
 
                         if ("lvl".equals(local)) {
                             if (currentAbstractId != null) {
-                                Integer ilvl = tryParseInt(getAttrAny(r, NS_W, "ilvl"));
+                                Integer ilvl = Utils.tryParseInt(Utils.getAttrAny(r, NS_W, "ilvl"));
                                 if (ilvl != null) {
                                     currentLevel = ilvl;
                                     HashMap<Integer, LevelDef> map = abstractLevels.get(currentAbstractId);
@@ -182,7 +182,7 @@ final class NumberingContext {
 
                         if ("numFmt".equals(local)) {
                             if (currentAbstractId != null && currentLevel != null) {
-                                String val = getAttrAny(r, NS_W, "val");
+                                String val = Utils.getAttrAny(r, NS_W, "val");
                                 if (val == null) val = "";
                                 HashMap<Integer, LevelDef> map = abstractLevels.get(currentAbstractId);
                                 if (map != null) map.get(currentLevel).numFmt = val;
@@ -192,7 +192,7 @@ final class NumberingContext {
 
                         if ("lvlText".equals(local)) {
                             if (currentAbstractId != null && currentLevel != null) {
-                                String val = getAttrAny(r, NS_W, "val");
+                                String val = Utils.getAttrAny(r, NS_W, "val");
                                 if (val == null) val = "";
                                 HashMap<Integer, LevelDef> map = abstractLevels.get(currentAbstractId);
                                 if (map != null) map.get(currentLevel).lvlText = val;
@@ -228,8 +228,8 @@ final class NumberingContext {
         InputStream stream = zip.getInputStream(entry);
         try {
             XMLInputFactory factory = XMLInputFactory.newInstance();
-            trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
-            trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
+            Utils.trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
+            Utils.trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
 
             XMLStreamReader r = factory.createXMLStreamReader(stream, StandardCharsets.UTF_8.name());
 
@@ -247,7 +247,7 @@ final class NumberingContext {
                         String local = r.getLocalName();
 
                         if ("style".equals(local)) {
-                            currentStyleId = getAttrAny(r, NS_W, "styleId");
+                            currentStyleId = Utils.getAttrAny(r, NS_W, "styleId");
                             styleNumId = null;
                             styleIlvl = null;
                             continue;
@@ -255,14 +255,14 @@ final class NumberingContext {
 
                         if ("numId".equals(local)) {
                             if (currentStyleId != null) {
-                                styleNumId = tryParseInt(getAttrAny(r, NS_W, "val"));
+                                styleNumId = Utils.tryParseInt(Utils.getAttrAny(r, NS_W, "val"));
                             }
                             continue;
                         }
 
                         if ("ilvl".equals(local)) {
                             if (currentStyleId != null) {
-                                styleIlvl = tryParseInt(getAttrAny(r, NS_W, "val"));
+                                styleIlvl = Utils.tryParseInt(Utils.getAttrAny(r, NS_W, "val"));
                             }
                             continue;
                         }
@@ -289,43 +289,6 @@ final class NumberingContext {
     }
 
     // ------------------------------- helpers --------------------------------
-
-    private static boolean equalsIgnoreCase(String a, String b) {
-        return a != null && b != null && a.equalsIgnoreCase(b);
-    }
-
-    private static Integer tryParseInt(String s) {
-        if (s == null) return null;
-        try {
-            return Integer.valueOf(s.trim());
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    /**
-     * C# equivalent:
-     *   r.GetAttribute("val", nsW) ?? r.GetAttribute("w:val")
-     *
-     * We try:
-     * 1) namespaced lookup
-     * 2) fallback scan by local-name (handles w:val / val / etc.)
-     */
-    private static String getAttrAny(XMLStreamReader r, String ns, String localName) {
-        String v = r.getAttributeValue(ns, localName);
-        if (v != null) return v;
-
-        for (int i = 0; i < r.getAttributeCount(); i++) {
-            if (localName.equals(r.getAttributeLocalName(i))) {
-                return r.getAttributeValue(i);
-            }
-        }
-        return null;
-    }
-
-    private static void trySet(XMLInputFactory f, String key, Object value) {
-        try { f.setProperty(key, value); } catch (Exception ignore) {}
-    }
 
     // ------------------------------- models ---------------------------------
 

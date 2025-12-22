@@ -59,7 +59,7 @@ public final class OpenXmlHelper {
                      Reader r = new InputStreamReader(s, StandardCharsets.US_ASCII);
                      BufferedReader br = new BufferedReader(r)) {
 
-                    String mt = readAll(br).trim();
+                    String mt = Utils.readAll(br).trim();
                     if (!"application/vnd.oasis.opendocument.text".equals(mt))
                         return false;
                 }
@@ -69,44 +69,6 @@ public final class OpenXmlHelper {
         } catch (IOException ex) {
             return false;
         }
-    }
-
-    // -------------------------- Shared small helpers --------------------------
-
-    private static boolean endsWithNewline(StringBuilder sb) {
-        if (sb.length() == 0)
-            return true;
-
-        char c = sb.charAt(sb.length() - 1);
-        return c == '\n' || c == '\r';
-    }
-
-    private static String trimTrailingNewlines(String s) {
-        int i = s.length();
-        while (i > 0) {
-            char c = s.charAt(i - 1);
-            if (c == '\n' || c == '\r')
-                i--;
-            else
-                break;
-        }
-        return (i == s.length()) ? s : s.substring(0, i);
-    }
-
-    private static String normalizeNewlinesToLf(String s) {
-        // Same semantics as C#:
-        // Replace("\r\n", "\n").Replace("\r", "\n")
-        return s.replace("\r\n", "\n").replace("\r", "\n");
-    }
-
-    private static String readAll(BufferedReader br) throws IOException {
-        StringBuilder sb = new StringBuilder(4096);
-        char[] buf = new char[8192];
-        int n;
-        while ((n = br.read(buf)) >= 0) {
-            sb.append(buf, 0, n);
-        }
-        return sb.toString();
     }
 
     // ---------------------------- DOCX extraction ----------------------------
@@ -151,7 +113,7 @@ public final class OpenXmlHelper {
             parts.addAll(footers);
 
             // Distinct (case-insensitive) but preserve first-seen order like C# Distinct+ToList
-            List<String> distinctParts = distinctIgnoreCasePreserveOrder(parts);
+            List<String> distinctParts = Utils.distinctIgnoreCasePreserveOrder(parts);
 
             StringBuilder output = new StringBuilder(128 * 1024);
 
@@ -160,7 +122,7 @@ public final class OpenXmlHelper {
                 if (entry == null) continue;
 
                 if (includePartHeadings) {
-                    if (output.length() > 0 && !endsWithNewline(output))
+                    if (output.length() > 0 && !Utils.endsWithNewline(output))
                         output.append('\n');
                     output.append("=== ").append(partName).append(" ===").append('\n');
                 }
@@ -172,29 +134,17 @@ public final class OpenXmlHelper {
                     String text = extractWordprocessingMlText(stream, ctx);
                     output.append(text);
 
-                    if (!endsWithNewline(output))
+                    if (!Utils.endsWithNewline(output))
                         output.append('\n');
                 }
             }
 
             String result = output.toString();
             if (normalizeNewlines) {
-                result = normalizeNewlinesToLf(result);
+                result = Utils.normalizeNewlinesToLf(result);
             }
             return result;
         }
-    }
-
-    private static List<String> distinctIgnoreCasePreserveOrder(List<String> input) {
-        List<String> out = new ArrayList<String>(input.size());
-        HashSet<String> seenLower = new HashSet<String>(input.size() * 2);
-        for (String s : input) {
-            String k = s.toLowerCase(Locale.ROOT);
-            if (seenLower.add(k)) {
-                out.add(s);
-            }
-        }
-        return out;
     }
 
     //===============
@@ -223,8 +173,8 @@ public final class OpenXmlHelper {
 
         XMLInputFactory factory = XMLInputFactory.newInstance();
         // Security: do not resolve external entities / DTDs (similar intent to DtdProcessing.Prohibit)
-        trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
-        trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
+        Utils.trySet(factory, "javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
+        Utils.trySet(factory, "javax.xml.stream.supportDTD", Boolean.FALSE);
 
         XMLStreamReader r = factory.createXMLStreamReader(xmlStream, StandardCharsets.UTF_8.name());
         try {
@@ -281,7 +231,7 @@ public final class OpenXmlHelper {
 
                     if ("pStyle".equals(local)) {
                         if (inParagraph) {
-                            String val = getAttr(r, nsW, "val");
+                            String val = Utils.getAttr(r, nsW, "val");
                             if (val != null && !val.isEmpty())
                                 paraStyleId = val;
                         }
@@ -290,8 +240,8 @@ public final class OpenXmlHelper {
 
                     if ("numId".equals(local)) {
                         if (inParagraph) {
-                            String val = getAttr(r, nsW, "val");
-                            Integer id = tryParseInt(val);
+                            String val = Utils.getAttr(r, nsW, "val");
+                            Integer id = Utils.tryParseInt(val);
                             if (id != null)
                                 paraNumId = id;
                         }
@@ -300,8 +250,8 @@ public final class OpenXmlHelper {
 
                     if ("ilvl".equals(local)) {
                         if (inParagraph) {
-                            String val = getAttr(r, nsW, "val");
-                            Integer lvl = tryParseInt(val);
+                            String val = Utils.getAttr(r, nsW, "val");
+                            Integer lvl = Utils.tryParseInt(val);
                             if (lvl != null)
                                 paraIlvl = lvl;
                         }
@@ -311,7 +261,7 @@ public final class OpenXmlHelper {
                     if ("t".equals(local)) {
                         if (skipThisNote && (inFootnote || inEndnote)) {
                             // Consume subtree like XmlReader.Skip()
-                            skipElement(r);
+                            Utils.skipElement(r);
                             continue;
                         }
 
@@ -321,7 +271,7 @@ public final class OpenXmlHelper {
 
                         // Read text of <w:t>...</w:t>
                         String text = r.getElementText();
-                        currentTarget(inCell, currentCell, sb).append(text);
+                        Utils.currentTarget(inCell, currentCell, sb).append(text);
 
                         // prefix may have been emitted in emitPrefixIfNeeded; update boolean:
                         if (inParagraph && !paraPrefixEmitted) {
@@ -339,7 +289,7 @@ public final class OpenXmlHelper {
                                 paraNumId, paraIlvl, paraStyleId,
                                 inCell, currentCell, sb);
 
-                        currentTarget(inCell, currentCell, sb).append('\t');
+                        Utils.currentTarget(inCell, currentCell, sb).append('\t');
                         continue;
                     }
 
@@ -350,7 +300,7 @@ public final class OpenXmlHelper {
                                 paraNumId, paraIlvl, paraStyleId,
                                 inCell, currentCell, sb);
 
-                        currentTarget(inCell, currentCell, sb).append('\n');
+                        Utils.currentTarget(inCell, currentCell, sb).append('\n');
                         continue;
                     }
 
@@ -364,7 +314,7 @@ public final class OpenXmlHelper {
 
                     if ("p".equals(local)) {
                         if (!(skipThisNote && (inFootnote || inEndnote))) {
-                            currentTarget(inCell, currentCell, sb).append('\n');
+                            Utils.currentTarget(inCell, currentCell, sb).append('\n');
                         }
                         inParagraph = false;
                         paraPrefixEmitted = false; // reset for safety
@@ -373,7 +323,7 @@ public final class OpenXmlHelper {
 
                     if ("tc".equals(local)) {
                         if (inCell && currentRowCells != null && currentCell != null) {
-                            currentRowCells.add(trimTrailingNewlines(currentCell.toString()));
+                            currentRowCells.add(Utils.trimTrailingNewlines(currentCell.toString()));
                             currentCell = null;
                             inCell = false;
                         }
@@ -397,7 +347,7 @@ public final class OpenXmlHelper {
 
                     if ("tbl".equals(local)) {
                         if (inTable) {
-                            if (!endsWithNewline(sb)) sb.append('\n');
+                            if (!Utils.endsWithNewline(sb)) sb.append('\n');
                             inTable = false;
                         }
                         continue;
@@ -426,70 +376,18 @@ public final class OpenXmlHelper {
         return sb.toString();
     }
 
-    private static StringBuilder currentTarget(boolean inCell, StringBuilder currentCell, StringBuilder sb) {
-        return (inCell && currentCell != null) ? currentCell : sb;
-    }
-
-    private static void trySet(XMLInputFactory f, String key, Object value) {
-        try {
-            f.setProperty(key, value);
-        } catch (Exception ignore) {
-        }
-    }
-
-    /**
-     * Equivalent to C#:
-     * r.GetAttribute("val", nsW) ?? r.GetAttribute("w:val")
-     * In StAX, we try namespace lookup first, then fallback by local name scan.
-     */
-    private static String getAttr(XMLStreamReader r, String ns, String localName) {
-        String v = r.getAttributeValue(ns, localName);
-        if (v != null) return v;
-
-        // fallback: scan attributes by local name (handles "w:val" style)
-        for (int i = 0; i < r.getAttributeCount(); i++) {
-            String ln = r.getAttributeLocalName(i);
-            if (localName.equals(ln)) {
-                return r.getAttributeValue(i);
-            }
-        }
-        return null;
-    }
-
-    private static Integer tryParseInt(String s) {
-        if (s == null) return null;
-        try {
-            return Integer.valueOf(s.trim());
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    /**
-     * Skip the current START_ELEMENT subtree (like XmlReader.Skip()).
-     * Assumes reader is currently positioned on START_ELEMENT.
-     */
-    private static void skipElement(XMLStreamReader r) throws XMLStreamException {
-        int depth = 1;
-        while (depth > 0 && r.hasNext()) {
-            int e = r.next();
-            if (e == XMLStreamConstants.START_ELEMENT) depth++;
-            else if (e == XMLStreamConstants.END_ELEMENT) depth--;
-        }
-    }
-
     // ---------------------------- Note skipping ----------------------------
 
     private static boolean shouldSkipNoteElement(XMLStreamReader r, String nsW) {
-        String type = getAttr(r, nsW, "type");
+        String type = Utils.getAttr(r, nsW, "type");
         if (type != null) {
             String t = type.trim();
             if ("separator".equalsIgnoreCase(t) || "continuationSeparator".equalsIgnoreCase(t))
                 return true;
         }
 
-        String idStr = getAttr(r, nsW, "id");
-        Integer id = tryParseInt(idStr);
+        String idStr = Utils.getAttr(r, nsW, "id");
+        Integer id = Utils.tryParseInt(idStr);
         if (id != null) {
             return id <= 0;
         }
@@ -550,7 +448,7 @@ public final class OpenXmlHelper {
         if (rn.numId != null && rn.ilvl != null) {
             String prefix = ctx.nextPrefix(rn.numId, rn.ilvl);
             if (!prefix.isEmpty()) {
-                currentTarget(inCell, currentCell, sb).append(prefix);
+                Utils.currentTarget(inCell, currentCell, sb).append(prefix);
                 return true;
             }
         }
