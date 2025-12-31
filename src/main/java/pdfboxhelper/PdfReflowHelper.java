@@ -19,15 +19,46 @@ public final class PdfReflowHelper {
      * CJK sentence-ending punctuation characters
      */
     private static final char[] CJK_PUNCT_END_CHARS = {
-            '。', '！', '？', '；', '：', '…', '—', '”', '’', '.',
-            '）', '】', '》', '〗', '〕', '〉', '」', '』', '］', '｝', ':', ')', '!'
+            // Standard CJK sentence-ending punctuation
+            '。', '！', '？', '；', '：', '…', '—',
+
+            // Closing quotes (CJK)
+            '”', '’', '」', '』',
+
+            // Chinese / full-width closing brackets
+            '）', '】', '》', '〗', '〕', '］', '｝',
+
+            // Angle brackets (CJK + ASCII)
+            '＞', '〉', '>',
+
+            // Allowed ASCII-like endings
+            '.', ')', ':', '!', '?'
     };
+
+    private static final boolean[] CJK_PUNCT_END_TABLE = new boolean[65536];
+
+    static {
+        for (char c : CJK_PUNCT_END_CHARS)
+            CJK_PUNCT_END_TABLE[c] = true;
+    }
+
+    private static boolean isCjkPunctEnd(char ch) {
+        return CJK_PUNCT_END_TABLE[ch];
+    }
 
     /**
      * Chapter / heading detection
      */
     private static final Pattern TITLE_HEADING_REGEX = Pattern.compile(
-            "(?x)^ (?=.{0,50}$)(前言|序章|终章|尾声|后记|番外.{0,10}?|尾聲|後記|.{0,10}?第.{0,5}?([章节部卷節回][^分合]).{0,20}?)"
+            "(?x)^" +
+                    "(?!.*[,，])" +
+                    "(?=.{0,50}$)" +
+                    "(" +
+                    "前言|序章|楔子|终章|尾声|后记|尾聲|後記" +
+                    "|番外.{0,15}" +
+                    "|.{0,10}?第.{0,5}?([章节部卷節回][^分合的])" +
+                    "|[卷章][一二三四五六七八九十](?:$|.{0,20}?)" +
+                    ")"
     );
 
     /**
@@ -38,24 +69,75 @@ public final class PdfReflowHelper {
     /**
      * Dialog opening characters
      */
-    private static final String DIALOG_OPENERS = "“‘「『";
+    private static final String DIALOG_OPENERS = "“‘「『﹁﹃";
 
     private static boolean isDialogOpener(char ch) {
         return DIALOG_OPENERS.indexOf(ch) >= 0;
     }
 
-    /**
-     * Bracket sets
-     */
-    private static final String OPEN_BRACKETS = "（([【《{<｛［";
-    private static final String CLOSE_BRACKETS = "）)]】》}>｝］";
+    // ---------------------------------------------------------------------
+    // Bracket punctuations (open → close)
+    // ---------------------------------------------------------------------
+    private static final Map<Character, Character> BRACKET_PAIRS;
+
+    static {
+        Map<Character, Character> map = new HashMap<>();
+
+        // Parentheses
+        map.put('（', '）');
+        map.put('(', ')');
+
+        // Square brackets
+        map.put('[', ']');
+        map.put('［', '］');
+
+        // Curly braces (ASCII + FULLWIDTH)
+        map.put('{', '}');
+        map.put('｛', '｝');
+
+        // Angle brackets
+        map.put('<', '>');
+        map.put('＜', '＞');
+        map.put('〈', '〉');
+
+        // CJK brackets
+        map.put('【', '】');
+        map.put('《', '》');
+        map.put('〔', '〕');
+        map.put('〖', '〗');
+
+        BRACKET_PAIRS = Collections.unmodifiableMap(map);
+    }
+
+    private static final Set<Character> OPEN_BRACKET_SET =
+            Collections.unmodifiableSet(new HashSet<>(BRACKET_PAIRS.keySet()));
+
+    private static final Set<Character> CLOSE_BRACKET_SET =
+            Collections.unmodifiableSet(new HashSet<>(BRACKET_PAIRS.values()));
+
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+    public static boolean isBracketOpener(char ch) {
+        return OPEN_BRACKET_SET.contains(ch);
+    }
+
+    public static boolean isBracketCloser(char ch) {
+        return CLOSE_BRACKET_SET.contains(ch);
+    }
+
+    public static boolean isMatchingBracket(char open, char close) {
+        Character expected = BRACKET_PAIRS.get(open);
+        return expected != null && expected == close;
+    }
 
     // Metadata key-value separators
     private static final char[] METADATA_SEPARATORS = new char[]{
             '：', // full-width colon
             ':', // ASCII colon
-            '・',
-            '　' // full-width ideographic space (U+3000)
+            '　', // full-width ideographic space (U+3000)
+            '·', // Middle dot (Latin)
+            '・', // Katakana middle dot
     };
 
     private static final Set<String> METADATA_KEYS = new HashSet<>(
@@ -95,6 +177,7 @@ public final class PdfReflowHelper {
                     "出品方",
                     "授權方", "授权方",
                     "電子版權", "数字版权",
+                    "發行", "发行",
                     "掃描", "扫描",
                     "OCR",
 
@@ -103,6 +186,9 @@ public final class PdfReflowHelper {
                     "在版編目", "在版编目",
                     "分類號", "分类号",
                     "主題詞", "主题词",
+                    "類型", "类型",
+                    "標簽", "标签",
+                    "系列",
 
                     // ===== 7. Publishing Cycle =====
                     "發行日", "发行日",
@@ -179,7 +265,7 @@ public final class PdfReflowHelper {
                 if (!addPdfPageHeader && buffer.length() > 0) {
                     char lastChar = buffer.charAt(buffer.length() - 1);
                     // Page-break-like empty line
-                    if (indexOfChar(CJK_PUNCT_END_CHARS, lastChar) < 0) {
+                    if (!isCjkPunctEnd(lastChar)) {
                         continue;
                     }
                 }
@@ -258,7 +344,7 @@ public final class PdfReflowHelper {
                                 splitAsHeading = false;
                             }
                             // all-CJK short heading line + previous not ended by sentence punctuation -> continuation
-                            else splitAsHeading = !allCjk || indexOfChar(CJK_PUNCT_END_CHARS, last) >= 0;
+                            else splitAsHeading = !allCjk || isCjkPunctEnd(last);
                         }
                     }
                 }
@@ -290,8 +376,8 @@ public final class PdfReflowHelper {
             String bufferText = buffer.toString();
 
             // 🔸 NEW RULE: If previous line ends with comma,
-//     do NOT flush even if this line starts dialog.
-//     (comma-ending means the sentence is not finished)
+            //     do NOT flush even if this line starts dialog.
+            //     (comma-ending means the sentence is not finished)
             if (currentIsDialogStart) {
 
                 boolean shouldFlushPrev = !bufferText.isEmpty();
@@ -320,7 +406,7 @@ public final class PdfReflowHelper {
 
             // --- Colon + dialog continuation ---
             if (bufferText.endsWith("：") || bufferText.endsWith(":")) {
-                if (stripped.length() > 0 && DIALOG_OPENERS.indexOf(stripped.charAt(0)) >= 0) {
+                if (isDialogOpener(stripped.charAt(0))) {
                     buffer.append(stripped);
                     dialogState.update(stripped);
                     continue;
@@ -329,7 +415,7 @@ public final class PdfReflowHelper {
 
             // --- CJK punctuation → paragraph end ---
             if (!bufferText.isEmpty()
-                    && indexOfChar(CJK_PUNCT_END_CHARS, bufferText.charAt(bufferText.length() - 1)) >= 0
+                    && isCjkPunctEnd(buffer.charAt(buffer.length() - 1))
                     && !dialogState.isUnclosed()) {
 
                 segments.add(bufferText);
@@ -453,7 +539,7 @@ public final class PdfReflowHelper {
     private static boolean isDialogStarter(String s) {
         if (s == null) return false;
         s = trimStartSpacesAndFullWidth(s);
-        return !s.isEmpty() && DIALOG_OPENERS.indexOf(s.charAt(0)) >= 0;
+        return !s.isEmpty() && isDialogOpener(s.charAt(0));
     }
 
     private static boolean isHeadingLike(String s) {
@@ -473,14 +559,20 @@ public final class PdfReflowHelper {
         }
 
         int len = s.length();
-        int maxLen = isAllAscii(s) || isMixedCjkAscii(s) ? 16 : 8;
         char last = s.charAt(len - 1);
+
+        if (len > 2 && isMatchingBracket(s.charAt(0), last) && isMostlyCjk(s)) {
+            return true;
+        }
+
+        int maxLen = isAllAscii(s) || isMixedCjkAscii(s) ? 16 : 8;
+
         // Short circuit for item title-like: "物品准备："
         if ((last == ':' || last == '：') && len <= maxLen && isAllCjkNoWhiteSpace(s.substring(0, len - 1))) {
             return true;
         }
         // If *ends* with CJK punctuation → not heading
-        if (indexOfChar(CJK_PUNCT_END_CHARS, last) >= 0) { // uses CJK_PUNCT_END_CHARS
+        if (isCjkPunctEnd(last)) {
             return false;
         }
 
@@ -573,20 +665,22 @@ public final class PdfReflowHelper {
 
     private static boolean hasUnclosedBracket(String s) {
         boolean hasOpen = false;
-        boolean hasClose = false;
 
-        for (int i = 0; i < s.length(); i++) {
+        for (int i = 0, n = s.length(); i < n; i++) {
             char ch = s.charAt(i);
-            if (!hasOpen && OPEN_BRACKETS.indexOf(ch) >= 0) {
+
+            // If we see any closer, it's not "unclosed bracket" by your definition.
+            if (isBracketCloser(ch)) {
+                return false; // early exit
+            }
+
+            if (!hasOpen && isBracketOpener(ch)) {
                 hasOpen = true;
+                // We keep scanning only to see if a closer appears later.
             }
-            if (!hasClose && CLOSE_BRACKETS.indexOf(ch) >= 0) {
-                hasClose = true;
-            }
-            if (hasOpen && hasClose) break;
         }
 
-        return hasOpen && !hasClose;
+        return hasOpen;
     }
 
     private static String stripHalfWidthIndentKeepFullWidth(String s) {
@@ -943,4 +1037,58 @@ public final class PdfReflowHelper {
 
         return false;
     }
+
+    /**
+     * Returns true if the string is mostly CJK:
+     * - Ignores whitespace
+     * - Ignores digits (ASCII + FULLWIDTH)
+     * - Counts CJK characters
+     * - Counts ASCII letters only (punctuation is neutral)
+     * <p>
+     * Rule:
+     * cjk > 0 && cjk >= asciiLetters
+     * <p>
+     * Designed for heading / structure heuristics.
+     */
+    private static boolean isMostlyCjk(String s) {
+        if (s == null || s.isEmpty())
+            return false;
+
+        int cjk = 0;
+        int ascii = 0;
+
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
+
+            // Neutral whitespace
+            if (Character.isWhitespace(ch))
+                continue;
+
+            // Neutral digits (ASCII + FULLWIDTH)
+            if (isDigitAsciiOrFullWidth(ch))
+                continue;
+
+            if (isCjk(ch)) {
+                cjk++;
+                continue;
+            }
+
+            // Count ASCII letters only; ASCII punctuation is neutral
+            if (ch <= 0x7F && Character.isLetter(ch)) {
+                ascii++;
+            }
+        }
+
+        return cjk > 0 && cjk >= ascii;
+    }
+
+    private static boolean isDigitAsciiOrFullWidth(char ch) {
+        // ASCII digits '0'–'9'
+        if (ch >= '0' && ch <= '9')
+            return true;
+
+        // FULLWIDTH digits '０'–'９'
+        return ch >= '０' && ch <= '９';
+    }
+
 }

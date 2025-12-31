@@ -56,8 +56,7 @@ public class PdfCommand implements Runnable {
     @Option(
             names = {"-c", "--config"},
             paramLabel = "<conversion>",
-            description = "OpenCC conversion configuration (e.g. s2t, t2s, s2tw, t2hk, t2jp, ...)",
-            required = true
+            description = "OpenCC conversion configuration (e.g. s2t, t2s, s2tw, t2hk, t2jp, ...)"
     )
     private String config;
 
@@ -85,24 +84,45 @@ public class PdfCommand implements Runnable {
     )
     private boolean compact;
 
+    @Option(
+            names = {"-e", "--extract"},
+            description = "Extract text from PDF document only (default: false)"
+    )
+    private boolean extract;
+
     private static final Logger LOGGER = Logger.getLogger(PdfCommand.class.getName());
 
     @Override
     public void run() {
+        if (!extract) {
+            if (config == null ||
+                    !OpenCC.getSupportedConfigs().contains(config.toLowerCase())) {
+                System.err.println("❌ Missing or invalid config: " + config);
+                return;
+            }
+        }
+
+        if (extract && punct) {
+            System.err.println("ℹ️  Note: --punct has no effect in extract-only mode.");
+        }
+
         try {
             validateInputPdf();
 
             if (output == null) {
                 String inputName = removeExtension(input.getName());
-                String defaultName = inputName + "_converted.txt";
+                String defaultName;
+                if (extract) {
+                    defaultName = inputName + "_extracted.txt";
+                } else {
+                    defaultName = inputName + "_converted.txt";
+                }
                 output = new File(input.getParentFile(), defaultName);
                 System.err.println("ℹ️ Output file not specified. Using: " + output.getAbsolutePath());
             }
 
-            OpenCC opencc = new OpenCC(config);
-
             // --- NEW: progress bar setup ---
-            ConsoleProgressBar progressBar = new ConsoleProgressBar(40);
+            ConsoleProgressBar progressBar = new ConsoleProgressBar(20);
             System.err.println("📄 Extracting PDF text...");
             String raw = PdfBoxHelper.extractText(
                     input,
@@ -121,18 +141,23 @@ public class PdfCommand implements Runnable {
                 processed = PdfReflowHelper.reflowCjkParagraphs(raw, addHeader, compact);
             }
 
-            // OpenCC conversion
-            System.err.println("🔁 Converting with OpenccJava...");
-            String converted = opencc.convert(processed, punct);
+            if (extract) {
+                System.err.println("🔁 Writing PDF extracted text...");
+                Files.write(output.toPath(), processed.getBytes(StandardCharsets.UTF_8));
+            } else {
+                OpenCC opencc = new OpenCC(config);
+                // OpenCC conversion
+                System.err.println("🔁 Converting with OpenccJava...");
+                String converted = opencc.convert(processed, punct);
+                // Save UTF-8
+                Files.write(output.toPath(), converted.getBytes(StandardCharsets.UTF_8));
+            }
 
-            // Save UTF-8
-            Files.write(output.toPath(), converted.getBytes(StandardCharsets.UTF_8));
-
-            System.err.println("✅ PDF conversion succeeded.");
+            System.err.println("✅ PDF " + (extract ? "extraction" : "conversion") + " succeeded.");
             System.err.println("📄 Input : " + input.getAbsolutePath());
             System.err.println("📁 Output: " + output.getAbsolutePath());
-            System.err.println("⚙️  Config: " + config +
-                    (punct ? " (punct on)" : " (punct off)") +
+            System.err.println("⚙️  Config: " + (extract ? "Extract only" : config +
+                    (punct ? " (punct on)" : " (punct off)")) +
                     (addHeader ? ", header" : "") +
                     (reflow ? ", reflow" : "") +
                     (compact ? ", compact" : ""));
