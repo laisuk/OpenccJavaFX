@@ -6,6 +6,7 @@ import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -323,4 +324,46 @@ public final class PdfBoxHelper {
         }
     }
 
+    public static boolean isPdf(File file) {
+        if (file == null)
+            return false;
+
+        if (!file.isFile())
+            return false;
+
+        // Optional fast hint (not authoritative)
+        String name = file.getName();
+        boolean extensionLooksPdf =
+                name.length() >= 4 &&
+                        name.regionMatches(true, name.length() - 4, ".pdf", 0, 4);
+
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+
+            long length = raf.length();
+
+            if (!extensionLooksPdf && length < 5)
+                return false;
+
+            // PDF header must appear within the first 1024 bytes
+            int readLen = (int) Math.min(1024, length);
+            byte[] buffer = new byte[readLen];
+            raf.readFully(buffer);
+
+            // Look for ASCII "%PDF-" marker
+            for (int i = 0; i <= readLen - 5; i++) {
+                if (buffer[i]     == '%' &&
+                        buffer[i + 1] == 'P' &&
+                        buffer[i + 2] == 'D' &&
+                        buffer[i + 3] == 'F' &&
+                        buffer[i + 4] == '-') {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (IOException ex) {
+            // I/O error, permission issue, etc.
+            return false;
+        }
+    }
 }

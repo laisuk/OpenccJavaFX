@@ -3,9 +3,6 @@ package openxmlhelper;
 import javax.xml.stream.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -17,18 +14,18 @@ public final class OpenXmlHelper {
 
     // ---------------------------- Format detection ----------------------------
 
-    public static boolean isDocx(String path) {
-        if (path == null || path.trim().isEmpty())
+    public static boolean isDocx(File file) {
+        if (file == null)
             return false;
 
-        Path p = Paths.get(path);
-        if (!Files.exists(p))
+        if (!file.isFile())
             return false;
 
-        if (!path.toLowerCase(Locale.ROOT).endsWith(".docx"))
+        String name = file.getName().toLowerCase(Locale.ROOT);
+        if (!name.endsWith(".docx"))
             return false;
 
-        try (ZipFile zip = new ZipFile(path)) {
+        try (ZipFile zip = new ZipFile(file)) {
             return zip.getEntry("word/document.xml") != null
                     && zip.getEntry("[Content_Types].xml") != null;
         } catch (IOException ex) {
@@ -36,18 +33,20 @@ public final class OpenXmlHelper {
         }
     }
 
-    public static boolean isOdt(String path) {
-        if (path == null || path.trim().isEmpty())
+    public static boolean isOdt(File file) {
+        if (file == null)
             return false;
 
-        Path p = Paths.get(path);
-        if (!Files.exists(p))
+        if (!file.isFile())
             return false;
 
-        if (!path.toLowerCase(Locale.ROOT).endsWith(".odt"))
+        String name = file.getName().toLowerCase(Locale.ROOT);
+        if (!name.endsWith(".odt"))
             return false;
 
-        try (ZipFile zip = new ZipFile(path)) {
+        try (ZipFile zip = new ZipFile(file)) {
+
+            // Required ODT content
             ZipEntry content = zip.getEntry("content.xml");
             if (content == null)
                 return false;

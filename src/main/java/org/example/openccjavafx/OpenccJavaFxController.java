@@ -529,10 +529,11 @@ public class OpenccJavaFxController {
             @Override
             protected String call() throws Exception {
                 // Heavy work runs here in a background thread
-                String fileNameLower = file.getName().toLowerCase(Locale.ROOT);
+//                String fileNameLower = file.getName().toLowerCase(Locale.ROOT);
+//                String path = file.getAbsolutePath();
 
                 // -------- PDF Handling --------
-                if (fileNameLower.endsWith(".pdf")) {
+                if (PdfBoxHelper.isPdf(file)) {
                     enablePdfOptions = true;
 
                     boolean autoReflow = cbAutoReflow.isSelected();
@@ -555,7 +556,8 @@ public class OpenccJavaFxController {
                 }
 
                 // -------- DOCX Handling --------
-                if (fileNameLower.endsWith(".docx")) {
+//                if (fileNameLower.endsWith(".docx")) {
+                if (OpenXmlHelper.isDocx(file)) {
                     enablePdfOptions = false;
 
                     // IMPORTANT: DOCX is a ZIP container — must extract via OpenXml helper
@@ -571,7 +573,8 @@ public class OpenccJavaFxController {
                 }
 
                 // -------- ODT Handling (optional, if you have it) --------
-                if (fileNameLower.endsWith(".odt")) {
+//                if (fileNameLower.endsWith(".odt")) {
+                if (OpenXmlHelper.isOdt(file)) {
                     enablePdfOptions = false;
 
                     // If your ODT extractor is also in OpenXmlHelper, call it here.
