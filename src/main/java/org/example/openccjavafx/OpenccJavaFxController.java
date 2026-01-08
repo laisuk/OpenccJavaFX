@@ -13,6 +13,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.scene.control.ProgressBar;
 import openccjava.OfficeHelper;
+import openccjava.OpenccConfig;
 import openxmlhelper.OpenDocumentHelper;
 import openxmlhelper.OpenXmlHelper;
 import org.fxmisc.richtext.CodeArea;
@@ -268,7 +269,7 @@ public class OpenccJavaFxController {
             updateSourceInfo(OpenCC.zhoCheck(inputText));
         }
 
-        String config = getConfig();
+        String config = getCurrentConfig();
         openccInstance.setConfig(config);
 
         long startTime = System.nanoTime(); // Start timer before convert()
@@ -309,7 +310,7 @@ public class OpenccJavaFxController {
         }
 
         // Prepare config once
-        final String config = getConfig();
+        final String config = getCurrentConfig();
         openccInstance.setConfig(config);
 
         textAreaPreview.clear();
@@ -460,20 +461,34 @@ public class OpenccJavaFxController {
         }
     }
 
-    private String getConfig() {
-        String config = "s2t";
+    private String getCurrentConfig() {
+        return getCurrentConfigId().asStr();
+    }
+
+    private OpenccConfig getCurrentConfigId() {
         if (rbS2t.isSelected()) {
-            config = rbStd.isSelected() ? "s2t" : (rbHK.isSelected() ? "s2hk" : (cbZHTW.isSelected() ? "s2twp" : "s2tw"));
+            if (rbStd.isSelected()) return OpenccConfig.S2T;
+            if (rbHK.isSelected()) return OpenccConfig.S2Hk;
+            return cbZHTW.isSelected() ? OpenccConfig.S2Twp : OpenccConfig.S2Tw;
         }
+
         if (rbT2s.isSelected()) {
-            config = rbStd.isSelected() ? "t2s" : (rbHK.isSelected() ? "hk2s" : (cbZHTW.isSelected() ? "tw2sp" : "tw2s"));
+            if (rbStd.isSelected()) return OpenccConfig.T2S;
+            if (rbHK.isSelected()) return OpenccConfig.Hk2S;
+            return cbZHTW.isSelected() ? OpenccConfig.Tw2Sp : OpenccConfig.Tw2S;
         }
+
         if (rbManual.isSelected()) {
-            if (cbManual.getValue() != null) {
-                config = cbManual.getValue().split(" ")[0];
+            String v = cbManual.getValue();
+            if (v != null) {
+                int sp = v.indexOf(' ');
+                String key = sp >= 0 ? v.substring(0, sp) : v;
+                OpenccConfig cfg = OpenccConfig.tryParse(key);
+                if (cfg != null) return cfg;
             }
         }
-        return config;
+
+        return OpenccConfig.S2T; // fallback
     }
 
     public void onBtnOpenFileClicked() {

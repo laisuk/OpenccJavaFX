@@ -341,82 +341,35 @@ public class OpenCC {
     /**
      * Sets the current conversion configuration using a configuration string.
      *
-     * <p>The provided {@code config} string is parsed in a case-insensitive manner
-     * via {@link OpenccConfig#tryParse(String)}. If {@code config} is {@code null},
-     * empty, or does not correspond to any supported configuration, the default
-     * configuration ({@code s2t}) is used.</p>
+     * <p>The provided {@code config} is parsed in a case-insensitive manner.
+     * If {@code config} is {@code null}, empty, or invalid, the default
+     * configuration ({@code s2t}) is applied and {@link #getLastError()} is set.</p>
      *
-     * <p>On successful configuration change, any previously recorded error
-     * is cleared. On invalid input, an error message is recorded and the
-     * default configuration is applied.</p>
+     * <p>On success, {@link #getLastError()} is cleared.</p>
      *
-     * @param config the configuration key (for example {@code "s2t"},
-     *               {@code "S2TWP"}, {@code "tw2sp"}); may be {@code null}
+     * @param config configuration key (e.g. {@code "s2t"}, {@code "S2TWP"}); may be {@code null}
      */
     public void setConfig(String config) {
-        setConfig(OpenccConfig.tryParse(config), true);
-    }
-
-    /**
-     * Sets the current conversion configuration using a configuration string,
-     * with optional control over error reporting.
-     *
-     * <p>The provided {@code config} string is parsed in a case-insensitive manner.
-     * If parsing fails, the default configuration ({@code s2t}) is applied.</p>
-     *
-     * <p>If {@code setLastError} is {@code true}, an error message is recorded
-     * when falling back to the default configuration, and cleared on success.
-     * If {@code setLastError} is {@code false}, the {@link #lastError} field
-     * is left unchanged.</p>
-     *
-     * @param config       the configuration key; may be {@code null}
-     * @param setLastError whether to update {@link #lastError} on success or failure
-     */
-    public void setConfig(String config, boolean setLastError) {
-        setConfig(OpenccConfig.tryParse(config), setLastError);
+        setConfig(OpenccConfig.tryParse(config));
     }
 
     /**
      * Sets the current conversion configuration using a typed configuration ID.
      *
-     * <p>This overload performs no string parsing and should be preferred
-     * by internal code and advanced callers. If {@code cfg} is {@code null},
-     * the default configuration ({@code s2t}) is applied.</p>
+     * <p>If {@code cfg} is {@code null}, the default configuration ({@code s2t})
+     * is applied and {@link #getLastError()} is set.</p>
      *
-     * <p>On successful configuration change, any previously recorded error
-     * is cleared.</p>
+     * <p>On success, {@link #getLastError()} is cleared.</p>
      *
-     * @param cfg the configuration ID, or {@code null} to use the default
+     * @param cfg configuration ID, or {@code null} to use default
      */
     public void setConfig(OpenccConfig cfg) {
-        setConfig(cfg, true);
-    }
-
-    /**
-     * Sets the current conversion configuration using a typed configuration ID,
-     * with optional control over error reporting.
-     *
-     * <p>If {@code cfg} is non-null, it becomes the active configuration.
-     * If {@code cfg} is {@code null}, the default configuration ({@code s2t})
-     * is applied.</p>
-     *
-     * <p>If {@code setLastError} is {@code true}, {@link #lastError} is cleared
-     * on success or set to an explanatory message on fallback.
-     * If {@code setLastError} is {@code false}, {@link #lastError} is not modified.</p>
-     *
-     * @param cfg          the configuration ID, or {@code null} to use the default
-     * @param setLastError whether to update {@link #lastError} on success or fallback
-     */
-    public void setConfig(OpenccConfig cfg, boolean setLastError) {
         if (cfg != null) {
             this.configId = cfg;
-            if (setLastError) this.lastError = null;
+            this.lastError = null;
         } else {
             this.configId = DEFAULT_CONFIG;
-            if (setLastError) {
-                this.lastError = "Invalid config: null. Using default '"
-                        + DEFAULT_CONFIG.asStr() + "'.";
-            }
+            this.lastError = "Invalid config: null. Using default '" + DEFAULT_CONFIG.asStr() + "'.";
         }
     }
 
@@ -1604,11 +1557,11 @@ public class OpenCC {
      *
      * @param input the input text to check (maybe {@code null} or empty)
      * @return an integer code representing the detected Chinese variant
+     * @link zhoCheckInstance(String) for instance-based
+     * compatibility.
      * @see #zhoCheck(String)
      * @deprecated since 1.1.0 – {@code zhoCheck} is now a static method.
      * Use {@link #zhoCheck(String)} instead, or this method
-     * @link zhoCheckInstance(String) for instance-based
-     * compatibility.
      */
     @Deprecated
     public final int zhoCheckInstance(String input) {
