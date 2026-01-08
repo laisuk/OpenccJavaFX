@@ -133,6 +133,7 @@ public class OpenccJavaFxController {
         cbSaveTarget.getItems().addAll(SAVE_TARGET_LIST);
         cbSaveTarget.getSelectionModel().select(1);
         // Hover status display
+        StatusHoverHelper.bind(cbPunctuation, lblStatus, "Convert CJK quote punctuations");
         StatusHoverHelper.bind(btnOpenFile, lblStatus, "Open a file");
         StatusHoverHelper.bind(btnSaveAs, lblStatus, "Save current text in Source/Destination");
         StatusHoverHelper.bind(cbSaveTarget, lblStatus, "Select target text for saving");

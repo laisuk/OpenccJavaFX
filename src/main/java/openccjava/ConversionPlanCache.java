@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Cache for mapping an {@link OpenCC.Config} and punctuation setting
+ * Cache for mapping an {@link OpenccConfig} and punctuation setting
  * to a fully prepared {@link DictRefs} instance with per-round
  * {@link StarterUnion} precomputation.
  *
@@ -67,7 +67,7 @@ public final class ConversionPlanCache {
      * @param punctuation whether punctuation conversion is enabled
      * @return the prepared {@link DictRefs} with unions for this config
      */
-    public DictRefs getPlan(OpenCC.Config config, boolean punctuation) {
+    public DictRefs getPlan(OpenccConfig config, boolean punctuation) {
         return planCache.computeIfAbsent(new PlanKey(config, punctuation),
                 k -> buildPlan(config, punctuation));
     }
@@ -95,7 +95,7 @@ public final class ConversionPlanCache {
      * </p>
      *
      * <p>
-     * The switch below covers all supported {@link OpenCC.Config} values:
+     * The switch below covers all supported {@link OpenccConfig} values:
      * </p>
      * <ul>
      *   <li><b>S2T / T2S</b> – Simplified ↔ Traditional with optional punctuation dictionaries</li>
@@ -117,12 +117,12 @@ public final class ConversionPlanCache {
      *   <li>{@link StarterUnion} – retrieved from {@link DictionaryMaxlength#unionFor(UnionKey)}</li>
      * </ul>
      *
-     * @param config      the OpenCC configuration (e.g. {@link OpenCC.Config#S2T})
+     * @param config      the OpenCC configuration (e.g. {@link OpenccConfig#S2T})
      * @param punctuation whether punctuation conversion should be included
      * @return the constructed {@link DictRefs} for this configuration
      * @throws IllegalArgumentException if the configuration is not handled
      */
-    private DictRefs buildPlan(OpenCC.Config config, boolean punctuation) {
+    private DictRefs buildPlan(OpenccConfig config, boolean punctuation) {
         final DictionaryMaxlength d = provider.get();
 
         List<DictionaryMaxlength.DictEntry> r1, r2, r3;
@@ -249,7 +249,7 @@ public final class ConversionPlanCache {
      * <p>
      * A {@code PlanKey} uniquely identifies a plan by:
      * <ul>
-     *   <li>{@link OpenCC.Config} – the conversion configuration</li>
+     *   <li>{@link OpenccConfig} – the conversion configuration</li>
      *   <li>Punctuation mode – whether punctuation conversion is enabled</li>
      * </ul>
      * </p>
@@ -261,9 +261,9 @@ public final class ConversionPlanCache {
      */
     static final class PlanKey {
         /**
-         * Conversion configuration (e.g. {@link OpenCC.Config#S2T}).
+         * Conversion configuration (e.g. {@link OpenccConfig#S2T}).
          */
-        final OpenCC.Config config;
+        final OpenccConfig config;
         /**
          * Whether punctuation conversion is enabled.
          */
@@ -279,7 +279,7 @@ public final class ConversionPlanCache {
          * @param c the OpenCC configuration
          * @param p whether punctuation conversion is enabled
          */
-        PlanKey(OpenCC.Config c, boolean p) {
+        PlanKey(OpenccConfig c, boolean p) {
             this.config = c;
             this.punctuation = p;
             this.hash = (c.ordinal() * 397) ^ (p ? 1 : 0);

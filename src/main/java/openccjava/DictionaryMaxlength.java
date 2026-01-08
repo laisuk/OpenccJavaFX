@@ -733,7 +733,7 @@ public class DictionaryMaxlength {
      * </p>
      * <ul>
      *   <li>{@link ConversionPlanCache} – caches prepared {@link DictRefs}
-     *       for each {@link OpenCC.Config} and punctuation mode.</li>
+     *       for each {@link OpenccConfig} and punctuation mode.</li>
      *   <li>{@link Unions} – caches lazily built {@link StarterUnion}
      *       sets for each {@link UnionKey}.</li>
      * </ul>
@@ -757,7 +757,7 @@ public class DictionaryMaxlength {
      * @param punctuation whether punctuation conversion is enabled
      * @return the cached or newly built {@link DictRefs} instance
      */
-    public DictRefs getPlan(OpenCC.Config cfg, boolean punctuation) {
+    public DictRefs getPlan(OpenccConfig cfg, boolean punctuation) {
         return planCache.getPlan(cfg, punctuation);
     }
 

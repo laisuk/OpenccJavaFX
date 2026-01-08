@@ -72,156 +72,25 @@ public class OpenCC {
     private final DictionaryMaxlength dictionary;
 
     /**
-     * Supported conversion configurations.
-     *
-     * <p>Each constant corresponds to an OpenCC conversion mode,
-     * covering Simplified ↔ Traditional Chinese and region-specific variants
-     * (Taiwan, Hong Kong, Japan). The {@code p} suffix indicates that
-     * phrase-level mappings are also applied.</p>
-     */
-    public enum Config {
-
-        /**
-         * Simplified → Traditional.
-         */
-        S2T,
-
-        /**
-         * Traditional → Simplified.
-         */
-        T2S,
-
-        /**
-         * Simplified → Traditional (Taiwan).
-         */
-        S2Tw,
-
-        /**
-         * Traditional (Taiwan) → Simplified.
-         */
-        Tw2S,
-
-        /**
-         * Simplified → Traditional (Taiwan, with phrases).
-         */
-        S2Twp,
-
-        /**
-         * Traditional (Taiwan, with phrases) → Simplified.
-         */
-        Tw2Sp,
-
-        /**
-         * Simplified → Traditional (Hong Kong).
-         */
-        S2Hk,
-
-        /**
-         * Traditional (Hong Kong) → Simplified.
-         */
-        Hk2S,
-
-        /**
-         * Traditional → Traditional (Taiwan).
-         */
-        T2Tw,
-
-        /**
-         * Traditional → Traditional (Taiwan, with phrases).
-         */
-        T2Twp,
-
-        /**
-         * Traditional (Taiwan) → Traditional.
-         */
-        Tw2T,
-
-        /**
-         * Traditional (Taiwan, with phrases) → Traditional.
-         */
-        Tw2Tp,
-
-        /**
-         * Traditional → Traditional (Hong Kong).
-         */
-        T2Hk,
-
-        /**
-         * Traditional (Hong Kong) → Traditional.
-         */
-        Hk2T,
-
-        /**
-         * Traditional → Japanese Shinjitai.
-         */
-        T2Jp,
-
-        /**
-         * Japanese Shinjitai → Traditional.
-         */
-        Jp2T;
-
-        /**
-         * Returns the lowercase string form of this config.
-         * <p>
-         * Example: {@code S2T.asStr()} → {@code "s2t"}.
-         * </p>
-         *
-         * @return the lowercase string representation
-         */
-        public String asStr() {
-            return name().toLowerCase();
-        }
-
-        /**
-         * Parses a string into a corresponding {@code Config} constant, ignoring case.
-         *
-         * <p>This method performs a case-insensitive lookup of the provided value
-         * against all available configuration constants. It supports both upper-
-         * and lower-case forms, including mixed-case variants such as
-         * {@code "s2twp"} or {@code "T2Twp"}.</p>
-         *
-         * <p>Example usage:</p>
-         * <pre>{@code
-         * Config c1 = Config.fromStr("s2t");    // returns Config.S2T
-         * Config c2 = Config.fromStr("T2Twp");  // returns Config.T2Twp
-         * Config c3 = Config.fromStr("tw2tp");  // returns Config.Tw2Tp
-         * }</pre>
-         *
-         * @param value the configuration key string (e.g., {@code "s2t"}, {@code "t2s"},
-         *              {@code "t2twp"}, {@code "tw2tp"})
-         * @return the matching {@code Config} constant
-         * @throws IllegalArgumentException if {@code value} is {@code null} or does not
-         *                                  correspond to any known configuration constant
-         */
-        public static Config fromStr(String value) {
-            if (value == null) {
-                throw new IllegalArgumentException("Config string cannot be null");
-            }
-            String trimmed = value.trim();
-            for (Config c : Config.values()) {
-                if (c.name().equalsIgnoreCase(trimmed)) {
-                    return c;
-                }
-            }
-            throw new IllegalArgumentException("Unknown config: " + value);
-        }
-    }
-
-    /**
      * Cached DictRefs to avoid redundant config resolution.
      */
-    private final Map<String, DictRefs> configCache = new HashMap<>();
-
-    /**
-     * Current conversion configuration key (e.g., s2t, t2s).
-     */
-    private String config = "s2t";
+    private final EnumMap<OpenccConfig, DictRefs> configCacheById =
+            new EnumMap<>(OpenccConfig.class);
 
     /**
      * Stores the last error message encountered, if any.
      */
     private String lastError;
+
+    /**
+     * Default conversion configuration for OpenCC
+     */
+    private static final OpenccConfig DEFAULT_CONFIG = OpenccConfig.S2T;
+
+    /**
+     * Backing field for default config
+     */
+    private OpenccConfig configId = DEFAULT_CONFIG;   // ✅ single source of truth
 
     /**
      * Maximum capacity for thread-local StringBuilder (used during conversion).
@@ -315,61 +184,123 @@ public class OpenCC {
     // ---------- Static helpers ----------
 
     /**
-     * Creates a new {@link OpenCC} instance with the given configuration.
-     * If the provided config is invalid, {@code "s2t"} is used instead.
+     * Creates a new {@link OpenCC} instance from a configuration string.
      *
-     * @param config the configuration key (e.g., {@code "s2t"}, {@code "tw2s"})
-     * @return a new {@link OpenCC} instance using the provided (or defaulted) config
+     * <p>The provided {@code config} string is parsed in a case-insensitive manner
+     * using {@link OpenccConfig#tryParse(String)}. If the string does not correspond
+     * to any supported configuration, the default configuration
+     * ({@code s2t}) is used instead.</p>
+     *
+     * <p>This method never throws due to an invalid configuration string.
+     * The effective configuration can be queried via {@link #getConfig()}
+     * or {@link #getConfigId()}.</p>
+     *
+     * @param config the configuration key (e.g. {@code "s2t"}, {@code "S2TWP"}, {@code "tw2s"});
+     *               may be {@code null}
+     * @return a new {@link OpenCC} instance using the parsed configuration,
+     * or the default configuration if parsing fails
      * @since 1.1.0
      */
     public static OpenCC fromConfig(String config) {
-        return new OpenCC(config);
+        return new OpenCC(OpenccConfig.tryParse(config));
+    }
+
+    /**
+     * Creates a new {@link OpenCC} instance with the specified configuration ID.
+     *
+     * <p>If {@code configId} is {@code null}, the default configuration
+     * ({@code s2t}) is used.</p>
+     *
+     * @param configId the configuration ID, or {@code null} to use the default
+     * @return a new {@link OpenCC} instance using the specified (or defaulted) configuration
+     * @since 1.1.0
+     */
+    public static OpenCC fromConfig(OpenccConfig configId) {
+        return new OpenCC(configId);
     }
 
     // ---------- Instance constructors + API ----------
 
     /**
-     * Constructs an OpenCC instance using the default configuration ("s2t").
+     * Constructs an {@code OpenCC} instance using the default configuration
+     * ({@code s2t}).
+     *
+     * <p>This is equivalent to {@code new OpenCC(OpenccConfig.S2T)}.</p>
+     *
+     * @since 1.0.0
      */
     public OpenCC() {
-        this("s2t");
+        this(OpenccConfig.S2T);
     }
 
     /**
-     * Constructs an {@code OpenCC} instance with the specified conversion configuration.
+     * Constructs an {@code OpenCC} instance using a configuration string.
      *
-     * <p>This constructor does not reload dictionaries for each instance.
+     * <p>The provided {@code config} string is parsed in a case-insensitive manner
+     * via {@link OpenccConfig#tryParse(String)}. If the string is {@code null},
+     * empty, or does not correspond to any supported configuration, the default
+     * configuration ({@code s2t}) is used.</p>
+     *
+     * <p>This constructor does <em>not</em> reload dictionaries for each instance.
      * Instead, it retrieves a shared singleton {@link DictionaryMaxlength}
-     * from {@link DictionaryHolder}. The dictionary is loaded lazily on
-     * first access and reused by all subsequent {@code OpenCC} instances.</p>
+     * from {@link DictionaryHolder}. The dictionary is loaded lazily on first access
+     * and reused by all subsequent {@code OpenCC} instances.</p>
      *
-     * <p>The shared dictionary is resolved in the following order (on first access only):</p>
+     * <p>The shared dictionary is resolved in the following order
+     * (performed only once per JVM):</p>
+     *
      * <ol>
-     *   <li><b>JSON file from the file system:</b>
-     *       {@code dicts/dictionary_maxlength.json} in the current working directory.</li>
-     *   <li><b>Embedded JSON resource:</b>
-     *       {@code /dicts/dictionary_maxlength.json} from the application’s classpath
-     *       (e.g. inside the JAR).</li>
-     *   <li><b>Plain-text fallback:</b>
-     *       If neither JSON source is found, falls back to loading individual dictionary
-     *       text files from {@code dicts/} via {@link DictionaryMaxlength#fromDicts()}.</li>
+     *   <li>
+     *     <b>JSON file from the file system:</b><br>
+     *     {@code dicts/dictionary_maxlength.json} in the current working directory.
+     *   </li>
+     *   <li>
+     *     <b>Embedded JSON resource:</b><br>
+     *     {@code /dicts/dictionary_maxlength.json} available on the application
+     *     classpath (for example, packaged inside the JAR).
+     *   </li>
+     *   <li>
+     *     <b>Plain-text fallback:</b><br>
+     *     If neither JSON source is found, individual dictionary text files are
+     *     loaded from {@code dicts/} using
+     *     {@link DictionaryMaxlength#fromDicts()}.
+     *   </li>
      * </ol>
      *
-     * <p><b>Important:</b> because the dictionary is a shared singleton,
-     * any modification to its contents (e.g. adding or removing entries)
-     * will affect <em>all</em> {@code OpenCC} instances within the JVM.</p>
+     * <p><b>Important:</b> Because the dictionary is a shared singleton,
+     * any modification to its contents (for example, adding or removing entries)
+     * will affect <em>all</em> {@code OpenCC} instances within the same JVM.</p>
      *
-     * <p>If all loading attempts fail, a {@link RuntimeException} is thrown
-     * with the underlying cause recorded in {@link #lastError}.</p>
+     * <p>If all dictionary loading attempts fail, a {@link RuntimeException}
+     * is thrown. The underlying failure reason is recorded in
+     * {@link #getLastError()}.</p>
      *
-     * @param config the conversion configuration key (e.g. {@code "s2t"}, {@code "tw2sp"});
-     *               see {@link Config} for supported values
+     * @param config the configuration key (for example {@code "s2t"},
+     *               {@code "S2TWP"}, {@code "tw2sp"}); may be {@code null}
      * @throws RuntimeException if no dictionary source can be loaded or parsed
+     * @since 1.1.0
      */
     public OpenCC(String config) {
-        this.dictionary = DictionaryHolder.get(); // Lazy static, loaded on first access
+        this(OpenccConfig.tryParse(config));
+    }
 
-        setConfig(config);
+    /**
+     * Constructs an {@code OpenCC} instance using a typed configuration ID.
+     *
+     * <p>If {@code configId} is {@code null}, the default configuration
+     * ({@code s2t}) is used.</p>
+     *
+     * <p>The underlying dictionary is obtained from {@link DictionaryHolder}
+     * and shared across all {@code OpenCC} instances. Dictionary loading
+     * is performed lazily on first access.</p>
+     *
+     * @param configId the configuration ID, or {@code null} to use the default
+     * @throws RuntimeException if no dictionary source can be loaded or parsed
+     * @since 1.1.0
+     */
+    public OpenCC(OpenccConfig configId) {
+        this.dictionary = DictionaryHolder.get(); // Lazy static, loaded on first access
+        setConfig(configId);
     }
 
     /**
@@ -403,75 +334,285 @@ public class OpenCC {
      * @param punctuation whether punctuation conversion is enabled
      * @return the prepared {@link DictRefs} for this configuration
      */
-    private DictRefs getDictRefsUnionForConfig(Config cfg, boolean punctuation) {
-//        return planCache.getPlan(cfg, punctuation);
+    private DictRefs getDictRefsUnionForConfig(OpenccConfig cfg, boolean punctuation) {
         return dictionary.getPlan(cfg, punctuation);
     }
 
     /**
-     * Sets the current conversion configuration if supported.
-     * Defaults to "s2t" on invalid input and sets an error message.
+     * Sets the current conversion configuration using a configuration string.
      *
-     * @param config the new configuration key
+     * <p>The provided {@code config} string is parsed in a case-insensitive manner
+     * via {@link OpenccConfig#tryParse(String)}. If {@code config} is {@code null},
+     * empty, or does not correspond to any supported configuration, the default
+     * configuration ({@code s2t}) is used.</p>
+     *
+     * <p>On successful configuration change, any previously recorded error
+     * is cleared. On invalid input, an error message is recorded and the
+     * default configuration is applied.</p>
+     *
+     * @param config the configuration key (for example {@code "s2t"},
+     *               {@code "S2TWP"}, {@code "tw2sp"}); may be {@code null}
      */
     public void setConfig(String config) {
-        if (getSupportedConfigs().contains(config)) {
-            this.config = config;
+        setConfig(OpenccConfig.tryParse(config), true);
+    }
+
+    /**
+     * Sets the current conversion configuration using a configuration string,
+     * with optional control over error reporting.
+     *
+     * <p>The provided {@code config} string is parsed in a case-insensitive manner.
+     * If parsing fails, the default configuration ({@code s2t}) is applied.</p>
+     *
+     * <p>If {@code setLastError} is {@code true}, an error message is recorded
+     * when falling back to the default configuration, and cleared on success.
+     * If {@code setLastError} is {@code false}, the {@link #lastError} field
+     * is left unchanged.</p>
+     *
+     * @param config       the configuration key; may be {@code null}
+     * @param setLastError whether to update {@link #lastError} on success or failure
+     */
+    public void setConfig(String config, boolean setLastError) {
+        setConfig(OpenccConfig.tryParse(config), setLastError);
+    }
+
+    /**
+     * Sets the current conversion configuration using a typed configuration ID.
+     *
+     * <p>This overload performs no string parsing and should be preferred
+     * by internal code and advanced callers. If {@code cfg} is {@code null},
+     * the default configuration ({@code s2t}) is applied.</p>
+     *
+     * <p>On successful configuration change, any previously recorded error
+     * is cleared.</p>
+     *
+     * @param cfg the configuration ID, or {@code null} to use the default
+     */
+    public void setConfig(OpenccConfig cfg) {
+        setConfig(cfg, true);
+    }
+
+    /**
+     * Sets the current conversion configuration using a typed configuration ID,
+     * with optional control over error reporting.
+     *
+     * <p>If {@code cfg} is non-null, it becomes the active configuration.
+     * If {@code cfg} is {@code null}, the default configuration ({@code s2t})
+     * is applied.</p>
+     *
+     * <p>If {@code setLastError} is {@code true}, {@link #lastError} is cleared
+     * on success or set to an explanatory message on fallback.
+     * If {@code setLastError} is {@code false}, {@link #lastError} is not modified.</p>
+     *
+     * @param cfg          the configuration ID, or {@code null} to use the default
+     * @param setLastError whether to update {@link #lastError} on success or fallback
+     */
+    public void setConfig(OpenccConfig cfg, boolean setLastError) {
+        if (cfg != null) {
+            this.configId = cfg;
+            if (setLastError) this.lastError = null;
         } else {
-            this.lastError = "Invalid config: " + config;
-            this.config = "s2t";
+            this.configId = DEFAULT_CONFIG;
+            if (setLastError) {
+                this.lastError = "Invalid config: null. Using default '"
+                        + DEFAULT_CONFIG.asStr() + "'.";
+            }
         }
     }
 
     /**
-     * Returns the current conversion configuration.
+     * Returns the current conversion configuration in canonical string form.
      *
-     * @return the configuration key
+     * <p>The returned value is the lowercase, canonical configuration name
+     * (for example {@code "s2t"}, {@code "t2twp"}, {@code "tw2sp"}).
+     * This method never returns {@code null}.</p>
+     *
+     * <p>This method is provided for compatibility with string-based APIs
+     * (such as CLI options, configuration files, and legacy integrations).
+     * For type-safe access, prefer {@link #getConfigId()}.</p>
+     *
+     * @return the canonical configuration key representing the current conversion mode
      */
     public String getConfig() {
-        return config;
+        return configId.asStr();
     }
 
     /**
-     * Returns the most recent error message encountered.
+     * Returns the current conversion configuration as a typed enum ID.
      *
-     * @return the last error message, or null if none
+     * <p>This is the authoritative, type-safe representation of the active
+     * configuration and serves as the single source of truth for all internal
+     * conversion logic.</p>
+     *
+     * <p>The returned value is never {@code null}. If an invalid configuration
+     * was previously provided, this method returns the default configuration
+     * ({@code s2t}).</p>
+     *
+     * @return the active {@link OpenccConfig} identifier
+     */
+    public OpenccConfig getConfigId() {
+        return configId;
+    }
+
+    /**
+     * Checks whether a configuration string corresponds to a supported
+     * OpenCC conversion configuration.
+     *
+     * <p>The check is case-insensitive and accepts both canonical names
+     * (for example {@code "s2t"}, {@code "t2twp"}) and enum-style names
+     * (for example {@code "S2T"}, {@code "T2TWP"}).</p>
+     *
+     * <p>This method performs no allocation beyond parsing and never throws.</p>
+     *
+     * @param value the configuration string to check; may be {@code null}
+     * @return {@code true} if the configuration is supported; {@code false} otherwise
+     */
+    public static boolean isSupportedConfig(String value) {
+        return OpenccConfig.tryParse(value) != null;
+    }
+
+    /**
+     * Returns an immutable list of all supported configuration keys
+     * in canonical string form.
+     *
+     * <p>The returned list contains lowercase configuration names such as
+     * {@code "s2t"}, {@code "tw2sp"}, {@code "t2twp"}.
+     * The order of the list matches the declaration order of
+     * {@link OpenccConfig}.</p>
+     *
+     * <p>This method never returns {@code null}.</p>
+     *
+     * @return an unmodifiable list of supported configuration keys
+     */
+    public static List<String> getSupportedConfigs() {
+        ArrayList<String> out = new ArrayList<String>();
+        for (OpenccConfig c : OpenccConfig.values()) out.add(c.asStr());
+        return Collections.unmodifiableList(out);
+    }
+
+    /**
+     * Returns an immutable list of all supported configuration IDs.
+     *
+     * <p>This method exposes the full set of {@link OpenccConfig} enum constants
+     * and is intended for type-safe usage such as UI bindings, configuration
+     * selectors, or programmatic inspection.</p>
+     *
+     * <p>The returned list is backed by the enum values and should be treated
+     * as read-only.</p>
+     *
+     * @return an unmodifiable list of supported {@link OpenccConfig} identifiers
+     */
+    public static List<OpenccConfig> getSupportedConfigIds() {
+        return Collections.unmodifiableList(Arrays.asList(OpenccConfig.values()));
+    }
+
+    /**
+     * Returns the most recent non-fatal error message recorded by this instance.
+     *
+     * <p>The {@code lastError} value represents the most recent recoverable
+     * issue encountered during configuration changes or other operations
+     * that did not throw an exception. Typical examples include:</p>
+     *
+     * <ul>
+     *   <li>Providing an invalid or unsupported configuration string</li>
+     *   <li>Falling back to the default configuration due to invalid input</li>
+     * </ul>
+     *
+     * <p>{@code lastError} does <em>not</em> indicate a failed conversion,
+     * nor does it imply that the {@code OpenCC} instance is in an invalid state.
+     * All conversions proceed using a valid configuration.</p>
+     *
+     * <p>The value is cleared automatically when a subsequent operation
+     * completes successfully (for example, a valid call to {@code setConfig(...)}
+     * with {@code setLastError = true}), or manually via
+     * {@link #clearLastError()}.</p>
+     *
+     * @return the most recent error message, or {@code null} if no error
+     * has been recorded
      */
     public String getLastError() {
         return lastError;
     }
 
     /**
-     * Returns the list of supported configuration keys.
+     * Clears the currently stored non-fatal error message, if any.
      *
-     * @return list of supported configs
+     * <p>This method has no effect on the active configuration or conversion
+     * behavior. It simply resets the error state used for diagnostic or
+     * user-facing reporting.</p>
+     *
+     * <p>This method is typically used by UI or CLI code after an error
+     * has been displayed to the user.</p>
      */
-    public static List<String> getSupportedConfigs() {
-        return Collections.unmodifiableList(Arrays.asList("s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s",
-                "t2tw", "tw2t", "t2twp", "tw2tp", "t2hk", "hk2t", "t2jp", "jp2t"));
+    public void clearLastError() {
+        this.lastError = null;
     }
 
     /**
-     * Converts the given input text using the current configuration.
-     * Punctuation conversion is disabled by default.
+     * Returns whether a non-fatal error message is currently recorded.
      *
-     * @param input the text to convert
-     * @return the converted result
+     * <p>This is a convenience method equivalent to
+     * {@code getLastError() != null}.</p>
+     *
+     * <p>A return value of {@code true} does <em>not</em> imply that the
+     * last conversion failed or that the instance is unusable; it only
+     * indicates that a recoverable issue was recorded.</p>
+     *
+     * @return {@code true} if an error message is present; {@code false} otherwise
+     */
+    public boolean hasLastError() {
+        return this.lastError != null;
+    }
+
+    /**
+     * Converts the given input text using the current conversion configuration.
+     *
+     * <p>This is a convenience overload equivalent to calling
+     * {@link #convert(String, boolean)} with {@code punctuation} set to {@code false}.
+     * Only character and phrase conversion is applied; punctuation characters
+     * are left unchanged.</p>
+     *
+     * <p>If the input is {@code null} or empty, no conversion is performed.
+     * In that case, an explanatory message is recorded in {@link #getLastError()}
+     * and returned as the result.</p>
+     *
+     * @param input the text to convert; may be {@code null}
+     * @return the converted text, or an error message if the input is invalid
      */
     public String convert(String input) {
         return convert(input, false); // default punctuation = false
     }
 
     /**
-     * Converts the given input text using the current configuration.
+     * Converts the given input text using the current conversion configuration.
      *
-     * <p>The method dispatches the conversion to the corresponding
-     * configuration logic (e.g., s2t, t2s, s2tw, etc.). If the configuration
-     * is unsupported, it returns an error string and sets {@code lastError}.
+     * <p>The conversion behavior is determined by the active configuration
+     * ({@link #getConfigId()}), such as Simplified → Traditional ({@code s2t}),
+     * Traditional → Simplified ({@code t2s}), or region-specific variants
+     * (Taiwan, Hong Kong, Japan).</p>
      *
-     * @param input       the text to convert
-     * @param punctuation whether to convert punctuation characters
-     * @return the converted result, or an error string if config is invalid
+     * <p>If {@code punctuation} is {@code true}, punctuation characters are
+     * converted using the corresponding punctuation dictionaries where applicable.
+     * If {@code false}, punctuation is preserved as-is.</p>
+     *
+     * <p>This method never throws due to an invalid configuration.
+     * The active configuration is always valid; if an invalid configuration
+     * was previously supplied, the default configuration ({@code s2t})
+     * is used instead.</p>
+     *
+     * <p>If {@code input} is {@code null} or empty, no conversion is performed.
+     * An explanatory message is recorded in {@link #getLastError()} and returned
+     * as the result.</p>
+     *
+     * <p>The returned string always reflects the conversion result of a valid
+     * configuration or a human-readable error message for invalid input.
+     * A recorded error does <em>not</em> indicate that the {@code OpenCC}
+     * instance is unusable.</p>
+     *
+     * @param input       the text to convert; may be {@code null}
+     * @param punctuation whether to convert punctuation characters in addition
+     *                    to text conversion
+     * @return the converted text, or an error message if the input is invalid
      */
     public String convert(String input, boolean punctuation) {
         if (input == null || input.isEmpty()) {
@@ -480,57 +621,62 @@ public class OpenCC {
         }
 
         String result;
-        switch (config) {
-            case "s2t":
+        switch (configId) {
+            case S2T:
                 result = s2t(input, punctuation);
                 break;
-            case "t2s":
+            case T2S:
                 result = t2s(input, punctuation);
                 break;
-            case "s2tw":
+            case S2Tw:
                 result = s2tw(input, punctuation);
                 break;
-            case "tw2s":
+            case Tw2S:
                 result = tw2s(input, punctuation);
                 break;
-            case "s2twp":
+            case S2Twp:
                 result = s2twp(input, punctuation);
                 break;
-            case "tw2sp":
+            case Tw2Sp:
                 result = tw2sp(input, punctuation);
                 break;
-            case "s2hk":
+            case S2Hk:
                 result = s2hk(input, punctuation);
                 break;
-            case "hk2s":
+            case Hk2S:
                 result = hk2s(input, punctuation);
                 break;
-            case "t2tw":
+
+            case T2Tw:
                 result = t2tw(input);
                 break;
-            case "t2twp":
+            case T2Twp:
                 result = t2twp(input);
                 break;
-            case "tw2t":
+            case Tw2T:
                 result = tw2t(input);
                 break;
-            case "tw2tp":
+            case Tw2Tp:
                 result = tw2tp(input);
                 break;
-            case "t2hk":
+            case T2Hk:
                 result = t2hk(input);
                 break;
-            case "hk2t":
+            case Hk2T:
                 result = hk2t(input);
                 break;
-            case "t2jp":
+
+            case T2Jp:
                 result = t2jp(input);
                 break;
-            case "jp2t":
+            case Jp2T:
                 result = jp2t(input);
                 break;
+
             default:
-                lastError = "Unsupported config: " + config;
+                // Should be unreachable unless new enum values are added
+                // without updating this switch.
+                lastError = "Unsupported config id: " + configId;
                 result = lastError;
                 break;
         }
@@ -539,7 +685,7 @@ public class OpenCC {
     }
 
     /**
-     * Retrieves the {@link DictRefs} for a given conversion configuration key.
+     * Retrieves the {@link DictRefs} for a given conversion configuration ID.
      *
      * <p>This method checks the internal cache first. If no entry is found,
      * it creates a new {@code DictRefs} object using the relevant dictionary entries
@@ -547,71 +693,148 @@ public class OpenCC {
      *
      * <p>The result is cached for future lookups to avoid recomputation.
      *
-     * @param key the configuration key (e.g., "s2t", "tw2sp")
+     * @param cfg the configuration ID
      * @return a {@code DictRefs} instance representing the translation rules,
-     * or {@code null} if the key is unsupported
+     * or {@code null} if {@code cfg} is unsupported (should be rare)
      */
-    private DictRefs getDictRefs(String key) {
-        if (configCache.containsKey(key)) return configCache.get(key);
+    private DictRefs getDictRefs(OpenccConfig cfg) {
+        if (cfg == null) return null;
 
-        final DictionaryMaxlength d = dictionary; // no 'var' in Java 8
-        DictRefs refs = null;
+        DictRefs cached = configCacheById.get(cfg);
+        if (cached != null) return cached;
 
-        switch (key) {
-            case "s2t":
+        final DictionaryMaxlength d = dictionary; // Java 8
+        DictRefs refs;
+
+        switch (cfg) {
+            // -----------------------------
+            // Simplified <-> Traditional
+            // -----------------------------
+            case S2T:
                 refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters));
                 break;
 
-            case "t2s":
+            case T2S:
                 refs = new DictRefs(Arrays.asList(d.ts_phrases, d.ts_characters));
                 break;
 
-            case "s2tw":
+            // -----------------------------
+            // Simplified <-> Taiwan
+            // -----------------------------
+            case S2Tw:
+                // S -> T, then apply TW variants
                 refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
                         .withRound2(Collections.singletonList(d.tw_variants));
                 break;
 
-            case "tw2s":
+            case Tw2S:
+                // TW -> T (reverse variants), then T -> S
                 refs = new DictRefs(Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev))
                         .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
                 break;
 
-            case "s2twp":
+            case S2Twp:
+                // S -> T, then TW phrases, then TW variants
                 refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
                         .withRound2(Collections.singletonList(d.tw_phrases))
                         .withRound3(Collections.singletonList(d.tw_variants));
                 break;
 
-            case "tw2sp":
+            case Tw2Sp:
+                // TW phrases reverse + TW variants reverse, then T -> S
                 refs = new DictRefs(Arrays.asList(d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev))
                         .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
                 break;
 
-            case "s2hk":
+            // -----------------------------
+            // Simplified <-> Hong Kong
+            // -----------------------------
+            case S2Hk:
+                // S -> T, then HK variants
                 refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
                         .withRound2(Collections.singletonList(d.hk_variants));
                 break;
 
-            case "hk2s":
+            case Hk2S:
+                // HK -> T (reverse variants), then T -> S
                 refs = new DictRefs(Arrays.asList(d.hk_variants_rev_phrases, d.hk_variants_rev))
                         .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
                 break;
 
-            case "t2jp":
+            // -----------------------------
+            // Traditional <-> Taiwan (Traditional region transform)
+            // -----------------------------
+            case T2Tw:
+                // T -> TW (variants only)
+                refs = new DictRefs(Collections.singletonList(d.tw_variants));
+                break;
+
+            case T2Twp:
+                // T -> TW (phrases + variants)
+                refs = new DictRefs(Collections.singletonList(d.tw_phrases))
+                        .withRound2(Collections.singletonList(d.tw_variants));
+                break;
+
+            case Tw2T:
+                // TW -> T (reverse variants)
+                refs = new DictRefs(Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev));
+                break;
+
+            case Tw2Tp:
+                // TW (variants-rev pair) -> T, then apply TW phrases/idioms reverse last
+                refs = new DictRefs(Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev))
+                        .withRound2(Collections.singletonList(d.tw_phrases_rev));
+                break;
+
+            // -----------------------------
+            // Traditional <-> Hong Kong (Traditional region transform)
+            // -----------------------------
+            case T2Hk:
+                // T -> HK (variants only)
+                refs = new DictRefs(Collections.singletonList(d.hk_variants));
+                break;
+
+            case Hk2T:
+                // HK -> T (reverse variants)
+                refs = new DictRefs(Arrays.asList(d.hk_variants_rev_phrases, d.hk_variants_rev));
+                break;
+
+            // -----------------------------
+            // Japanese Shinjitai
+            // -----------------------------
+            case T2Jp:
+                // T -> JP variants
                 refs = new DictRefs(Collections.singletonList(d.jp_variants));
                 break;
 
-            case "jp2t":
+            case Jp2T:
+                // JP -> T (jps phrases/chars + reverse variants)
                 refs = new DictRefs(Arrays.asList(d.jps_phrases, d.jps_characters, d.jp_variants_rev));
                 break;
 
             default:
-                // unknown key -> leave refs null
+                // Should never happen if switch is complete for the enum
+                refs = null;
                 break;
         }
 
-        if (refs != null) configCache.put(key, refs);
+        if (refs != null) configCacheById.put(cfg, refs);
         return refs;
+    }
+
+    /**
+     * Wrapper for legacy string keys (e.g., "s2t", "tw2sp").
+     *
+     * <p>This method canonicalizes and delegates to {@link #getDictRefs(OpenccConfig)}.
+     *
+     * @param key the configuration key (case-insensitive)
+     * @return a {@code DictRefs} instance or {@code null} if unsupported
+     */
+    private DictRefs getDictRefs(String key) {
+        if (key == null) return null;
+        OpenccConfig cfg = OpenccConfig.tryParse(key);
+        if (cfg == null) return null;
+        return getDictRefs(cfg);
     }
 
     /**
@@ -1117,7 +1340,7 @@ public class OpenCC {
      * @return the converted text in Traditional Chinese
      */
     public String s2t(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.S2T, punctuation);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.S2T, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1129,7 +1352,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String t2s(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.T2S, punctuation);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.T2S, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1141,7 +1364,7 @@ public class OpenCC {
      * @return the converted text in Traditional Chinese (Taiwan)
      */
     public String s2tw(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.S2Tw, punctuation);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.S2Tw, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1153,7 +1376,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String tw2s(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.Tw2S, punctuation);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Tw2S, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1165,7 +1388,7 @@ public class OpenCC {
      * @return the converted text in full Taiwan-style Traditional Chinese
      */
     public String s2twp(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.S2Twp, punctuation);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.S2Twp, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1177,7 +1400,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String tw2sp(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.Tw2Sp, punctuation);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Tw2Sp, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1189,7 +1412,7 @@ public class OpenCC {
      * @return the converted text in Hong Kong-style Traditional Chinese
      */
     public String s2hk(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.S2Hk, punctuation);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.S2Hk, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1201,7 +1424,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String hk2s(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.Hk2S, punctuation);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Hk2S, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1212,7 +1435,7 @@ public class OpenCC {
      * @return the text converted to Taiwan-style Traditional Chinese
      */
     public String t2tw(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.T2Tw, false);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.T2Tw, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1223,7 +1446,7 @@ public class OpenCC {
      * @return the converted Taiwan Traditional Chinese with phrases and variants
      */
     public String t2twp(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.T2Twp, false);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.T2Twp, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1234,7 +1457,7 @@ public class OpenCC {
      * @return the converted base Traditional Chinese text
      */
     public String tw2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.Tw2T, false);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Tw2T, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1245,7 +1468,7 @@ public class OpenCC {
      * @return the fully reverted Traditional Chinese text
      */
     public String tw2tp(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.Tw2Tp, false);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Tw2Tp, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1256,7 +1479,7 @@ public class OpenCC {
      * @return the converted text using HK Traditional variants
      */
     public String t2hk(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.T2Hk, false);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.T2Hk, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1267,7 +1490,7 @@ public class OpenCC {
      * @return the converted base Traditional Chinese text
      */
     public String hk2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(Config.Hk2T, false);
+        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Hk2T, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1384,7 +1607,7 @@ public class OpenCC {
      * @see #zhoCheck(String)
      * @deprecated since 1.1.0 – {@code zhoCheck} is now a static method.
      * Use {@link #zhoCheck(String)} instead, or this method
-     * (@link zhoCheckInstance(String)) for instance-based
+     * @link zhoCheckInstance(String) for instance-based
      * compatibility.
      */
     @Deprecated
