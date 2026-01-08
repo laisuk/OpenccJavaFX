@@ -334,7 +334,7 @@ public class OpenCC {
      * @param punctuation whether punctuation conversion is enabled
      * @return the prepared {@link DictRefs} for this configuration
      */
-    private DictRefs getDictRefsUnionForConfig(OpenccConfig cfg, boolean punctuation) {
+    private DictRefs getDictRefsUnionForConfigId(OpenccConfig cfg, boolean punctuation) {
         return dictionary.getPlan(cfg, punctuation);
     }
 
@@ -1293,7 +1293,7 @@ public class OpenCC {
      * @return the converted text in Traditional Chinese
      */
     public String s2t(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.S2T, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2T, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1305,7 +1305,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String t2s(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.T2S, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2S, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1317,7 +1317,7 @@ public class OpenCC {
      * @return the converted text in Traditional Chinese (Taiwan)
      */
     public String s2tw(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.S2Tw, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2Tw, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1329,7 +1329,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String tw2s(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Tw2S, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Tw2S, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1341,7 +1341,7 @@ public class OpenCC {
      * @return the converted text in full Taiwan-style Traditional Chinese
      */
     public String s2twp(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.S2Twp, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2Twp, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1353,7 +1353,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String tw2sp(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Tw2Sp, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Tw2Sp, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1365,7 +1365,7 @@ public class OpenCC {
      * @return the converted text in Hong Kong-style Traditional Chinese
      */
     public String s2hk(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.S2Hk, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2Hk, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1377,7 +1377,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String hk2s(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Hk2S, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Hk2S, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1388,7 +1388,7 @@ public class OpenCC {
      * @return the text converted to Taiwan-style Traditional Chinese
      */
     public String t2tw(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.T2Tw, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2Tw, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1399,7 +1399,7 @@ public class OpenCC {
      * @return the converted Taiwan Traditional Chinese with phrases and variants
      */
     public String t2twp(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.T2Twp, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2Twp, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1410,7 +1410,7 @@ public class OpenCC {
      * @return the converted base Traditional Chinese text
      */
     public String tw2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Tw2T, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Tw2T, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1421,7 +1421,7 @@ public class OpenCC {
      * @return the fully reverted Traditional Chinese text
      */
     public String tw2tp(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Tw2Tp, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Tw2Tp, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1432,7 +1432,7 @@ public class OpenCC {
      * @return the converted text using HK Traditional variants
      */
     public String t2hk(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.T2Hk, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2Hk, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1443,7 +1443,7 @@ public class OpenCC {
      * @return the converted base Traditional Chinese text
      */
     public String hk2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfig(OpenccConfig.Hk2T, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Hk2T, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
