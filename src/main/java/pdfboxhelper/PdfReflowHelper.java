@@ -261,20 +261,24 @@ public final class PdfReflowHelper {
 
             // --- Empty line ---
             if (stripped.isEmpty()) {
-
                 if (!addPdfPageHeader && buffer.length() > 0) {
-                    char lastChar = buffer.charAt(buffer.length() - 1);
-                    // Page-break-like empty line
-                    if (!isCjkPunctEnd(lastChar)) {
+                    // Light rule: only flush on blank line if buffer ends with STRONG sentence end.
+                    // Otherwise, treat as a soft cross-page blank line and keep accumulating.
+                    int idx = findLastNonWhitespaceIndex(buffer);
+                    if (idx >= 0 && !isStrongSentenceEnd(buffer.charAt(idx))) {
                         continue;
                     }
                 }
 
+                // End of paragraph → flush buffer (do NOT emit "")
                 if (buffer.length() > 0) {
                     segments.add(buffer.toString());
                     buffer.setLength(0);
                     dialogState.reset();
                 }
+
+                // IMPORTANT: Emitting empty segments would introduce hard paragraph boundaries
+                // and break cross-line reflow
                 continue;
             }
 
@@ -360,6 +364,20 @@ public final class PdfReflowHelper {
                 }
 
                 // else: fall through -> normal merge logic below
+            }
+
+            // Finalizer: strong sentence end → flush immediately. Do not remove.
+            // If the current line completes a strong sentence, append it and flush immediately.
+            if (buffer.length() > 0) {
+                int idx = findLastNonWhitespaceIndex(stripped); // stripped is a String
+                if (idx >= 0 && isStrongSentenceEnd(stripped.charAt(idx))) {
+                    buffer.append(stripped);               // buffer now has new value
+                    segments.add(buffer.toString());       // emit UPDATED buffer
+                    buffer.setLength(0);                   // clear buffer
+                    dialogState.reset();
+                    dialogState.update(stripped);
+                    continue;
+                }
             }
 
             // Check dialog start
@@ -1090,5 +1108,19 @@ public final class PdfReflowHelper {
         // FULLWIDTH digits '０'–'９'
         return ch >= '０' && ch <= '９';
     }
+
+    private static int findLastNonWhitespaceIndex(CharSequence s) {
+        for (int i = s.length() - 1; i >= 0; i--) {
+            if (!Character.isWhitespace(s.charAt(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean isStrongSentenceEnd(char ch) {
+        return ch == '。' || ch == '！' || ch == '？' || ch == '!' || ch == '?';
+    }
+
 
 }
