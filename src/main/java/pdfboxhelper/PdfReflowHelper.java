@@ -1,5 +1,7 @@
 package pdfboxhelper;
 
+import openccjava.PunctSets;
+
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -14,37 +16,6 @@ public final class PdfReflowHelper {
     // ======================================================================
     // Configuration
     // ======================================================================
-
-    /**
-     * CJK sentence-ending punctuation characters
-     */
-    private static final char[] CJK_PUNCT_END_CHARS = {
-            // Standard CJK sentence-ending punctuation
-            '。', '！', '？', '；', '：', '…', '—',
-
-            // Closing quotes (CJK)
-            '”', '’', '」', '』',
-
-            // Chinese / full-width closing brackets
-            '）', '】', '》', '〗', '〕', '］', '｝',
-
-            // Angle brackets (CJK + ASCII)
-            '＞', '〉', '>',
-
-            // Allowed ASCII-like endings
-            '.', ')', ':', '!', '?'
-    };
-
-    private static final boolean[] CJK_PUNCT_END_TABLE = new boolean[65536];
-
-    static {
-        for (char c : CJK_PUNCT_END_CHARS)
-            CJK_PUNCT_END_TABLE[c] = true;
-    }
-
-    private static boolean isCjkPunctEnd(char ch) {
-        return CJK_PUNCT_END_TABLE[ch];
-    }
 
     /**
      * Chapter / heading detection
@@ -65,92 +36,6 @@ public final class PdfReflowHelper {
      * Lines with 2+ leading ASCII/full-width spaces are considered indented
      */
     private static final Pattern INDENT_REGEX = Pattern.compile("^[\\s\u3000]{2,}");
-
-    /**
-     * Dialog opening characters
-     */
-    private static final String DIALOG_OPENERS = "“‘「『﹁﹃";
-
-    /**
-     * Dialog closing characters
-     * <p>
-     * IMPORTANT:
-     * Order and pairing MUST stay consistent with DIALOG_OPENERS.
-     */
-    private static final String DIALOG_CLOSERS = "”’」』﹂﹄";
-
-    private static boolean isDialogOpener(char ch) {
-        return DIALOG_OPENERS.indexOf(ch) >= 0;
-    }
-
-    private static boolean isDialogCloser(char ch) {
-        return DIALOG_CLOSERS.indexOf(ch) >= 0;
-    }
-
-    // ---------------------------------------------------------------------
-    // Bracket punctuations (open → close)
-    // ---------------------------------------------------------------------
-    private static final Map<Character, Character> BRACKET_PAIRS;
-
-    static {
-        Map<Character, Character> map = new HashMap<>();
-
-        // Parentheses
-        map.put('（', '）');
-        map.put('(', ')');
-
-        // Square brackets
-        map.put('[', ']');
-        map.put('［', '］');
-
-        // Curly braces (ASCII + FULLWIDTH)
-        map.put('{', '}');
-        map.put('｛', '｝');
-
-        // Angle brackets
-        map.put('<', '>');
-        map.put('＜', '＞');
-        map.put('〈', '〉');
-
-        // CJK brackets
-        map.put('【', '】');
-        map.put('《', '》');
-        map.put('〔', '〕');
-        map.put('〖', '〗');
-
-        BRACKET_PAIRS = Collections.unmodifiableMap(map);
-    }
-
-    private static final Set<Character> OPEN_BRACKET_SET =
-            Collections.unmodifiableSet(new HashSet<>(BRACKET_PAIRS.keySet()));
-
-    private static final Set<Character> CLOSE_BRACKET_SET =
-            Collections.unmodifiableSet(new HashSet<>(BRACKET_PAIRS.values()));
-
-    // ---------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------
-    public static boolean isBracketOpener(char ch) {
-        return OPEN_BRACKET_SET.contains(ch);
-    }
-
-    public static boolean isBracketCloser(char ch) {
-        return CLOSE_BRACKET_SET.contains(ch);
-    }
-
-    public static boolean isMatchingBracket(char open, char close) {
-        Character expected = BRACKET_PAIRS.get(open);
-        return expected != null && expected == close;
-    }
-
-    // Metadata key-value separators
-    private static final char[] METADATA_SEPARATORS = new char[]{
-            '：', // full-width colon
-            ':', // ASCII colon
-            '　', // full-width ideographic space (U+3000)
-            '·', // Middle dot (Latin)
-            '・', // Katakana middle dot
-    };
 
     private static final Set<String> METADATA_KEYS = new HashSet<>(
             Arrays.asList(
@@ -241,6 +126,8 @@ public final class PdfReflowHelper {
         List<String> segments = new ArrayList<>();
         StringBuilder buffer = new StringBuilder();
         DialogState dialogState = new DialogState();
+        final PunctSets.CharRef lastRef = new PunctSets.CharRef();
+        final PunctSets.IndexCharRef lastIdxRef = new PunctSets.IndexCharRef();
 
         for (String rawLine : lines) {
 
@@ -252,7 +139,7 @@ public final class PdfReflowHelper {
             String probe = trimStartSpacesAndFullWidth(stripped);
 
             // 🧱 ABSOLUTE STRUCTURAL RULE — must be first (run on probe, output stripped)
-            if (isBoxDrawingLine(probe)) {
+            if (PunctSets.isBoxDrawingLine(probe)) {
                 if (buffer.length() > 0) {
                     segments.add(buffer.toString());
                     buffer.setLength(0);
@@ -271,33 +158,41 @@ public final class PdfReflowHelper {
             boolean isShortHeading = isHeadingLike(stripped);
             boolean isMetadata = isMetadataLine(stripped);
 
+            // We already have some text in buffer
+            String bufferText = buffer.length() > 0 ? buffer.toString() : "";
+            boolean hasUnclosedBracket = buffer.length() > 0 && PunctSets.hasUnclosedBracket(bufferText);
+
             // --- Empty line ---
             if (stripped.isEmpty()) {
                 if (!addPdfPageHeader && buffer.length() > 0) {
-                    // Light rule: only flush on blank line if buffer ends with STRONG sentence end.
-                    // Otherwise, treat as a soft cross-page blank line and keep accumulating.
-                    int idx = findLastNonWhitespaceIndex(buffer);
-                    if (idx >= 0 && !isStrongSentenceEnd(buffer.charAt(idx))) {
+
+                    // NEW: If dialog/bracket is unclosed, blank line is soft (cross-page artifact).
+                    if (dialogState.isUnclosed() || hasUnclosedBracket)
                         continue;
-                    }
+
+                    // Light rule: only flush on blank line if buffer ends with STRONG sentence end.
+                    // Otherwise, treat as soft cross-page blank line.
+                    if (!PunctSets.tryGetLastNonWhitespace(bufferText, lastIdxRef))
+                        continue; // buffer is whitespace-only -> keep accumulating
+
+                    if (!PunctSets.isStrongSentenceEnd(lastIdxRef.ch))
+                        continue;
                 }
 
                 // End of paragraph → flush buffer (do NOT emit "")
                 if (buffer.length() > 0) {
-                    segments.add(buffer.toString());
+                    segments.add(bufferText);
                     buffer.setLength(0);
                     dialogState.reset();
                 }
 
-                // IMPORTANT: Emitting empty segments would introduce hard paragraph boundaries
-                // and break cross-line reflow
                 continue;
             }
 
             // --- Page markers ---
             if (stripped.startsWith("=== ") && stripped.endsWith("===")) {
                 if (buffer.length() > 0) {
-                    segments.add(buffer.toString());
+                    segments.add(bufferText);
                     buffer.setLength(0);
                     dialogState.reset();
                 }
@@ -308,7 +203,7 @@ public final class PdfReflowHelper {
             // --- Titles (force flushing) ---
             if (isTitleHeading) {
                 if (buffer.length() > 0) {
-                    segments.add(buffer.toString());
+                    segments.add(bufferText);
                     buffer.setLength(0);
                     dialogState.reset();
                 }
@@ -319,7 +214,7 @@ public final class PdfReflowHelper {
             // 3b) Metadata
             if (isMetadata) {
                 if (buffer.length() > 0) {
-                    segments.add(buffer.toString());
+                    segments.add(bufferText);
                     buffer.setLength(0);
                     dialogState.reset();
                 }
@@ -341,33 +236,32 @@ public final class PdfReflowHelper {
                     // file start / just flushed -> allow heading alone
                     splitAsHeading = true;
                 } else {
-                    final String bufText = buffer.toString();
-
-                    if (hasUnclosedBracket(bufText)) {
+                    if (hasUnclosedBracket) {
                         // previous paragraph is "unsafe" -> must treat as continuation
                         splitAsHeading = false;
                     } else {
-                        final String bt = rtrim(bufText);
-
-                        if (bt.isEmpty()) {
+                        // Find last non-whitespace char of previous bufferText (no rtrim allocation)
+                        if (!PunctSets.tryGetLastNonWhitespace(bufferText, lastRef)) {
                             // buffer has only whitespace -> treat like no previous paragraph
                             splitAsHeading = true;
                         } else {
-                            final char last = bt.charAt(bt.length() - 1);
+                            final char last = lastRef.value;
 
                             // previous ends with comma -> continuation
-                            if (last == '，' || last == ',') {
+                            if (PunctSets.isCommaLike(last)) {
                                 splitAsHeading = false;
                             }
                             // all-CJK short heading line + previous not ended by sentence punctuation -> continuation
-                            else splitAsHeading = !allCjk || isCjkPunctEnd(last);
+                            else {
+                                splitAsHeading = !allCjk || PunctSets.isCjkPunctEnd(last);
+                            }
                         }
                     }
                 }
 
                 if (splitAsHeading) {
                     if (buffer.length() > 0) {
-                        segments.add(buffer.toString());
+                        segments.add(bufferText);
                         buffer.setLength(0);
                         dialogState.reset();
                     }
@@ -380,12 +274,13 @@ public final class PdfReflowHelper {
 
             // Finalizer: strong sentence end → flush immediately. Do not remove.
             // If the current line completes a strong sentence, append it and flush immediately.
-            if (buffer.length() > 0) {
-                int idx = findLastNonWhitespaceIndex(stripped); // stripped is a String
-                if (idx >= 0 && isStrongSentenceEnd(stripped.charAt(idx))) {
-                    buffer.append(stripped);               // buffer now has new value
-                    segments.add(buffer.toString());       // emit UPDATED buffer
-                    buffer.setLength(0);                   // clear buffer
+            if (buffer.length() > 0 && !dialogState.isUnclosed() && !hasUnclosedBracket) {
+//                PunctSets.CharRef lastRef = new PunctSets.CharRef();
+                if (PunctSets.tryGetLastNonWhitespace(stripped, lastRef)
+                        && PunctSets.isStrongSentenceEnd(lastRef.value)) {
+                    buffer.append(stripped);         // buffer now has new value
+                    segments.add(buffer.toString());  // emit UPDATED bufferText, not old bufferText
+                    buffer.setLength(0);             // clear buffer
                     dialogState.reset();
                     dialogState.update(stripped);
                     continue;
@@ -393,7 +288,7 @@ public final class PdfReflowHelper {
             }
 
             // Check dialog start
-            boolean currentIsDialogStart = isDialogStarter(stripped);
+            boolean currentIsDialogStart = PunctSets.isDialogStarter(stripped);
 
             if (buffer.length() == 0) {
                 // Start new paragraph
@@ -403,8 +298,6 @@ public final class PdfReflowHelper {
                 continue;
             }
 
-            String bufferText = buffer.toString();
-
             // 🔸 NEW RULE: If previous line ends with comma,
             //     do NOT flush even if this line starts dialog.
             //     (comma-ending means the sentence is not finished)
@@ -413,13 +306,26 @@ public final class PdfReflowHelper {
                 boolean shouldFlushPrev = !bufferText.isEmpty();
 
                 if (shouldFlushPrev) {
-                    String trimmed = rtrim(bufferText);
-                    char last = trimmed.isEmpty() ? '\0' : trimmed.charAt(trimmed.length() - 1);
+                    if (dialogState.isUnclosed() || hasUnclosedBracket) {
+                        shouldFlushPrev = false;
+                    }
+                    else if (!PunctSets.tryGetLastNonWhitespace(bufferText, lastRef)) {
+                        // whitespace-only buffer → treat as empty
+                        shouldFlushPrev = false;
+                    }
+                    else {
+                        char last = lastRef.value;
 
-                    shouldFlushPrev =
-                            (last != '，' && last != ',' && last != '、') &&
-                                    !dialogState.isUnclosed() &&
-                                    !hasUnclosedBracket(bufferText);
+                        // 1) comma-like → continuation
+                        if (PunctSets.isCommaLike(last)) {
+                            shouldFlushPrev = false;
+                        }
+                        // 2) ends with CJK ideograph (NO punctuation at all) → continuation
+                        else if (isCjk(last)) {
+                            shouldFlushPrev = false;
+                        }
+                        // else: punctuation or ASCII letter/digit → allow flush
+                    }
                 }
 
                 if (shouldFlushPrev) {
@@ -436,7 +342,7 @@ public final class PdfReflowHelper {
 
             // --- Colon + dialog continuation ---
             if (bufferText.endsWith("：") || bufferText.endsWith(":")) {
-                if (isDialogOpener(stripped.charAt(0))) {
+                if (PunctSets.isDialogOpener(stripped.charAt(0))) {
                     buffer.append(stripped);
                     dialogState.update(stripped);
                     continue;
@@ -444,7 +350,9 @@ public final class PdfReflowHelper {
             }
 
             // 8a) Strong sentence boundary (handles 。！？, OCR . / :, “.”)
-            if (!dialogState.isUnclosed() && endsWithSentenceBoundary(bufferText)) {
+            if (!dialogState.isUnclosed()
+                    && endsWithSentenceBoundary(bufferText)
+                    && !hasUnclosedBracket) {
                 segments.add(bufferText);         // push old buffer as a segment
                 buffer.setLength(0);                  // take() semantics
                 buffer.append(stripped);              // start new buffer with current line
@@ -454,17 +362,18 @@ public final class PdfReflowHelper {
             }
 
             // --- CJK punctuation → paragraph end ---
-            if (!bufferText.isEmpty()
-                    && isCjkPunctEnd(buffer.charAt(buffer.length() - 1))
-                    && !dialogState.isUnclosed()) {
-
-                segments.add(bufferText);
-                buffer.setLength(0);
-                buffer.append(stripped);
-                dialogState.reset();
-                dialogState.update(stripped);
-                continue;
-            }
+//            if (!bufferText.isEmpty()
+//                    && isCjkPunctEnd(buffer.charAt(buffer.length() - 1))
+//                    && !hasUnclosedBracket
+//                    && !dialogState.isUnclosed()) {
+//
+//                segments.add(bufferText);
+//                buffer.setLength(0);
+//                buffer.append(stripped);
+//                dialogState.reset();
+//                dialogState.update(stripped);
+//                continue;
+//            }
 
             // --- Indentation → new paragraph ---
             if (INDENT_REGEX.matcher(rawLine).find()) {
@@ -506,6 +415,7 @@ public final class PdfReflowHelper {
     /**
      * Default: novel mode (with blank line between paragraphs).
      */
+    @SuppressWarnings("unused")
     public static String reflowCjkParagraphs(String text, boolean addPdfPageHeader) {
         return reflowCjkParagraphs(text, addPdfPageHeader, false);
     }
@@ -576,12 +486,6 @@ public final class PdfReflowHelper {
     // Helper functions (ported from C#)
     // ======================================================================
 
-    private static boolean isDialogStarter(String s) {
-        if (s == null) return false;
-        s = trimStartSpacesAndFullWidth(s);
-        return !s.isEmpty() && isDialogOpener(s.charAt(0));
-    }
-
     private static boolean isHeadingLike(String s) {
         if (s == null) return false;
 
@@ -594,14 +498,14 @@ public final class PdfReflowHelper {
         }
 
         // Reject headings with unclosed brackets
-        if (hasUnclosedBracket(s)) {
+        if (PunctSets.hasUnclosedBracket(s)) {
             return false;
         }
 
         int len = s.length();
         char last = s.charAt(len - 1);
 
-        if (len > 2 && isMatchingBracket(s.charAt(0), last) && isMostlyCjk(s)) {
+        if (len > 2 && PunctSets.isMatchingBracket(s.charAt(0), last) && isMostlyCjk(s)) {
             return true;
         }
 
@@ -612,7 +516,7 @@ public final class PdfReflowHelper {
             return true;
         }
         // If *ends* with CJK punctuation → not heading
-        if (isCjkPunctEnd(last)) {
+        if (PunctSets.isCjkPunctEnd(last)) {
             return false;
         }
 
@@ -652,7 +556,7 @@ public final class PdfReflowHelper {
             }
 
             // Rule A: CJK/mixed short line, not ending with comma
-            if (hasNonAscii && last != '，' && last != ',') {
+            if (hasNonAscii && !PunctSets.isCommaLike(last)) {
                 return true;
             }
 
@@ -679,7 +583,7 @@ public final class PdfReflowHelper {
         }
 
         // C) find first separator
-        int idx = indexOfAny(line, METADATA_SEPARATORS);
+        int idx = indexOfAny(line, PunctSets.METADATA_SEPARATORS);
         if (idx <= 0 || idx > 10) {
             return false;
         }
@@ -700,27 +604,7 @@ public final class PdfReflowHelper {
         }
 
         // F) must NOT be dialog opener
-        return !isDialogOpener(line.charAt(j));
-    }
-
-    private static boolean hasUnclosedBracket(String s) {
-        boolean hasOpen = false;
-
-        for (int i = 0, n = s.length(); i < n; i++) {
-            char ch = s.charAt(i);
-
-            // If we see any closer, it's not "unclosed bracket" by your definition.
-            if (isBracketCloser(ch)) {
-                return false; // early exit
-            }
-
-            if (!hasOpen && isBracketOpener(ch)) {
-                hasOpen = true;
-                // We keep scanning only to see if a closer appears later.
-            }
-        }
-
-        return hasOpen;
+        return !PunctSets.isDialogOpener(line.charAt(j));
     }
 
     private static String stripHalfWidthIndentKeepFullWidth(String s) {
@@ -730,7 +614,7 @@ public final class PdfReflowHelper {
         return s.substring(i);
     }
 
-    private static String trimStartSpacesAndFullWidth(String s) {
+    public static String trimStartSpacesAndFullWidth(String s) {
         if (s == null || s.isEmpty()) return s;
         int start = 0;
         while (start < s.length()) {
@@ -742,54 +626,6 @@ public final class PdfReflowHelper {
             }
         }
         return s.substring(start);
-    }
-
-    /**
-     * Detects visual separator / divider lines such as:
-     * ──────
-     * ======
-     * ------
-     * or mixed variants (e.g. ───===───).
-     *
-     * <p>This method is intended to run on a <b>probe</b> string
-     * (indentation already removed). Whitespace is ignored.</p>
-     *
-     * <p>These lines represent layout boundaries and must always
-     * force paragraph breaks during reflow.</p>
-     */
-    private static boolean isBoxDrawingLine(String s) {
-        if (s == null || s.trim().isEmpty())
-            return false;
-
-        int total = 0;
-
-        for (int i = 0; i < s.length(); i++) {
-            char ch = s.charAt(i);
-
-            // Ignore whitespace completely (probe may still contain gaps)
-            if (Character.isWhitespace(ch))
-                continue;
-
-            total++;
-
-            // Unicode box drawing block (U+2500–U+257F)
-            if (ch >= '─' && ch <= '╿')
-                continue;
-
-            // ASCII visual separators (common in TXT / OCR)
-            if (ch == '-' || ch == '=' || ch == '_' || ch == '~' || ch == '～')
-                continue;
-
-            // Star / asterisk-based visual dividers
-            if (ch == '*' || ch == '＊' || ch == '★' || ch == '☆')
-                continue;
-
-            // Any real text → not a pure visual divider
-            return false;
-        }
-
-        // Require minimal visual length to avoid accidental triggers
-        return total >= 3;
     }
 
     /**
@@ -970,6 +806,7 @@ public final class PdfReflowHelper {
         return -1;
     }
 
+    @SuppressWarnings("unused")
     private static String rtrim(String s) {
         int end = s.length();
         while (end > 0 && Character.isWhitespace(s.charAt(end - 1))) {
@@ -978,6 +815,7 @@ public final class PdfReflowHelper {
         return (end == s.length()) ? s : s.substring(0, end);
     }
 
+    @SuppressWarnings("unused")
     private static int indexOfChar(char[] array, char ch) {
         for (int i = 0; i < array.length; i++) {
             if (array[i] == ch) {
@@ -991,24 +829,6 @@ public final class PdfReflowHelper {
         for (int i = 0; i < s.length(); i++)
             if (s.charAt(i) > 0x7F)
                 return false;
-        return true;
-    }
-
-    private static boolean isAllCjkNoWhiteSpace(String s) {
-        if (s == null || s.isEmpty())
-            return false;
-
-        for (int i = 0; i < s.length(); i++) {
-            char ch = s.charAt(i);
-
-            // Treat any whitespace (including full-width space) as NOT CJK heading content
-            if (Character.isWhitespace(ch))
-                return false;
-
-            if (!isCjk(ch))
-                return false;
-        }
-
         return true;
     }
 
@@ -1030,13 +850,39 @@ public final class PdfReflowHelper {
         return (int) ch >= 0xF900 && (int) ch <= 0xFAFF;
     }
 
-    private static boolean isAllCjkIgnoringWhitespace(String s) {
+    // Returns true if the string consists entirely of CJK characters.
+    // Whitespace handling is controlled by allowWhitespace.
+    // Returns false for null, empty, or whitespace-only strings.
+    private static boolean isAllCjk(String s, boolean allowWhitespace) {
+        if (s == null || s.isEmpty())
+            return false;
+
+        boolean seen = false;
+
         for (int i = 0; i < s.length(); i++) {
             char ch = s.charAt(i);
-            if (Character.isWhitespace(ch)) continue;
-            if (ch <= 0x7F) return false; // ASCII => not all-CJK
+
+            if (Character.isWhitespace(ch)) {
+                if (!allowWhitespace)
+                    return false;
+                continue;
+            }
+
+            seen = true;
+
+            if (!isCjk(ch))
+                return false;
         }
-        return true;
+
+        return seen;
+    }
+
+    private static boolean isAllCjkIgnoringWhitespace(String s) {
+        return isAllCjk(s, true);
+    }
+
+    private static boolean isAllCjkNoWhiteSpace(String s) {
+        return isAllCjk(s, false);
     }
 
     /**
@@ -1131,6 +977,7 @@ public final class PdfReflowHelper {
         return ch >= '０' && ch <= '９';
     }
 
+    @SuppressWarnings("unused")
     private static int findLastNonWhitespaceIndex(CharSequence s) {
         for (int i = s.length() - 1; i >= 0; i--) {
             if (!Character.isWhitespace(s.charAt(i))) {
@@ -1138,10 +985,6 @@ public final class PdfReflowHelper {
             }
         }
         return -1;
-    }
-
-    private static boolean isStrongSentenceEnd(char ch) {
-        return ch == '。' || ch == '！' || ch == '？' || ch == '!' || ch == '?';
     }
 
     // ------ Sentence Boundary start ------ //
@@ -1162,7 +1005,7 @@ public final class PdfReflowHelper {
         char last = s.charAt(lastNonWs);
 
         // 1) Strong sentence end-ers.
-        if (isStrongSentenceEnd(last)) {
+        if (PunctSets.isStrongSentenceEnd(last)) {
             return true;
         }
 
@@ -1172,13 +1015,13 @@ public final class PdfReflowHelper {
         }
 
         // 3) Quote closers after strong end, plus OCR artifact `.“”` / `.」` / `.）`.
-        if (isQuoteCloser(last)) {
+        if (PunctSets.isQuoteCloser(last)) {
             int prevNonWs = findPrevNonWhitespaceCharIndex(s, lastNonWs);
             if (prevNonWs >= 0) {
                 char prev = s.charAt(prevNonWs);
 
                 // Strong end immediately before quote closer.
-                if (isStrongSentenceEnd(prev)) {
+                if (PunctSets.isStrongSentenceEnd(prev)) {
                     return true;
                 }
 
@@ -1193,17 +1036,18 @@ public final class PdfReflowHelper {
         }
 
         // 4) Bracket closers with mostly CJK.
-        if (isBracketCloser(last) && lastNonWs > 0 && isMostlyCjk(s)) {
+        if (PunctSets.isBracketCloser(last) && lastNonWs > 0 && isMostlyCjk(s)) {
             return true;
         }
 
-        // 5) Ellipsis as weak boundary.
-        return endsWithEllipsis(s);
-    }
+        // 5) NEW: long Mostly-CJK line ending with full-width colon "："
+        // Treat as a weak boundary (common in novels: "他说：" then dialog starts next line)
+        if (last == '：' && isMostlyCjk(s)) {
+            return true;
+        }
 
-    private static boolean isQuoteCloser(char ch) {
-        // Rust: is_dialog_closer(ch)
-        return isDialogCloser(ch);
+        // 6) Ellipsis as weak boundary.
+        return endsWithEllipsis(s);
     }
 
     /**
@@ -1265,7 +1109,7 @@ public final class PdfReflowHelper {
         for (int i = index + 1; i < s.length(); i++) {
             char ch = s.charAt(i);
             if (Character.isWhitespace(ch)) continue;
-            if (isQuoteCloser(ch) || isBracketCloser(ch)) continue;
+            if (PunctSets.isQuoteCloser(ch) || PunctSets.isBracketCloser(ch)) continue;
             return false;
         }
         return true;
