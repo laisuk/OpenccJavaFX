@@ -127,6 +127,7 @@ public final class PdfReflowHelper {
         StringBuilder buffer = new StringBuilder();
         DialogState dialogState = new DialogState();
         final PunctSets.CharRef lastRef = new PunctSets.CharRef();
+        final PunctSets.CharRef prevRef = new PunctSets.CharRef();
         final PunctSets.IndexCharRef lastIdxRef = new PunctSets.IndexCharRef();
 
         for (String rawLine : lines) {
@@ -247,14 +248,19 @@ public final class PdfReflowHelper {
                         } else {
                             final char last = lastRef.value;
 
+                            boolean prevEndsWithCommaLike = PunctSets.isCommaLike(last);
+                            boolean prevEndsWithSentencePunct = PunctSets.isClauseOrEndPunct(last);
+
+                            boolean currentLooksLikeContinuationMarker =
+                                    allCjk
+                                            || PunctSets.endsWithColonLike(stripped)
+                                            || PunctSets.endsWithAllowedPostfixCloser(stripped);
                             // previous ends with comma -> continuation
-                            if (PunctSets.isCommaLike(last)) {
+                            if (prevEndsWithCommaLike) {
                                 splitAsHeading = false;
                             }
                             // all-CJK short heading line + previous not ended by sentence punctuation -> continuation
-                            else {
-                                splitAsHeading = !allCjk || PunctSets.isCjkPunctEnd(last);
-                            }
+                            else splitAsHeading = !currentLooksLikeContinuationMarker || prevEndsWithSentencePunct;
                         }
                     }
                 }
@@ -287,9 +293,6 @@ public final class PdfReflowHelper {
                 }
             }
 
-            // Check dialog start
-            boolean currentIsDialogStart = PunctSets.isDialogStarter(stripped);
-
             if (buffer.length() == 0) {
                 // Start new paragraph
                 buffer.append(stripped);
@@ -297,6 +300,9 @@ public final class PdfReflowHelper {
                 dialogState.update(stripped);
                 continue;
             }
+
+            // Check dialog start
+            boolean currentIsDialogStart = PunctSets.isDialogStarter(stripped);
 
             // 🔸 NEW RULE: If previous line ends with comma,
             //     do NOT flush even if this line starts dialog.
@@ -308,12 +314,10 @@ public final class PdfReflowHelper {
                 if (shouldFlushPrev) {
                     if (dialogState.isUnclosed() || hasUnclosedBracket) {
                         shouldFlushPrev = false;
-                    }
-                    else if (!PunctSets.tryGetLastNonWhitespace(bufferText, lastRef)) {
+                    } else if (!PunctSets.tryGetLastNonWhitespace(bufferText, lastRef)) {
                         // whitespace-only buffer → treat as empty
                         shouldFlushPrev = false;
-                    }
-                    else {
+                    } else {
                         char last = lastRef.value;
 
                         // 1) comma-like → continuation
@@ -337,6 +341,40 @@ public final class PdfReflowHelper {
                 buffer.append(stripped);
                 dialogState.reset();
                 dialogState.update(stripped);
+                continue;
+            }
+
+            // 🔸 9b) Dialog end line: ends with dialog closer.
+            // Flush when the char before closer is strong end,
+            // and bracket safety is satisfied (with a narrow typo override).
+            if (PunctSets.tryGetLastNonWhitespace(stripped, lastIdxRef) &&
+                    PunctSets.isDialogCloser(lastIdxRef.ch)) {
+                // Check punctuation right before the closer (e.g., “？” / “。”)
+                boolean punctBeforeCloserIsStrong =
+                        PunctSets.tryGetPrevNonWhitespace(stripped, lastIdxRef.index, prevRef) &&
+                                PunctSets.isClauseOrEndPunct(prevRef.value);
+
+                // Snapshot bracket safety BEFORE appending current line
+                boolean lineHasBracketIssue = PunctSets.hasUnclosedBracket(stripped);
+
+                buffer.append(stripped);
+                dialogState.update(stripped);
+
+                // Allow flush if:
+                // - dialog is closed after this line
+                // - punctuation before closer is a strong end
+                // - and either:
+                //     (a) buffer has no bracket issue, OR
+                //     (b) buffer has bracket issue but this line itself is the culprit (OCR/typo),
+                //        so allow a dialog-end flush anyway.
+                if (!dialogState.isUnclosed() &&
+                        punctBeforeCloserIsStrong &&
+                        (!hasUnclosedBracket || lineHasBracketIssue)) {
+                    segments.add(buffer.toString());
+                    buffer.setLength(0);
+                    dialogState.reset();
+                }
+
                 continue;
             }
 
@@ -512,11 +550,16 @@ public final class PdfReflowHelper {
         int maxLen = isAllAscii(s) || isMixedCjkAscii(s) ? 16 : 8;
 
         // Short circuit for item title-like: "物品准备："
-        if ((last == ':' || last == '：') && len <= maxLen && isAllCjkNoWhiteSpace(s.substring(0, len - 1))) {
+        if (PunctSets.isColonLike(last) && len <= maxLen && isAllCjkNoWhiteSpace(s.substring(0, len - 1))) {
             return true;
         }
+
+        if (PunctSets.isAllowedPostfixCloser(last) && !PunctSets.containsAnyCommaLike(s)) {
+            return true;
+        }
+
         // If *ends* with CJK punctuation → not heading
-        if (PunctSets.isCjkPunctEnd(last)) {
+        if (PunctSets.isClauseOrEndPunct(last)) {
             return false;
         }
 
@@ -1015,7 +1058,7 @@ public final class PdfReflowHelper {
         }
 
         // 3) Quote closers after strong end, plus OCR artifact `.“”` / `.」` / `.）`.
-        if (PunctSets.isQuoteCloser(last)) {
+        if (PunctSets.isQuoteCloser(last) || PunctSets.isAllowedPostfixCloser(last)) {
             int prevNonWs = findPrevNonWhitespaceCharIndex(s, lastNonWs);
             if (prevNonWs >= 0) {
                 char prev = s.charAt(prevNonWs);
@@ -1035,10 +1078,10 @@ public final class PdfReflowHelper {
             }
         }
 
-        // 4) Bracket closers with mostly CJK.
-        if (PunctSets.isBracketCloser(last) && lastNonWs > 0 && isMostlyCjk(s)) {
-            return true;
-        }
+        // 4) Bracket closers with mostly CJK. (reserved)
+//        if (PunctSets.isBracketCloser(last) && lastNonWs > 0 && isMostlyCjk(s)) {
+//            return true;
+//        }
 
         // 5) NEW: long Mostly-CJK line ending with full-width colon "："
         // Treat as a weak boundary (common in novels: "他说：" then dialog starts next line)

@@ -40,6 +40,10 @@ public class PunctSets {
 
     private static final boolean[] CJK_PUNCT_END_TABLE = new boolean[65536];
 
+    public static boolean isClauseOrEndPunct(char ch) {
+        return CJK_PUNCT_END_TABLE[ch];
+    }
+
     /**
      * Dialog opening characters
      */
@@ -66,6 +70,42 @@ public class PunctSets {
 
     public static boolean isCommaLike(char ch) {
         return COMMA_LIKE_TABLE[ch];
+    }
+
+    /**
+     * Returns true if the string contains any comma-like character.
+     * Null or empty strings return false.
+     */
+    public static boolean containsAnyCommaLike(String s) {
+        if (s == null || s.isEmpty())
+            return false;
+
+        for (int i = 0; i < s.length(); i++) {
+            if (COMMA_LIKE_TABLE[s.charAt(i)])
+                return true;
+        }
+        return false;
+    }
+
+    public static boolean isColonLike(char ch) {
+        return ch == '：' || ch == ':';
+    }
+
+    /**
+     * Returns true if the string ends with a colon-like character (':' or '：'),
+     * ignoring trailing whitespace.
+     */
+    public static boolean endsWithColonLike(String s) {
+        if (s == null || s.isEmpty())
+            return false;
+
+        for (int i = s.length() - 1; i >= 0; i--) {
+            char ch = s.charAt(i);
+            if (Character.isWhitespace(ch))
+                continue;
+            return isColonLike(ch);
+        }
+        return false;
     }
 
     // ---------------------------------------------------------------------
@@ -125,15 +165,11 @@ public class PunctSets {
         }
     }
 
-    public static boolean isCjkPunctEnd(char ch) {
-        return CJK_PUNCT_END_TABLE[ch];
-    }
-
     public static boolean isDialogOpener(char ch) {
         return DIALOG_OPENERS.indexOf(ch) >= 0;
     }
 
-    private static boolean isDialogCloser(char ch) {
+    public static boolean isDialogCloser(char ch) {
         return DIALOG_CLOSERS.indexOf(ch) >= 0;
     }
 
@@ -151,6 +187,27 @@ public class PunctSets {
 
     public static boolean isMatchingBracket(char open, char close) {
         return BRACKET_CLOSE_BY_OPEN[open] == close;
+    }
+
+    public static boolean isAllowedPostfixCloser(char ch) {
+        return ch == '）' || ch == ')';
+    }
+
+    /**
+     * Returns true if the string ends with an allowed postfix closer
+     * ')' or '）', ignoring trailing whitespace.
+     */
+    public static boolean endsWithAllowedPostfixCloser(String s) {
+        if (s == null || s.isEmpty())
+            return false;
+
+        for (int i = s.length() - 1; i >= 0; i--) {
+            char ch = s.charAt(i);
+            if (Character.isWhitespace(ch))
+                continue;
+            return isAllowedPostfixCloser(ch);
+        }
+        return false;
     }
 
     public static boolean isDialogStarter(String s) {
@@ -351,13 +408,13 @@ public class PunctSets {
      * Finds previous non-whitespace char strictly before startIndex.
      * Example: startIndex = s.length() => scans whole string backwards.
      */
-    public static boolean tryGetPrevNonWhitespace(String s, int startIndex, CharRef out) {
+    public static boolean tryGetPrevNonWhitespace(String s, int beforeIndex, CharRef out) {
         if (s == null || s.isEmpty()) {
             if (out != null) out.value = '\0';
             return false;
         }
 
-        int i = Math.min(startIndex - 1, s.length() - 1);
+        int i = Math.min(beforeIndex - 1, s.length() - 1);
         for (; i >= 0; i--) {
             char c = s.charAt(i);
             if (Character.isWhitespace(c)) continue;
