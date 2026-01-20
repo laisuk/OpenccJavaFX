@@ -1,4 +1,4 @@
-package openccjava;
+package pdfboxhelper;
 
 import java.util.*;
 

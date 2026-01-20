@@ -1,8 +1,5 @@
 package pdfboxhelper;
 
-import openccjava.CjkText;
-import openccjava.PunctSets;
-
 import java.util.*;
 import java.util.regex.Pattern;
 

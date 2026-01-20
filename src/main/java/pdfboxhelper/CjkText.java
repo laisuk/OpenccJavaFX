@@ -1,4 +1,4 @@
-package openccjava;
+package pdfboxhelper;
 
 public class CjkText {
     public static String trimEnd(String s) {
