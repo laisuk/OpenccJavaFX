@@ -279,7 +279,7 @@ public class PunctSets {
      * <p>These lines represent layout boundaries and must always
      * force paragraph breaks during reflow.</p>
      */
-    public static boolean isBoxDrawingLine(String s) {
+    public static boolean isVisualDividerLine(String s) {
         if (s == null)
             return false;
 
