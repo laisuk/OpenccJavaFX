@@ -421,7 +421,7 @@ public class OpenCC {
      * @return {@code true} if the configuration is supported; {@code false} otherwise
      */
     public static boolean isSupportedConfig(String value) {
-        return OpenccConfig.tryParse(value) != null;
+        return OpenccConfig.isValidConfig(value);
     }
 
     /**

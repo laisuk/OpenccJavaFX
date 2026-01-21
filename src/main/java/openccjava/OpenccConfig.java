@@ -163,24 +163,6 @@ public enum OpenccConfig {
     }
 
     /**
-     * Converts a configuration string to its canonical lowercase name.
-     *
-     * <p>This method is <b>strict</b>: if the input does not correspond to any
-     * supported configuration, an {@link IllegalArgumentException} is thrown.</p>
-     *
-     * @param value the configuration string to canonicalize
-     * @return the canonical lowercase OpenCC configuration name
-     * @throws IllegalArgumentException if the input is invalid
-     */
-    public static String toCanonicalName(String value) {
-        OpenccConfig c = tryParse(value);
-        if (c == null) {
-            throw new IllegalArgumentException("Unknown config: " + value);
-        }
-        return c.toCanonicalName();
-    }
-
-    /**
      * Converts a configuration string to its canonical lowercase name,
      * or returns {@code null} if the input is invalid.
      *
@@ -217,13 +199,18 @@ public enum OpenccConfig {
     }
 
     /**
-     * Checks whether a configuration string corresponds to a supported
-     * OpenCC conversion configuration.
+     * Checks whether a configuration string is a valid OpenCC conversion configuration.
+     *
+     * <p>The check is case-insensitive and accepts both canonical names
+     * (for example {@code "s2t"}, {@code "t2twp"}) and enum-style names
+     * (for example {@code "S2T"}, {@code "T2TWP"}).</p>
+     *
+     * <p>This method performs no allocation beyond parsing and never throws.</p>
      *
      * @param value the configuration string to check; may be {@code null}
-     * @return {@code true} if the configuration is supported; {@code false} otherwise
+     * @return {@code true} if the configuration is valid; {@code false} otherwise
      */
-    public static boolean isSupportedConfig(String value) {
+    public static boolean isValidConfig(String value) {
         return tryParse(value) != null;
     }
 }
