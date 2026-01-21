@@ -369,7 +369,7 @@ public class OpenCC {
             this.lastError = null;
         } else {
             this.configId = DEFAULT_CONFIG;
-            this.lastError = "Invalid config: null. Using default '" + DEFAULT_CONFIG.asStr() + "'.";
+            this.lastError = "Invalid config: null. Using default '" + DEFAULT_CONFIG.toCanonicalName() + "'.";
         }
     }
 
@@ -387,7 +387,7 @@ public class OpenCC {
      * @return the canonical configuration key representing the current conversion mode
      */
     public String getConfig() {
-        return configId.asStr();
+        return configId.toCanonicalName();
     }
 
     /**
@@ -439,7 +439,7 @@ public class OpenCC {
      */
     public static List<String> getSupportedConfigs() {
         ArrayList<String> out = new ArrayList<String>();
-        for (OpenccConfig c : OpenccConfig.values()) out.add(c.asStr());
+        for (OpenccConfig c : OpenccConfig.values()) out.add(c.toCanonicalName());
         return Collections.unmodifiableList(out);
     }
 

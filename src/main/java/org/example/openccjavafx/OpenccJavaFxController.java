@@ -462,7 +462,7 @@ public class OpenccJavaFxController {
     }
 
     private String getCurrentConfig() {
-        return getCurrentConfigId().asStr();
+        return getCurrentConfigId().toCanonicalName();
     }
 
     private OpenccConfig getCurrentConfigId() {
