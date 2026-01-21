@@ -49,7 +49,7 @@ tasks.withType<JavaExec> {
 }
 
 javafx {
-    version = "21.0.9"
+    version = "21.0.10"
     modules("javafx.controls", "javafx.fxml")
 }
 
@@ -152,7 +152,7 @@ jlink {
     }
 }
 
-val appImageRoot = layout.buildDirectory.dir(
+val appImageRoot: Provider<Directory> = layout.buildDirectory.dir(
     if (isMac == true) "jpackage/OpenccJavaFX.app/Contents/app"
     else "jpackage/OpenccJavaFX"
 )
