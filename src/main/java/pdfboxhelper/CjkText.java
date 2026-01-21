@@ -188,6 +188,14 @@ public class CjkText {
         return cjk > 0 && cjk >= ascii;
     }
 
+    private static boolean containsAnyCjk(String s, int start, int end) {
+        for (int i = start; i < end; i++) {
+            if (isCjk(s.charAt(i)))
+                return true;
+        }
+        return false;
+    }
+
     private static boolean isDigitAsciiOrFullWidth(char ch) {
         // ASCII digits '0'–'9'
         if (ch >= '0' && ch <= '9')
@@ -339,4 +347,118 @@ public class CjkText {
         String t = trimEnd(s);
         return t.endsWith("…") || t.endsWith("……") || t.endsWith("...") || t.endsWith("..");
     }
+
+    // ------ Bracket Boundary start ------
+
+    public static boolean endsWithCjkBracketBoundary(String s) {
+        if (s == null || isWhiteSpaceOnly(s))
+            return false;
+
+        int start = trimStartIndex(s);
+        int end = trimEndIndex(s);
+        if (end - start < 2)
+            return false;
+
+        char open = s.charAt(start);
+        char close = s.charAt(end - 1);
+
+        if (!PunctSets.isMatchingBracket(open, close))
+            return false;
+
+        // Inner content: (start+1, end-1) then trim
+        int innerStart = start + 1;
+        int innerEnd = end - 1;
+        innerStart = trimStartIndex(s, innerStart, innerEnd);
+        innerEnd = trimEndIndex(s, innerStart, innerEnd);
+
+        if (innerEnd <= innerStart)
+            return false;
+
+        // 2) Must be mostly CJK
+        if (!isMostlyCjkRange(s, innerStart, innerEnd))
+            return false;
+
+        // ASCII bracket pairs are suspicious → require at least one CJK inside
+        if ((open == '(' || open == '[') && !containsAnyCjk(s, innerStart, innerEnd))
+            return false;
+
+        // 3) Ensure this bracket type is balanced inside the trimmed text
+        return isBracketTypeBalanced(s, start, end, open);
+    }
+
+    /**
+     * Range wrapper to reuse your existing isMostlyCjk(String) without changing it.
+     */
+    private static boolean isMostlyCjkRange(String s, int start, int end) {
+        // Trim range again is not needed; caller already trimmed inner.
+        // Allocate only for inner segment (typically short).
+        return isMostlyCjk(s.substring(start, end));
+    }
+
+// ------ Bracket Boundary end ------
+
+    /**
+     * C# IsBracketTypeBalanced(ReadOnlySpan<char> s, char open)
+     */
+    public static boolean isBracketTypeBalanced(String s, int start, int end, char open) {
+        char close = PunctSets.tryGetMatchingCloser(open);
+        if (close == 0) // unknown opener -> treat as "balanced"/safe
+            return true;
+
+        int depth = 0;
+        for (int i = start; i < end; i++) {
+            char ch = s.charAt(i);
+            if (ch == open) {
+                depth++;
+            } else if (ch == close) {
+                depth--;
+                if (depth < 0) return false;
+            }
+        }
+        return depth == 0;
+    }
+
+    /**
+     * Minimal "equivalent to span.IsWhiteSpace()"
+     */
+    private static boolean isWhiteSpaceOnly(String s) {
+        for (int i = 0, n = s.length(); i < n; i++) {
+            if (!Character.isWhitespace(s.charAt(i)))
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     * Trim start for whole string
+     */
+    private static int trimStartIndex(String s) {
+        return trimStartIndex(s, 0, s.length());
+    }
+
+    /**
+     * Trim end for whole string
+     */
+    private static int trimEndIndex(String s) {
+        return trimEndIndex(s, 0, s.length());
+    }
+
+    /**
+     * Trim start in [start, end)
+     */
+    private static int trimStartIndex(String s, int start, int end) {
+        int i = start;
+        while (i < end && Character.isWhitespace(s.charAt(i))) i++;
+        return i;
+    }
+
+    /**
+     * Trim end in [start, end)
+     */
+    private static int trimEndIndex(String s, int start, int end) {
+        int i = end;
+        while (i > start && Character.isWhitespace(s.charAt(i - 1))) i--;
+        return i;
+    }
+
 }

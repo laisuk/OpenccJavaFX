@@ -189,6 +189,12 @@ public class PunctSets {
         return BRACKET_CLOSE_BY_OPEN[open] == close;
     }
 
+    /** C# TryGetMatchingCloser(open, out close) */
+    public static char tryGetMatchingCloser(char open) {
+        // Return 0 when unknown.
+        return BRACKET_CLOSE_BY_OPEN[open];
+    }
+
     public static boolean isAllowedPostfixCloser(char ch) {
         return ch == '）' || ch == ')';
     }

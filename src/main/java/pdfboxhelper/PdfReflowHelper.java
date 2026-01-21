@@ -279,18 +279,18 @@ public final class PdfReflowHelper {
             // Finalizer: strong sentence end → flush immediately. Do not remove.
             // If the current line completes a strong sentence, append it and flush immediately.
             if (buffer.length() > 0 && !dialogState.isUnclosed() && !hasUnclosedBracket) {
-//                PunctSets.CharRef lastRef = new PunctSets.CharRef();
                 if (PunctSets.tryGetLastNonWhitespace(stripped, lastRef)
                         && PunctSets.isStrongSentenceEnd(lastRef.value)) {
-                    buffer.append(stripped);         // buffer now has new value
+                    buffer.append(stripped);          // buffer now has new value
                     segments.add(buffer.toString());  // emit UPDATED bufferText, not old bufferText
-                    buffer.setLength(0);             // clear buffer
+                    buffer.setLength(0);              // clear buffer
                     dialogState.reset();
                     dialogState.update(stripped);
                     continue;
                 }
             }
 
+            // ------ Buffer first line ------
             if (buffer.length() == 0) {
                 // Start new paragraph
                 buffer.append(stripped);
@@ -377,21 +377,31 @@ public final class PdfReflowHelper {
             }
 
             // --- Colon + dialog continuation ---
-            if (bufferText.endsWith("：") || bufferText.endsWith(":")) {
-                if (PunctSets.isDialogOpener(stripped.charAt(0))) {
-                    buffer.append(stripped);
-                    dialogState.update(stripped);
-                    continue;
-                }
-            }
+//            if (bufferText.endsWith("：") || bufferText.endsWith(":")) {
+//                if (PunctSets.isDialogOpener(stripped.charAt(0))) {
+//                    buffer.append(stripped);
+//                    dialogState.update(stripped);
+//                    continue;
+//                }
+//            }
 
             // 8a) Strong sentence boundary (handles 。！？, OCR . / :, “.”)
-            if (!dialogState.isUnclosed()
-                    && CjkText.endsWithSentenceBoundary(bufferText)
-                    && !hasUnclosedBracket) {
-                segments.add(bufferText);         // push old buffer as a segment
-                buffer.setLength(0);                  // take() semantics
-                buffer.append(stripped);              // start new buffer with current line
+            boolean flushOnSentenceEnd =
+                    !dialogState.isUnclosed()
+                            && !hasUnclosedBracket
+                            && CjkText.endsWithSentenceBoundary(bufferText);
+
+            // 8b) Closing CJK bracket boundary → new paragraph
+            // Handles cases where a paragraph ends with a full-width closing bracket/quote
+            // (e.g. ）】》」) and should not be merged with the next line.
+            boolean flushOnBracketBoundary =
+                    !dialogState.isUnclosed()
+                            && CjkText.endsWithCjkBracketBoundary(bufferText);
+
+            if (flushOnSentenceEnd || flushOnBracketBoundary) {
+                segments.add(bufferText);  // push old buffer as a segment
+                buffer.setLength(0);       // take() semantics
+                buffer.append(stripped);   // start new buffer with current line
                 dialogState.reset();
                 dialogState.update(stripped);
                 continue;
@@ -655,7 +665,7 @@ public final class PdfReflowHelper {
         return s.substring(i);
     }
 
-    public static String trimStartSpacesAndFullWidth(String s) {
+    private static String trimStartSpacesAndFullWidth(String s) {
         if (s == null || s.isEmpty()) return s;
         int start = 0;
         while (start < s.length()) {
