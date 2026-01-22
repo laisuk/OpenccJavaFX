@@ -85,7 +85,7 @@ public class OpenCC {
     /**
      * Default conversion configuration for OpenCC
      */
-    private static final OpenccConfig DEFAULT_CONFIG = OpenccConfig.S2T;
+    private static final OpenccConfig DEFAULT_CONFIG = OpenccConfig.defaultConfig();
 
     /**
      * Backing field for default config
