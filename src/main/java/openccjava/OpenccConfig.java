@@ -25,72 +25,72 @@ public enum OpenccConfig {
     /**
      * Simplified → Traditional (Taiwan).
      */
-    S2Tw,
+    S2TW,
 
     /**
      * Traditional (Taiwan) → Simplified.
      */
-    Tw2S,
+    TW2S,
 
     /**
      * Simplified → Traditional (Taiwan, with phrases).
      */
-    S2Twp,
+    S2TWP,
 
     /**
      * Traditional (Taiwan, with phrases) → Simplified.
      */
-    Tw2Sp,
+    TW2SP,
 
     /**
      * Simplified → Traditional (Hong Kong).
      */
-    S2Hk,
+    S2HK,
 
     /**
      * Traditional (Hong Kong) → Simplified.
      */
-    Hk2S,
+    HK2S,
 
     /**
      * Traditional → Traditional (Taiwan).
      */
-    T2Tw,
+    T2TW,
 
     /**
      * Traditional → Traditional (Taiwan, with phrases).
      */
-    T2Twp,
+    T2TWP,
 
     /**
      * Traditional (Taiwan) → Traditional.
      */
-    Tw2T,
+    TW2T,
 
     /**
      * Traditional (Taiwan, with phrases) → Traditional.
      */
-    Tw2Tp,
+    TW2TP,
 
     /**
      * Traditional → Traditional (Hong Kong).
      */
-    T2Hk,
+    T2HK,
 
     /**
      * Traditional (Hong Kong) → Traditional.
      */
-    Hk2T,
+    HK2T,
 
     /**
      * Traditional → Japanese Shinjitai.
      */
-    T2Jp,
+    T2JP,
 
     /**
      * Japanese Shinjitai → Traditional.
      */
-    Jp2T;
+    JP2T;
 
     /**
      * Returns the default OpenCC configuration.

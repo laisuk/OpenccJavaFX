@@ -11,6 +11,7 @@ module org.example.openccjavafx {
     requires info.picocli;
     requires org.apache.pdfbox;
     requires org.apache.commons.logging;
+    requires org.jsoup;
 
     opens org.example.openccjavafx to javafx.fxml;
     exports org.example.openccjavafx;

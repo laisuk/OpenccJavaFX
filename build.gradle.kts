@@ -70,6 +70,9 @@ dependencies {
     //PDFBox
     implementation("org.apache.pdfbox:pdfbox:3.0.6")
     implementation("commons-logging:commons-logging:1.3.5")
+
+    // JSoup
+    implementation("org.jsoup:jsoup:1.22.1")
 }
 
 tasks.withType<Jar> {

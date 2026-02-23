@@ -14,6 +14,7 @@ import javafx.stage.Stage;
 import javafx.scene.control.ProgressBar;
 import openccjava.OfficeHelper;
 import openccjava.OpenccConfig;
+import openxmlhelper.EpubHelper;
 import openxmlhelper.OpenDocumentHelper;
 import openxmlhelper.OpenXmlHelper;
 import org.fxmisc.richtext.CodeArea;
@@ -468,14 +469,14 @@ public class OpenccJavaFxController {
     private OpenccConfig getCurrentConfigId() {
         if (rbS2t.isSelected()) {
             if (rbStd.isSelected()) return OpenccConfig.S2T;
-            if (rbHK.isSelected()) return OpenccConfig.S2Hk;
-            return cbZHTW.isSelected() ? OpenccConfig.S2Twp : OpenccConfig.S2Tw;
+            if (rbHK.isSelected()) return OpenccConfig.S2HK;
+            return cbZHTW.isSelected() ? OpenccConfig.S2TWP : OpenccConfig.S2TW;
         }
 
         if (rbT2s.isSelected()) {
             if (rbStd.isSelected()) return OpenccConfig.T2S;
-            if (rbHK.isSelected()) return OpenccConfig.Hk2S;
-            return cbZHTW.isSelected() ? OpenccConfig.Tw2Sp : OpenccConfig.Tw2S;
+            if (rbHK.isSelected()) return OpenccConfig.HK2S;
+            return cbZHTW.isSelected() ? OpenccConfig.TW2SP : OpenccConfig.TW2S;
         }
 
         if (rbManual.isSelected()) {
@@ -505,6 +506,7 @@ public class OpenccJavaFxController {
                 new FileChooser.ExtensionFilter("Text Files", "*.txt", "*.md", "*.csv"),
                 new FileChooser.ExtensionFilter("Subtitle Files", "*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2"),
                 new FileChooser.ExtensionFilter("Word Documents", "*.docx", "*.odt"),
+                new FileChooser.ExtensionFilter("Epub Files", "*.epub"),
                 new FileChooser.ExtensionFilter("PDF Files", "*.pdf"),
                 new FileChooser.ExtensionFilter("All Files", "*.*")
         );
@@ -598,6 +600,19 @@ public class OpenccJavaFxController {
                     String text = OpenDocumentHelper.extractOdtAllText(file);
 
                     statusAfter = String.format("ODT loaded: %s", file);
+                    return text;
+                }
+
+                // -------- ODT Handling (optional, if you have it) --------
+                if (EpubHelper.isEpub(file)) {
+                    enablePdfOptions = false;
+
+                    String text = EpubHelper.extractEpubAllText(file.getAbsolutePath(),
+                            false,
+                            true,
+                            true);
+
+                    statusAfter = String.format("Epub loaded: %s", file);
                     return text;
                 }
 

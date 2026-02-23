@@ -581,48 +581,48 @@ public class OpenCC {
             case T2S:
                 result = t2s(input, punctuation);
                 break;
-            case S2Tw:
+            case S2TW:
                 result = s2tw(input, punctuation);
                 break;
-            case Tw2S:
+            case TW2S:
                 result = tw2s(input, punctuation);
                 break;
-            case S2Twp:
+            case S2TWP:
                 result = s2twp(input, punctuation);
                 break;
-            case Tw2Sp:
+            case TW2SP:
                 result = tw2sp(input, punctuation);
                 break;
-            case S2Hk:
+            case S2HK:
                 result = s2hk(input, punctuation);
                 break;
-            case Hk2S:
+            case HK2S:
                 result = hk2s(input, punctuation);
                 break;
 
-            case T2Tw:
+            case T2TW:
                 result = t2tw(input);
                 break;
-            case T2Twp:
+            case T2TWP:
                 result = t2twp(input);
                 break;
-            case Tw2T:
+            case TW2T:
                 result = tw2t(input);
                 break;
-            case Tw2Tp:
+            case TW2TP:
                 result = tw2tp(input);
                 break;
-            case T2Hk:
+            case T2HK:
                 result = t2hk(input);
                 break;
-            case Hk2T:
+            case HK2T:
                 result = hk2t(input);
                 break;
 
-            case T2Jp:
+            case T2JP:
                 result = t2jp(input);
                 break;
-            case Jp2T:
+            case JP2T:
                 result = jp2t(input);
                 break;
 
@@ -674,26 +674,26 @@ public class OpenCC {
             // -----------------------------
             // Simplified <-> Taiwan
             // -----------------------------
-            case S2Tw:
+            case S2TW:
                 // S -> T, then apply TW variants
                 refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
                         .withRound2(Collections.singletonList(d.tw_variants));
                 break;
 
-            case Tw2S:
+            case TW2S:
                 // TW -> T (reverse variants), then T -> S
                 refs = new DictRefs(Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev))
                         .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
                 break;
 
-            case S2Twp:
+            case S2TWP:
                 // S -> T, then TW phrases, then TW variants
                 refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
                         .withRound2(Collections.singletonList(d.tw_phrases))
                         .withRound3(Collections.singletonList(d.tw_variants));
                 break;
 
-            case Tw2Sp:
+            case TW2SP:
                 // TW phrases reverse + TW variants reverse, then T -> S
                 refs = new DictRefs(Arrays.asList(d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev))
                         .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
@@ -702,13 +702,13 @@ public class OpenCC {
             // -----------------------------
             // Simplified <-> Hong Kong
             // -----------------------------
-            case S2Hk:
+            case S2HK:
                 // S -> T, then HK variants
                 refs = new DictRefs(Arrays.asList(d.st_phrases, d.st_characters))
                         .withRound2(Collections.singletonList(d.hk_variants));
                 break;
 
-            case Hk2S:
+            case HK2S:
                 // HK -> T (reverse variants), then T -> S
                 refs = new DictRefs(Arrays.asList(d.hk_variants_rev_phrases, d.hk_variants_rev))
                         .withRound2(Arrays.asList(d.ts_phrases, d.ts_characters));
@@ -717,23 +717,23 @@ public class OpenCC {
             // -----------------------------
             // Traditional <-> Taiwan (Traditional region transform)
             // -----------------------------
-            case T2Tw:
+            case T2TW:
                 // T -> TW (variants only)
                 refs = new DictRefs(Collections.singletonList(d.tw_variants));
                 break;
 
-            case T2Twp:
+            case T2TWP:
                 // T -> TW (phrases + variants)
                 refs = new DictRefs(Collections.singletonList(d.tw_phrases))
                         .withRound2(Collections.singletonList(d.tw_variants));
                 break;
 
-            case Tw2T:
+            case TW2T:
                 // TW -> T (reverse variants)
                 refs = new DictRefs(Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev));
                 break;
 
-            case Tw2Tp:
+            case TW2TP:
                 // TW (variants-rev pair) -> T, then apply TW phrases/idioms reverse last
                 refs = new DictRefs(Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev))
                         .withRound2(Collections.singletonList(d.tw_phrases_rev));
@@ -742,12 +742,12 @@ public class OpenCC {
             // -----------------------------
             // Traditional <-> Hong Kong (Traditional region transform)
             // -----------------------------
-            case T2Hk:
+            case T2HK:
                 // T -> HK (variants only)
                 refs = new DictRefs(Collections.singletonList(d.hk_variants));
                 break;
 
-            case Hk2T:
+            case HK2T:
                 // HK -> T (reverse variants)
                 refs = new DictRefs(Arrays.asList(d.hk_variants_rev_phrases, d.hk_variants_rev));
                 break;
@@ -755,12 +755,12 @@ public class OpenCC {
             // -----------------------------
             // Japanese Shinjitai
             // -----------------------------
-            case T2Jp:
+            case T2JP:
                 // T -> JP variants
                 refs = new DictRefs(Collections.singletonList(d.jp_variants));
                 break;
 
-            case Jp2T:
+            case JP2T:
                 // JP -> T (jps phrases/chars + reverse variants)
                 refs = new DictRefs(Arrays.asList(d.jps_phrases, d.jps_characters, d.jp_variants_rev));
                 break;
@@ -1317,7 +1317,7 @@ public class OpenCC {
      * @return the converted text in Traditional Chinese (Taiwan)
      */
     public String s2tw(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2Tw, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2TW, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1329,7 +1329,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String tw2s(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Tw2S, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2S, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1341,7 +1341,7 @@ public class OpenCC {
      * @return the converted text in full Taiwan-style Traditional Chinese
      */
     public String s2twp(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2Twp, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2TWP, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1353,7 +1353,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String tw2sp(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Tw2Sp, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2SP, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1365,7 +1365,7 @@ public class OpenCC {
      * @return the converted text in Hong Kong-style Traditional Chinese
      */
     public String s2hk(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2Hk, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2HK, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1377,7 +1377,7 @@ public class OpenCC {
      * @return the converted text in Simplified Chinese
      */
     public String hk2s(String input, boolean punctuation) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Hk2S, punctuation);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2S, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1388,7 +1388,7 @@ public class OpenCC {
      * @return the text converted to Taiwan-style Traditional Chinese
      */
     public String t2tw(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2Tw, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2TW, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1399,7 +1399,7 @@ public class OpenCC {
      * @return the converted Taiwan Traditional Chinese with phrases and variants
      */
     public String t2twp(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2Twp, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2TWP, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1410,7 +1410,7 @@ public class OpenCC {
      * @return the converted base Traditional Chinese text
      */
     public String tw2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Tw2T, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2T, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1421,7 +1421,7 @@ public class OpenCC {
      * @return the fully reverted Traditional Chinese text
      */
     public String tw2tp(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Tw2Tp, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2TP, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1432,7 +1432,7 @@ public class OpenCC {
      * @return the converted text using HK Traditional variants
      */
     public String t2hk(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2Hk, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2HK, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1443,7 +1443,7 @@ public class OpenCC {
      * @return the converted base Traditional Chinese text
      */
     public String hk2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.Hk2T, false);
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2T, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
