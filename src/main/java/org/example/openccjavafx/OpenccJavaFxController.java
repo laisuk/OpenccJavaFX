@@ -894,7 +894,7 @@ public class OpenccJavaFxController {
         boolean success = false;
         if (dragboard.hasFiles()) {
             File file = dragboard.getFiles().get(0);
-            if (isPdfFile(file) || OpenXmlHelper.isDocx(file) || OpenXmlHelper.isOdt(file)) {
+            if (isPdfFile(file) || OpenXmlHelper.isDocx(file) || OpenXmlHelper.isOdt(file) || EpubHelper.isEpub(file)) {
                 startLoadFileTask(file);
             } else if (isTextFile(file)) {
                 try {
