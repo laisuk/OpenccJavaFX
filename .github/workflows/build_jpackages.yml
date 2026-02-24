@@ -39,17 +39,17 @@ jobs:
           cache: gradle
 
       - name: Install Linux packaging deps (lean)
-        if: startsWith(matrix.os, 'ubuntu')
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
         shell: bash
         run: |
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            fakeroot desktop-file-utils xz-utils binutils rpm      
+            fakeroot desktop-file-utils xz-utils binutils rpm
 
       # Windows: WiX for MSI
       - name: Install WiX Toolset (Windows)
-        if: matrix.os == 'windows-latest'
+        if: ${{ matrix.os == 'windows-latest' }}
         shell: pwsh
         run: |
           choco install wixtoolset --no-progress -y
@@ -62,20 +62,20 @@ jobs:
           & "$wixPath\light.exe"  -? | Out-Null
 
       - name: Make gradlew executable (non-Windows)
-        if: matrix.os != 'windows-latest'
+        if: ${{ matrix.os != 'windows-latest' }}
         shell: bash
         run: chmod +x gradlew
 
       # Show versions
       - name: Show Java & Gradle versions (Unix)
-        if: matrix.os != 'windows-latest'
+        if: ${{ matrix.os != 'windows-latest' }}
         shell: bash
         run: |
           java -version
           ${{ matrix.gradle_cmd }} --version
 
       - name: Show Java & Gradle versions (Windows)
-        if: matrix.os == 'windows-latest'
+        if: ${{ matrix.os == 'windows-latest' }}
         shell: pwsh
         run: |
           java -version
@@ -83,13 +83,13 @@ jobs:
 
       # Build installers
       - name: Build Windows MSI
-        if: matrix.os == 'windows-latest'
+        if: ${{ matrix.os == 'windows-latest' }}
         shell: pwsh
         run: |
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=msi
 
       - name: Build Linux DEB (+ RPM) into separate dirs
-        if: startsWith(matrix.os, 'ubuntu')
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -110,10 +110,10 @@ jobs:
           if (( ${#debs[@]} == 0 )); then
             echo "::error::No .deb file generated." >&2
             exit 1
-          fi      
+          fi
 
       - name: Build macOS DMG
-        if: startsWith(matrix.os, 'macos')
+        if: ${{ startsWith(matrix.os, 'macos') }}
         shell: bash
         run: |
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=dmg
@@ -132,7 +132,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Linux DEB installer
-        if: startsWith(matrix.os, 'ubuntu')
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
         uses: actions/upload-artifact@v4
         with:
           name: installer-${{ matrix.os_tag }}-deb
@@ -142,7 +142,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Linux RPM installer
-        if: startsWith(matrix.os, 'ubuntu')
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
         uses: actions/upload-artifact@v4
         with:
           name: installer-${{ matrix.os_tag }}-rpm
@@ -152,7 +152,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Windows/macOS installers
-        if: !startsWith(matrix.os, 'ubuntu')
+        if: ${{ !startsWith(matrix.os, 'ubuntu') }}
         uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.os_tag }}
@@ -161,5 +161,3 @@ jobs:
             build/jpackage/**/*.dmg
             build/jpackage/**/*.pkg
           if-no-files-found: ignore
-
-
