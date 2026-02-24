@@ -14,11 +14,21 @@ jobs:
           - os: ubuntu-latest
             os_tag: linux
             gradle_cmd: ./gradlew
+
+          - os: ubuntu-24.04-arm
+            os_tag: linux-arm64
+            gradle_cmd: ./gradlew
+
           - os: windows-latest
             os_tag: windows
             gradle_cmd: .\gradlew.bat
+
           - os: macos-latest
             os_tag: macos
+            gradle_cmd: ./gradlew
+
+          - os: macos-15-intel
+            os_tag: macos-intel
             gradle_cmd: ./gradlew
 
     steps:
@@ -33,7 +43,7 @@ jobs:
           cache: gradle
 
       - name: Install Linux packaging deps (lean)
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
         shell: bash
         run: |
           set -euxo pipefail
@@ -83,7 +93,7 @@ jobs:
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=msi
 
       - name: Build Linux DEB (+ RPM) into separate dirs
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
         shell: bash
         run: |
           set -euo pipefail
@@ -107,7 +117,7 @@ jobs:
           fi      
 
       - name: Build macOS DMG
-        if: matrix.os == 'macos-latest'
+        if: startsWith(matrix.os, 'macos')
         shell: bash
         run: |
           ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=dmg
