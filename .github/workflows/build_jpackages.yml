@@ -15,10 +15,6 @@ jobs:
             os_tag: linux
             gradle_cmd: ./gradlew
 
-#          - os: ubuntu-24.04-arm
-#            os_tag: linux-arm64
-#            gradle_cmd: ./gradlew
-
           - os: windows-latest
             os_tag: windows
             gradle_cmd: .\gradlew.bat
@@ -135,15 +131,32 @@ jobs:
             !build/jpackage/*.pkg
           if-no-files-found: ignore
 
-      - name: Upload native installers (msi/deb/rpm/dmg/pkg)
+      - name: Upload Linux DEB installer
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os_tag }}-deb
+          path: |
+            build/installer/deb/**/*.deb
+            build/jpackage/**/*.deb
+          if-no-files-found: error
+
+      - name: Upload Linux RPM installer
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os_tag }}-rpm
+          path: |
+            build/installer/rpm/**/*.rpm
+            build/jpackage/**/*.rpm
+          if-no-files-found: error
+
+      - name: Upload Windows/macOS installers
+        if: !startsWith(matrix.os, 'ubuntu')
         uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.os_tag }}
           path: |
-            build/installer/**/*.deb
-            build/installer/**/*.rpm
-            build/jpackage/**/*.deb
-            build/jpackage/**/*.rpm
             build/jpackage/**/*.msi
             build/jpackage/**/*.dmg
             build/jpackage/**/*.pkg
