@@ -15,9 +15,9 @@ jobs:
             os_tag: linux
             gradle_cmd: ./gradlew
 
-          - os: ubuntu-24.04-arm
-            os_tag: linux-arm64
-            gradle_cmd: ./gradlew
+#          - os: ubuntu-24.04-arm
+#            os_tag: linux-arm64
+#            gradle_cmd: ./gradlew
 
           - os: windows-latest
             os_tag: windows
