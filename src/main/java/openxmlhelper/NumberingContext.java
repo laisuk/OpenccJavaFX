@@ -45,8 +45,8 @@ final class NumberingContext {
     }
 
     ResolvedNum resolveNum(Integer directNumId, Integer directIlvl, String styleId) {
-        if (directNumId != null && directIlvl != null) {
-            return new ResolvedNum(directNumId, directIlvl);
+        if (directNumId != null) {
+            return new ResolvedNum(directNumId, directIlvl != null ? directIlvl : 0);
         }
         if (styleId != null && !styleId.isEmpty()) {
             StyleNum s = styleNum.get(styleId);
@@ -79,7 +79,8 @@ final class NumberingContext {
 
         // bullets
         if (Utils.equalsIgnoreCase(def.numFmt, "bullet")) {
-            return "• ";
+            String bullet = resolveBulletGlyph(def.lvlText, def.fontHint);
+            return bullet + " ";
         }
 
         String lvlText = (def.lvlText == null || def.lvlText.isEmpty()) ? "%1." : def.lvlText;
@@ -91,7 +92,10 @@ final class NumberingContext {
             int k = (m.group(1).charAt(0) - '1'); // 0..8
             int v = arr[k];
             if (v <= 0) v = 1;
-            m.appendReplacement(sb, Matcher.quoteReplacement(Integer.toString(v)));
+            // use referenced level format
+            LevelDef refDef = lvls.get(k);
+            String fmt = (refDef != null) ? refDef.numFmt : "decimal";
+            m.appendReplacement(sb, Matcher.quoteReplacement(formatCounter(v, fmt)));
         }
         m.appendTail(sb);
 
@@ -203,6 +207,19 @@ final class NumberingContext {
                                 if (map != null) map.get(currentLevel).lvlText = val;
                             }
                         }
+
+                        if ("rFonts".equals(local)) {
+                            if (currentAbstractId != null && currentLevel != null) {
+                                String ascii = Utils.getAttrAny(r, NS_W, "ascii");
+                                String hansi = Utils.getAttrAny(r, NS_W, "hAnsi");
+                                String hint = (ascii != null && !ascii.isEmpty()) ? ascii : hansi;
+
+                                if (hint != null && !hint.isEmpty()) {
+                                    HashMap<Integer, LevelDef> map = abstractLevels.get(currentAbstractId);
+                                    if (map != null) map.get(currentLevel).fontHint = hint;
+                                }
+                            }
+                        }
                     } else if (ev == XMLStreamConstants.END_ELEMENT) {
                         if (!NS_W.equals(r.getNamespaceURI())) continue;
 
@@ -308,6 +325,52 @@ final class NumberingContext {
 
     // ------------------------------- helpers --------------------------------
 
+    private static String formatCounter(int v, String numFmt) {
+        if (v <= 0) v = 1;
+
+        switch (numFmt == null ? "" : numFmt.trim()) {
+            case "lowerLetter":
+                return toLetters(v, false);
+            case "upperLetter":
+                return toLetters(v, true);
+            case "lowerRoman":
+                return toRoman(v).toLowerCase();
+            case "upperRoman":
+                return toRoman(v);
+            case "decimalZero":
+                return v < 10 ? "0" + v : Integer.toString(v);
+            default:
+                return Integer.toString(v);
+        }
+    }
+
+    private static String toLetters(int v, boolean upper) {
+        StringBuilder sb = new StringBuilder();
+        while (v > 0) {
+            v--;
+            char c = (char) ('a' + (v % 26));
+            sb.insert(0, c);
+            v /= 26;
+        }
+        String s = sb.toString();
+        return upper ? s.toUpperCase() : s;
+    }
+
+    private static String toRoman(int v) {
+        if (v <= 0) return "I";
+        int[] nums = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
+        String[] strs = {"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < nums.length; i++) {
+            while (v >= nums[i]) {
+                sb.append(strs[i]);
+                v -= nums[i];
+            }
+        }
+        return sb.toString();
+    }
+
     // ------------------------------- models ---------------------------------
 
     private static final class StyleNum {
@@ -323,5 +386,53 @@ final class NumberingContext {
     private static final class LevelDef {
         String numFmt = "";
         String lvlText = "";
+        String fontHint = null;
+    }
+
+    private static String resolveBulletGlyph(String lvlText, String fontHint) {
+        String t = (lvlText == null ? "" : lvlText)
+                .replace("\t", "")
+                .replace("\u00A0", " ")
+                .trim();
+
+        if (t.isEmpty()) return "•";
+
+        char ch = t.charAt(0);
+        String font = fontHint == null ? "" : fontHint.trim();
+
+        if (isGoodUnicodeGlyph(ch)) return String.valueOf(ch);
+
+        if (font.equalsIgnoreCase("Symbol")) {
+            return "•";
+        }
+
+        if (font.toLowerCase().startsWith("wingdings")) {
+            switch (ch) {
+                case '':
+                    return "✓";
+                case '':
+                    return "➤";
+                case '':
+                    return "▪";
+                case 'n':
+                    return "■";
+                case 'u':
+                    return "◆";
+                case 'v':
+                    return "◇";
+                default:
+                    return "•";
+            }
+        }
+
+        if (font.equalsIgnoreCase("Courier New")) {
+            return ch == 'o' ? "○" : "•";
+        }
+
+        return "•";
+    }
+
+    private static boolean isGoodUnicodeGlyph(char c) {
+        return "•●○■▪◆◇✓✔➤➔➢".indexOf(c) >= 0;
     }
 }

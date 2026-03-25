@@ -264,7 +264,7 @@ public final class OpenXmlHelper {
                             continue;
                         }
 
-                        emitPrefixIfNeeded(ctx, inParagraph, paraPrefixEmitted,
+                        paraPrefixEmitted = emitPrefixIfNeeded(ctx, inParagraph, paraPrefixEmitted,
                                 paraNumId, paraIlvl, paraStyleId,
                                 inCell, currentCell, sb);
 
@@ -284,7 +284,7 @@ public final class OpenXmlHelper {
                     if ("tab".equals(local)) {
                         if (skipThisNote && (inFootnote || inEndnote)) continue;
 
-                        paraPrefixEmitted = emitPrefixIfNeededReturnFlag(ctx, inParagraph, paraPrefixEmitted,
+                        paraPrefixEmitted = emitPrefixIfNeeded(ctx, inParagraph, paraPrefixEmitted,
                                 paraNumId, paraIlvl, paraStyleId,
                                 inCell, currentCell, sb);
 
@@ -295,7 +295,7 @@ public final class OpenXmlHelper {
                     if ("br".equals(local) || "cr".equals(local)) {
                         if (skipThisNote && (inFootnote || inEndnote)) continue;
 
-                        paraPrefixEmitted = emitPrefixIfNeededReturnFlag(ctx, inParagraph, paraPrefixEmitted,
+                        paraPrefixEmitted = emitPrefixIfNeeded(ctx, inParagraph, paraPrefixEmitted,
                                 paraNumId, paraIlvl, paraStyleId,
                                 inCell, currentCell, sb);
 
@@ -388,33 +388,10 @@ public final class OpenXmlHelper {
         return false;
     }
 
-    // ---------------------------- Numbering prefix (stub for Part 3) ----------------------------
-
-    /**
-     * In Part 3 we will implement the REAL numbering/style parsing.
-     * For now, this keeps the code compiling and preserves the call sites.
-     */
-    static final class NumberingContext {
-        static NumberingContext load(ZipFile zip) {
-            return new NumberingContext();
-        }
-
-        void resetCountersForPart() {
-        }
-
-        openxmlhelper.NumberingContext.ResolvedNum resolveNum(Integer paraNumId, Integer paraIlvl, String paraStyleId) {
-            return new openxmlhelper.NumberingContext.ResolvedNum(null, null);
-        }
-
-        String nextPrefix(int numId, int ilvl) {
-            return "";
-        }
-    }
-
     /**
      * A proper port of EmitPrefixIfNeeded(), but returns updated paraPrefixEmitted flag.
      */
-    private static boolean emitPrefixIfNeededReturnFlag(
+    private static boolean emitPrefixIfNeeded(
             NumberingContext ctx,
             boolean inParagraph,
             boolean paraPrefixEmitted,
@@ -436,21 +413,6 @@ public final class OpenXmlHelper {
             }
         }
         return false;
-    }
-
-    // Legacy helper kept for readability; not used after we adopted the return-flag version above
-    private static void emitPrefixIfNeeded(
-            NumberingContext ctx,
-            boolean inParagraph,
-            boolean paraPrefixEmitted,
-            Integer paraNumId,
-            Integer paraIlvl,
-            String paraStyleId,
-            boolean inCell,
-            StringBuilder currentCell,
-            StringBuilder sb
-    ) {
-        // no-op wrapper; we use emitPrefixIfNeededReturnFlag() to correctly update the flag
     }
 
 }
