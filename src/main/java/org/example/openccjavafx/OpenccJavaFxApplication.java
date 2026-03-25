@@ -11,7 +11,7 @@ public class OpenccJavaFxApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(OpenccJavaFxApplication.class.getResource("openccjavafx-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 1000, 700);
+        Scene scene = new Scene(fxmlLoader.load(), 1000, 750);
         stage.setTitle("OpenccJavaFX");
         stage.setScene(scene);
         stage.show();

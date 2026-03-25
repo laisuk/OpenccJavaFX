@@ -22,11 +22,11 @@
 <?import org.fxmisc.flowless.VirtualizedScrollPane?>
 <?import org.fxmisc.richtext.CodeArea?>
 
-<VBox alignment="CENTER" prefHeight="720.0" prefWidth="1000.0" spacing="20.0" xmlns="http://javafx.com/javafx/21.0.10" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.OpenccJavaFxController">
+<VBox alignment="CENTER" prefHeight="750.0" prefWidth="1000.0" spacing="16.0" styleClass="app-root" stylesheets="@styles.css" xmlns="http://javafx.com/javafx/21.0.10" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.OpenccJavaFxController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
-    <GridPane VBox.vgrow="NEVER">
+    <GridPane styleClass="top-strip top-strip-primary" VBox.vgrow="NEVER">
         <columnConstraints>
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
@@ -36,7 +36,7 @@
             <RowConstraints vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <RadioButton fx:id="rbS2t" mnemonicParsing="false" selected="true" text="zh-Hans（简体）To zh-Hant（繁体）" GridPane.halignment="CENTER">
+            <RadioButton fx:id="rbS2t" mnemonicParsing="false" selected="true" styleClass="toggle-radio" text="zh-Hans（简体）To zh-Hant（繁体）" GridPane.halignment="CENTER">
                 <toggleGroup>
                     <ToggleGroup fx:id="GroupConfig" />
                 </toggleGroup>
@@ -44,20 +44,20 @@
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <RadioButton fx:id="rbT2s" mnemonicParsing="false" text="zh-Hant（繁体）To Hans（简体）" toggleGroup="$GroupConfig" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+            <RadioButton fx:id="rbT2s" mnemonicParsing="false" styleClass="toggle-radio" text="zh-Hant（繁体）To Hans（简体）" toggleGroup="$GroupConfig" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                 <font>
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <RadioButton fx:id="rbManual" mnemonicParsing="false" text="Manual（自定义）：" toggleGroup="$GroupConfig" GridPane.columnIndex="2" GridPane.halignment="LEFT">
+            <RadioButton fx:id="rbManual" mnemonicParsing="false" styleClass="toggle-radio" text="Manual（自定义）：" toggleGroup="$GroupConfig" GridPane.columnIndex="2" GridPane.halignment="LEFT">
                 <font>
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <ComboBox fx:id="cbManual" onMouseClicked="#onCbManualClicked" prefWidth="150.0" GridPane.columnIndex="2" GridPane.halignment="RIGHT" />
+            <ComboBox fx:id="cbManual" onMouseClicked="#onCbManualClicked" prefWidth="150.0" styleClass="input-surface" GridPane.columnIndex="2" GridPane.halignment="RIGHT" />
         </children>
     </GridPane>
-    <GridPane prefHeight="48.0">
+    <GridPane prefHeight="48.0" styleClass="top-strip top-strip-secondary">
         <columnConstraints>
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
@@ -69,7 +69,7 @@
             <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <RadioButton fx:id="rbStd" mnemonicParsing="false" onMouseClicked="#onRbStdClicked" selected="true" text="General（通用简繁）" GridPane.halignment="CENTER">
+            <RadioButton fx:id="rbStd" mnemonicParsing="false" onMouseClicked="#onRbStdClicked" selected="true" styleClass="toggle-radio" text="General（通用简繁）" GridPane.halignment="CENTER">
                 <toggleGroup>
                     <ToggleGroup fx:id="GroupRegion" />
                 </toggleGroup>
@@ -77,21 +77,21 @@
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <RadioButton fx:id="rbZHTW" mnemonicParsing="false" onMouseClicked="#onRbZhtwClicked" text="ZH / TW（中台简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+            <RadioButton fx:id="rbZHTW" mnemonicParsing="false" onMouseClicked="#onRbZhtwClicked" styleClass="toggle-radio" text="ZH / TW（中台简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                 <font>
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <RadioButton fx:id="rbHK" mnemonicParsing="false" onMouseClicked="#onRbStdClicked" text="Hong Kong（中港简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="2" GridPane.halignment="CENTER">
+            <RadioButton fx:id="rbHK" mnemonicParsing="false" onMouseClicked="#onRbStdClicked" styleClass="toggle-radio" text="Hong Kong（中港简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="2" GridPane.halignment="CENTER">
                 <font>
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <CheckBox fx:id="cbZHTW" alignment="CENTER" mnemonicParsing="false" text="ZH/TW Idioms（中台惯用语）" GridPane.columnIndex="3" GridPane.halignment="CENTER" />
-            <CheckBox fx:id="cbPunctuation" alignment="CENTER" mnemonicParsing="false" selected="true" text="Puntuations（标点）" GridPane.columnIndex="4" GridPane.halignment="CENTER" />
+            <CheckBox fx:id="cbZHTW" alignment="CENTER" mnemonicParsing="false" styleClass="fluent-check" text="ZH/TW Idioms（惯用语）" GridPane.columnIndex="3" GridPane.halignment="CENTER" />
+            <CheckBox fx:id="cbPunctuation" alignment="CENTER" mnemonicParsing="false" selected="true" styleClass="fluent-check" text="Puntuations（标点）" GridPane.columnIndex="4" GridPane.halignment="CENTER" />
         </children>
     </GridPane>
-    <TabPane fx:id="tabPane" prefHeight="579.0" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+    <TabPane fx:id="tabPane" prefHeight="579.0" styleClass="main-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
         <tabs>
             <Tab fx:id="tabMain" closable="false" onSelectionChanged="#onTabMainSelectionChanged" text="Main Coversion">
                 <content>
@@ -107,12 +107,12 @@
                                     <RowConstraints minHeight="32.0" prefHeight="32.0" vgrow="NEVER" />
                                 </rowConstraints>
                                 <children>
-                                    <Button fx:id="btnPaste" onMouseClicked="#onBtnPasteClick" prefHeight="20.0" prefWidth="60.0" text="Paste" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnPaste" onMouseClicked="#onBtnPasteClick" prefHeight="0.0" prefWidth="65.0" styleClass="tool-button" text="Paste" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets top="5.0" />
                                         </GridPane.margin>
                                     </Button>
-                                    <Button fx:id="btnCopy" mnemonicParsing="false" onMouseClicked="#onBtnCopyClicked" prefHeight="20.0" prefWidth="60.0" text="Copy" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnCopy" mnemonicParsing="false" onMouseClicked="#onBtnCopyClicked" prefHeight="0.0" prefWidth="60.0" styleClass="tool-button" text="Copy" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets top="5.0" />
                                         </GridPane.margin>
@@ -127,9 +127,9 @@
                                     <!--                           </TextArea>-->
                                     <VirtualizedScrollPane GridPane.columnIndex="0">
                                         <content>
-                                            <CodeArea fx:id="textAreaSource" onDragDropped="#onTaDragDropped" onDragOver="#onTaSourceDragOver" onKeyPressed="#onSourceTextChanged" style="-fx-border-color: gray; -fx-border-width: 1px; -fx-font-size: 15px;" wrapText="true">
+                                            <CodeArea fx:id="textAreaSource" onDragDropped="#onTaDragDropped" onDragOver="#onTaSourceDragOver" onKeyPressed="#onSourceTextChanged" styleClass="editor-surface" wrapText="true">
                                                 <padding>
-                                                    <Insets bottom="5.0" left="5.0" top="5.0" />
+                                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                                                 </padding>
                                             </CodeArea>
                                         </content>
@@ -147,9 +147,9 @@
                                     <!--                           </TextArea>-->
                                     <VirtualizedScrollPane GridPane.columnIndex="1">
                                         <content>
-                                            <CodeArea fx:id="textAreaDestination" editable="false" style="-fx-border-color: gray; -fx-border-width: 1px; -fx-font-size: 15px;" wrapText="true">
+                                            <CodeArea fx:id="textAreaDestination" editable="false" styleClass="editor-surface" wrapText="true">
                                                 <padding>
-                                                    <Insets bottom="5.0" left="5.0" top="5.0" />
+                                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                                                 </padding>
                                             </CodeArea>
                                         </content>
@@ -157,7 +157,7 @@
                                             <Insets bottom="5.0" left="5.0" top="5.0" />
                                         </padding>
                                     </VirtualizedScrollPane>
-                                    <Label fx:id="lblSource" text="Source:" GridPane.rowIndex="1">
+                                    <Label fx:id="lblSource" styleClass="section-label" text="Source:" GridPane.rowIndex="1">
                                         <font>
                                             <Font name="System Bold" size="14.0" />
                                         </font>
@@ -165,7 +165,7 @@
                                             <Insets left="3.0" />
                                         </GridPane.margin>
                                     </Label>
-                                    <Label fx:id="lblDestination" text="Destination:" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                    <Label fx:id="lblDestination" styleClass="section-label" text="Destination:" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                         <font>
                                             <Font name="System Bold" size="14.0" />
                                         </font>
@@ -191,29 +191,37 @@
                                     </Label>
                                     <Label fx:id="lblSourceCharCount" alignment="CENTER_RIGHT" textAlignment="RIGHT" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="140.0" />
+                                            <Insets right="155.0" />
                                         </GridPane.margin>
                                         <opaqueInsets>
                                             <Insets />
                                         </opaqueInsets>
                                     </Label>
-                                    <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" text="↻" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" styleClass="tool-button" text="↻" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="100.0" top="5.0" />
+                                            <Insets right="115.0" top="5.0" />
                                         </GridPane.margin>
                                         <font>
                                             <Font name="System Bold" size="13.0" />
                                         </font>
                                     </Button>
-                                    <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" text="↧" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" styleClass="tool-button" text="↧" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="100.0" top="5.0" />
+                                            <Insets right="110.0" top="5.0" />
                                         </GridPane.margin>
                                         <font>
                                             <Font name="System Bold" size="12.0" />
                                         </font>
                                     </Button>
-                                    <Button fx:id="btnClearSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearSourceClicked" text="AC" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnClearSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearSourceClicked" styleClass="tool-button" text="AC" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                        <font>
+                                            <Font name="System Bold" size="12.0" />
+                                        </font>
+                                        <GridPane.margin>
+                                            <Insets right="70.0" top="5.0" />
+                                        </GridPane.margin>
+                                    </Button>
+                                    <Button fx:id="btnClearDestination" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearDestinationClicked" styleClass="tool-button" text="AC" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <font>
                                             <Font name="System Bold" size="12.0" />
                                         </font>
@@ -221,17 +229,9 @@
                                             <Insets right="65.0" top="5.0" />
                                         </GridPane.margin>
                                     </Button>
-                                    <Button fx:id="btnClearDestination" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearDestinationClicked" text="AC" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <font>
-                                            <Font name="System Bold" size="12.0" />
-                                        </font>
-                                        <GridPane.margin>
-                                            <Insets right="65.0" top="5.0" />
-                                        </GridPane.margin>
-                                    </Button>
-                           <ComboBox fx:id="cbSaveTarget" prefWidth="110.0" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                           <ComboBox fx:id="cbSaveTarget" prefWidth="120.0" styleClass="input-surface" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                               <GridPane.margin>
-                                 <Insets right="135.0" top="5.0" />
+                                 <Insets right="145.0" top="5.0" />
                               </GridPane.margin>
                            </ComboBox>
                                 </children>
@@ -254,7 +254,7 @@
                                     <RowConstraints minHeight="32.0" prefHeight="32.0" vgrow="NEVER" />
                                 </rowConstraints>
                                 <children>
-                                    <ListView fx:id="listViewSource" onDragDropped="#onLvDragDropped" onDragOver="#onLivSourceDragOver" prefHeight="200.0" prefWidth="200.0">
+                                    <ListView fx:id="listViewSource" onDragDropped="#onLvDragDropped" onDragOver="#onLivSourceDragOver" prefHeight="200.0" prefWidth="200.0" styleClass="list-surface">
                                         <padding>
                                             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                                         </padding>
@@ -269,7 +269,7 @@
                                     <!--                                    </TextArea>-->
                                     <VirtualizedScrollPane GridPane.columnIndex="1">
                                         <content>
-                                            <CodeArea fx:id="textAreaPreview" editable="false" prefHeight="200.0" prefWidth="200.0" style="-fx-border-color: gray; -fx-border-width: 1px; -fx-font-size: 15px;" wrapText="true">
+                                            <CodeArea fx:id="textAreaPreview" editable="false" prefHeight="200.0" prefWidth="200.0" styleClass="editor-surface" wrapText="true">
                                                 <padding>
                                                     <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                                                 </padding>
@@ -289,7 +289,7 @@
                                         <children>
                                             <HBox prefHeight="100.0" prefWidth="200.0">
                                                 <children>
-                                                    <Button fx:id="btnAdd" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnAddClicked" text="Add" HBox.hgrow="ALWAYS">
+                                                    <Button fx:id="btnAdd" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnAddClicked" styleClass="button-secondary" text="Add" HBox.hgrow="ALWAYS">
                                                         <font>
                                                             <Font name="System Bold" size="12.0" />
                                                         </font>
@@ -297,7 +297,7 @@
                                                             <Insets right="5.0" />
                                                         </HBox.margin>
                                                     </Button>
-                                                    <Button fx:id="btnRemove" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnRemoveClicked" text="Remove" HBox.hgrow="ALWAYS">
+                                                    <Button fx:id="btnRemove" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnRemoveClicked" styleClass="button-secondary" text="Remove" HBox.hgrow="ALWAYS">
                                                         <font>
                                                             <Font name="System Bold" size="12.0" />
                                                         </font>
@@ -305,7 +305,7 @@
                                                             <Insets right="5.0" />
                                                         </HBox.margin>
                                                     </Button>
-                                                    <Button fx:id="btnClearList" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnClearListClicked" text="AC" HBox.hgrow="ALWAYS">
+                                                    <Button fx:id="btnClearList" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnClearListClicked" styleClass="button-secondary" text="AC" HBox.hgrow="ALWAYS">
                                                         <font>
                                                             <Font name="System Bold" size="12.0" />
                                                         </font>
@@ -313,15 +313,18 @@
                                                             <Insets right="5.0" />
                                                         </HBox.margin>
                                                     </Button>
-                                                    <Button fx:id="btnPreviewSource" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnPreviewSourceClicked" text="Preview" HBox.hgrow="ALWAYS">
+                                                    <Button fx:id="btnPreviewSource" minWidth="70.0" mnemonicParsing="false" onMouseClicked="#onBtnPreviewSourceClicked" styleClass="button-secondary" text="Preview" HBox.hgrow="ALWAYS">
                                                         <font>
                                                             <Font name="System Bold" size="12.0" />
                                                         </font>
                                                     </Button>
-                                                    <CheckBox fx:id="cbConvertFilename" mnemonicParsing="false" text="Convert Filename">
+                                                    <CheckBox fx:id="cbConvertFilename" mnemonicParsing="false" styleClass="fluent-check" text="Convert Filename">
                                                         <padding>
                                                             <Insets left="20.0" />
                                                         </padding>
+                                          <HBox.margin>
+                                             <Insets top="5.0" />
+                                          </HBox.margin>
                                                     </CheckBox>
                                                 </children>
                                             </HBox>
@@ -337,13 +340,13 @@
                                                     <Font name="System Bold" size="12.0" />
                                                 </font>
                                             </Label>
-                                            <TextField fx:id="textFieldPath" prefHeight="25.0" prefWidth="284.0" promptText="Please set output folder before start" HBox.hgrow="ALWAYS" />
-                                            <Button fx:id="btnSelectPath" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnSelectPathClicked" text="...">
+                                            <TextField fx:id="textFieldPath" prefHeight="25.0" prefWidth="284.0" promptText="Please set output folder before start" styleClass="input-surface" HBox.hgrow="ALWAYS" />
+                                            <Button fx:id="btnSelectPath" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnSelectPathClicked" styleClass="button-secondary" text="...">
                                                 <HBox.margin>
                                                     <Insets left="5.0" right="5.0" />
                                                 </HBox.margin>
                                             </Button>
-                                            <Button fx:id="btnClearPreview" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnClearPreviewClicked" text="AC">
+                                            <Button fx:id="btnClearPreview" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnClearPreviewClicked" styleClass="button-secondary" text="AC">
                                                 <HBox.margin>
                                                     <Insets />
                                                 </HBox.margin>
@@ -373,7 +376,7 @@
                      </GridPane>
                      <HBox fx:id="hbPdfOptions" alignment="CENTER_LEFT" layoutX="10.0" layoutY="10.0" prefHeight="100.0" prefWidth="200.0" AnchorPane.bottomAnchor="413.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                         <children>
-                           <Label fx:id="lblPdfOptions" onMouseClicked="#onPdfOptionsToggle" styleClass="pdf-options-label" stylesheets="@styles.css" text="PDF Options:">
+                           <Label fx:id="lblPdfOptions" onMouseClicked="#onPdfOptionsToggle" styleClass="pdf-options-label" text="PDF Options:">
                               <font>
                                  <Font name="System Bold" size="14.0" />
                               </font>
@@ -381,7 +384,7 @@
                                  <Insets right="5.0" />
                               </HBox.margin>
                            </Label>
-                           <CheckBox fx:id="cbAddPageHeader" mnemonicParsing="false" text="Page Header">
+                           <CheckBox fx:id="cbAddPageHeader" mnemonicParsing="false" styleClass="fluent-check" text="Page Header">
                               <font>
                                  <Font size="14.0" />
                               </font>
@@ -389,7 +392,7 @@
                                  <Insets right="10.0" />
                               </HBox.margin>
                            </CheckBox>
-                           <CheckBox fx:id="cbCompactPdfText" mnemonicParsing="false" text="Compact Text">
+                           <CheckBox fx:id="cbCompactPdfText" mnemonicParsing="false" styleClass="fluent-check" text="Compact Text">
                               <font>
                                  <Font size="14.0" />
                               </font>
@@ -397,7 +400,7 @@
                                  <Insets right="10.0" />
                               </HBox.margin>
                            </CheckBox>
-                           <CheckBox fx:id="cbAutoReflow" mnemonicParsing="false" selected="true" text="Auto-Reflow Text">
+                           <CheckBox fx:id="cbAutoReflow" mnemonicParsing="false" selected="true" styleClass="fluent-check" text="Auto-Reflow Text">
                               <font>
                                  <Font size="14.0" />
                               </font>
@@ -413,37 +416,37 @@
          </Tab>
         </tabs>
     </TabPane>
-    <GridPane>
+    <GridPane styleClass="action-bar">
         <columnConstraints>
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
         </columnConstraints>
         <rowConstraints>
-            <RowConstraints minHeight="10.0" prefHeight="50.0" vgrow="NEVER" />
+            <RowConstraints minHeight="35.0" prefHeight="35.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="100.0" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
+            <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="100.0" styleClass="button-accent" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
                 <font>
                     <Font name="System Bold" size="14.0" />
                 </font>
                 <GridPane.margin>
-                    <Insets top="5.0" />
+                    <Insets />
                 </GridPane.margin>
             </Button>
-            <Button fx:id="btnExit" mnemonicParsing="false" onMouseClicked="#onBtnExitClicked" prefHeight="20.0" prefWidth="60.0" text="Exit" GridPane.columnIndex="2" GridPane.halignment="RIGHT" GridPane.valignment="TOP">
+            <Button fx:id="btnExit" mnemonicParsing="false" onMouseClicked="#onBtnExitClicked" prefHeight="20.0" prefWidth="60.0" styleClass="button-secondary" text="Exit" GridPane.columnIndex="2" GridPane.halignment="RIGHT" GridPane.valignment="TOP">
                 <GridPane.margin>
                     <Insets />
                 </GridPane.margin>
             </Button>
-            <Button fx:id="btnOpenFile" mnemonicParsing="false" onMouseClicked="#onBtnOpenFileClicked" prefHeight="20.0" prefWidth="85.0" text="Open File" GridPane.halignment="LEFT" GridPane.valignment="TOP">
+            <Button fx:id="btnOpenFile" mnemonicParsing="false" onMouseClicked="#onBtnOpenFileClicked" prefHeight="20.0" prefWidth="90.0" styleClass="button-secondary" text="Open File" GridPane.halignment="LEFT" GridPane.valignment="TOP">
                 <GridPane.margin>
                     <Insets />
                 </GridPane.margin>
             </Button>
             <Label fx:id="lblFilename">
                 <GridPane.margin>
-                    <Insets left="90.0" top="15.0" />
+                    <Insets left="90.0" />
                 </GridPane.margin>
                 <font>
                     <Font size="14.0" />
@@ -451,22 +454,28 @@
             </Label>
         </children>
     </GridPane>
-    <GridPane VBox.vgrow="NEVER">
+    <GridPane styleClass="status-bar" VBox.vgrow="NEVER">
         <columnConstraints>
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
         </columnConstraints>
         <rowConstraints>
-            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
+            <RowConstraints minHeight="20.0" prefHeight="30.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
          <HBox alignment="BOTTOM_LEFT" prefHeight="100.0" prefWidth="200.0">
             <children>
-                  <Label fx:id="lblStatus" text="OpenccJavaFX">
+                  <Label fx:id="lblStatus" styleClass="status-label" text="OpenccJavaFX">
                   <padding>
-                     <Insets right="10.0" top="5.0" />
+                     <Insets right="10.0" />
                   </padding>
+                  <HBox.margin>
+                     <Insets bottom="15.0" />
+                  </HBox.margin>
                   </Label>
-               <ProgressBar fx:id="buildProgressBar" prefWidth="200.0" progress="0.0" visible="false" />
+               <ProgressBar fx:id="buildProgressBar" prefWidth="200.0" progress="0.0" styleClass="app-progress" visible="false">
+                  <HBox.margin>
+                     <Insets bottom="13.0" />
+                  </HBox.margin></ProgressBar>
             </children>
             <GridPane.margin>
                <Insets top="10.0" />
