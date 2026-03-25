@@ -7,6 +7,15 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.2.0] - 2026-03-26
+
+### Changed
+
+- Update `NumberingContext` for Word document open as text.
+- Update openccjava dictionary.
+
+---
+
 ## [1.1.1] - 2025-11-25
 
 ### Changed
@@ -73,7 +82,7 @@ int result = cc.zhoCheckInstance("汉字");
 
 - Initial public release of OpenccJavaFX
 - Cross-platform JavaFX GUI
-- Supports Simplified <-> Traditional Chinese conversion
+- Supports Simplified ↔ Traditional Chinese conversion
 - Built using OpenccJava 1.0.0
 
 ---
