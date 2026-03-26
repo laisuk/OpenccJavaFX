@@ -21,7 +21,7 @@
     -fx-border-color: #e3e6ea;
     -fx-border-radius: 10px;
     -fx-border-width: 1px;
-    -fx-padding: 8px 12px 6px 12px;
+    -fx-padding: 5px 12px 5px 12px;
     -fx-spacing: 12;
 }
 
@@ -31,7 +31,7 @@
     -fx-border-color: #e5e7eb;
     -fx-border-radius: 10px;
     -fx-border-width: 1px;
-    -fx-padding: 5px 10px 5px 10px;
+    -fx-padding: 0px 10px 0px 10px;
 }
 
 .top-strip-primary,

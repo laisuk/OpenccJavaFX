@@ -362,7 +362,7 @@
                     </AnchorPane>
                 </content>
             </Tab>
-         <Tab text="Settings">
+         <Tab fx:id="tabSettings" onSelectionChanged="#onTabSettingsSelectionChanged" text="Settings">
            <content>
              <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                   <children>
@@ -446,7 +446,7 @@
             </Button>
             <Label fx:id="lblFilename">
                 <GridPane.margin>
-                    <Insets left="90.0" />
+                    <Insets left="95.0" />
                 </GridPane.margin>
                 <font>
                     <Font size="14.0" />

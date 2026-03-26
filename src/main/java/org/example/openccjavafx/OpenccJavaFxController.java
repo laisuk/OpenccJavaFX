@@ -102,6 +102,8 @@ public class OpenccJavaFxController {
     @FXML
     private Tab tabBatch;
     @FXML
+    private Tab tabSettings;
+    @FXML
     private Button btnOpenFile;
     @FXML
     private ListView<String> listViewSource;
@@ -181,6 +183,7 @@ public class OpenccJavaFxController {
     }
 
     private boolean isOpenFileDisabled = false;
+    private boolean isStartDisabled = false;
     private String openFileName;
     private final OpenCC openccInstance = new OpenCC();
 
@@ -705,16 +708,32 @@ public class OpenccJavaFxController {
             btnOpenFile.setDisable(false);
             isOpenFileDisabled = false;
         }
+        if (isStartDisabled) {
+            btnStart.setDisable(false);
+            isStartDisabled = false;
+        }
     }
 
     public void onTabBatchSelectionChanged() {
         if (!tabBatch.isSelected()) {
             return;
         }
-        if (tabBatch.isSelected()) {
-            btnOpenFile.setDisable(true);
-            isOpenFileDisabled = true;
+        btnOpenFile.setDisable(true);
+        isOpenFileDisabled = true;
+        if (isStartDisabled) {
+            btnStart.setDisable(false);
+            isStartDisabled = false;
         }
+    }
+
+    public void onTabSettingsSelectionChanged() {
+        if (!tabSettings.isSelected()) {
+            return;
+        }
+        btnOpenFile.setDisable(true);
+        isOpenFileDisabled = true;
+        btnStart.setDisable(true);
+        isStartDisabled = true;
     }
 
     public void onBtnAddClicked() {
