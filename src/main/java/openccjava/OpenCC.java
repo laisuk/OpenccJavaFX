@@ -801,22 +801,6 @@ public class OpenCC {
     }
 
     /**
-     * Groups dictionary entries into phrase dictionaries and single-character dictionaries,
-     * with cached phrase-length bounds.
-     * <p>
-     * This partitioning is used internally to optimize lookup:
-     * <ul>
-     *   <li><b>phraseDicts</b> – dictionaries where {@code maxLength &ge; 3},
-     *       searched longest-first during phrase matching</li>
-     *   <li><b>singleDicts</b> – dictionaries where {@code maxLength &lt; 3},
-     *       typically single-character or punctuation mappings</li>
-     *   <li><b>phraseMaxLen</b> – the maximum key length across all phrase dictionaries</li>
-     *   <li><b>phraseMinLen</b> – the minimum key length across all phrase dictionaries
-     *       (0 if none)</li>
-     * </ul>
-     * </p>
-     */
-    /**
      * Performs dictionary-based segment replacement using a starter union and
      * phrase/single partitioning.
      *
@@ -843,22 +827,12 @@ public class OpenCC {
      * <p>If the text is {@code null} or empty, it is returned unchanged.</p>
      *
      * @param text      the input text
-     * @param dicts     the dictionaries to use for conversion
+     * @param part      the dictionaries partition to use for conversion
      * @param maxLength the maximum phrase length
      * @param union     the starter union for fast starter checks
      * @return the converted text
      */
-    public String segmentReplaceWithUnion(String text,
-                                          List<DictEntry> dicts,
-                                          int maxLength,
-                                          StarterUnion union) {
-        if (text == null || text.isEmpty()) return text;
-
-        return segmentReplaceWithUnion(text, DictRefs.partitionDicts(dicts), maxLength, union);
-    }
-
     // Internal: faster converter for a single segment using pre-partitioned dicts
-
     private String segmentReplaceWithUnion(String text,
                                            DictRefs.DictPartition part,
                                            int maxLength,
@@ -1319,3 +1293,4 @@ public class OpenCC {
     }
 
 }
+
