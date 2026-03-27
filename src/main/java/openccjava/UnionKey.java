@@ -4,32 +4,32 @@ package openccjava;
  * Enumeration of dictionary union keys used by {@code openccjava}.
  * <p>
  * These keys represent different prebuilt dictionary groupings or
- * conversion plans for Simplified–Traditional Chinese conversion
+ * conversion plans for Simplified-Traditional Chinese conversion
  * and region-specific variants (Taiwan, Hong Kong, Japan).
  * </p>
  *
  * <p>
- * Each key corresponds to a union of dictionary slots inside
- * {@link DictionaryMaxlength}, used to speed up phrase lookups and
- * provide consistent conversions across different configurations.
+ * Each key corresponds to a union of dictionary slots assembled by
+ * {@link UnionCache}, used to speed up phrase lookups and provide
+ * consistent conversions across different configurations.
  * </p>
  */
 public enum UnionKey {
     // S2T / T2S
     /**
-     * Simplified → Traditional (main).
+     * Simplified -> Traditional (main).
      */
     S2T,
     /**
-     * Simplified → Traditional with punctuation conversion.
+     * Simplified -> Traditional with punctuation conversion.
      */
     S2T_PUNCT,
     /**
-     * Traditional → Simplified (main).
+     * Traditional -> Simplified (main).
      */
     T2S,
     /**
-     * Traditional → Simplified with punctuation conversion.
+     * Traditional -> Simplified with punctuation conversion.
      */
     T2S_PUNCT,
 

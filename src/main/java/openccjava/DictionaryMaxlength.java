@@ -7,7 +7,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 /**
@@ -551,180 +550,6 @@ public class DictionaryMaxlength {
             throw new RuntimeException("Failed to write JSON to: " + outputPath, e);
         }
     }
-
-    // NEW: union slots
-    /**
-     * Holds lazily computed {@link StarterUnion} instances for each {@link UnionKey}.
-     * <p>
-     * A {@code StarterUnion} represents the set of all possible starter characters
-     * (first code points of dictionary keys) for a particular conversion union.
-     * Unions are built only when first requested via {@link #unionFor(UnionKey)}
-     * and cached in this container for reuse.
-     * </p>
-     * <p>
-     * This field is marked {@code transient} to exclude it from serialization,
-     * since unions can always be recomputed after loading.
-     * </p>
-     */
-    private transient Unions unions = new Unions();
-
-    /**
-     * Clears all cached {@link StarterUnion} instances.
-     * <p>
-     * After calling this method, all unions will be rebuilt lazily the next time
-     * {@link #unionFor(UnionKey)} is invoked.
-     * </p>
-     */
-    public void clearUnions() {
-        this.unions = new Unions();
-    }
-
-    /**
-     * Returns the {@link StarterUnion} for the given {@link UnionKey}.
-     * <p>
-     * If the union has not been computed yet, it is built from the relevant
-     * dictionaries and cached. Subsequent calls with the same key return the
-     * cached instance.
-     * </p>
-     *
-     * <p>Union groupings:</p>
-     * <ul>
-     *   <li><b>S2T / T2S</b> – Simplified ↔ Traditional (with or without punctuation)</li>
-     *   <li><b>Taiwan</b> – Phrase-only, variant-only, reverse pairs, and triple unions</li>
-     *   <li><b>Hong Kong</b> – Variants-only and reverse pairs</li>
-     *   <li><b>Japan</b> – Variants-only and reverse triples</li>
-     * </ul>
-     *
-     * @param key the union key identifying which dictionaries to combine
-     * @return the {@link StarterUnion} for the specified key
-     * @throws IllegalArgumentException if the key is not recognized
-     */
-    public StarterUnion unionFor(UnionKey key) {
-        switch (key) {
-            // --- S2T / T2S ---
-            case S2T:
-                return getOrInit(unions.s2t,
-                        () -> StarterUnion.build(Arrays.asList(st_phrases, st_characters)));
-            case S2T_PUNCT:
-                return getOrInit(unions.s2t_punct,
-                        () -> StarterUnion.build(Arrays.asList(st_phrases, st_characters, st_punctuations)));
-
-            case T2S:
-                return getOrInit(unions.t2s,
-                        () -> StarterUnion.build(Arrays.asList(ts_phrases, ts_characters)));
-            case T2S_PUNCT:
-                return getOrInit(unions.t2s_punct,
-                        () -> StarterUnion.build(Arrays.asList(ts_phrases, ts_characters, ts_punctuations)));
-
-            // --- TW ---
-            case TwPhrasesOnly:
-                return getOrInit(unions.tw_phrases_only,
-                        () -> StarterUnion.build(Collections.singletonList(tw_phrases)));
-            case TwVariantsOnly:
-                return getOrInit(unions.tw_variants_only,
-                        () -> StarterUnion.build(Collections.singletonList(tw_variants)));
-            case TwPhrasesRevOnly:
-                return getOrInit(unions.tw_phrases_rev_only,
-                        () -> StarterUnion.build(Collections.singletonList(tw_phrases_rev)));
-            case TwRevPair:
-                return getOrInit(unions.tw_rev_pair,
-                        () -> StarterUnion.build(Arrays.asList(tw_variants_rev_phrases, tw_variants_rev)));
-            case Tw2SpR1TwRevTriple:
-                return getOrInit(unions.tw2sp_r1_tw_rev_triple,
-                        () -> StarterUnion.build(Arrays.asList(tw_phrases_rev, tw_variants_rev_phrases, tw_variants_rev)));
-
-            // --- HK ---
-            case HkVariantsOnly:
-                return getOrInit(unions.hk_variants_only,
-                        () -> StarterUnion.build(Collections.singletonList(hk_variants)));
-            case HkRevPair:
-                return getOrInit(unions.hk_rev_pair,
-                        () -> StarterUnion.build(Arrays.asList(hk_variants_rev_phrases, hk_variants_rev)));
-
-            // --- JP ---
-            case JpVariantsOnly:
-                return getOrInit(unions.jp_variants_only,
-                        () -> StarterUnion.build(Collections.singletonList(jp_variants)));
-            case JpRevTriple:
-                return getOrInit(unions.jp_rev_triple,
-                        () -> StarterUnion.build(Arrays.asList(jps_phrases, jps_characters, jp_variants_rev)));
-
-            default:
-                throw new IllegalArgumentException("Unhandled UnionKey: " + key);
-        }
-    }
-
-    // ---- tiny once-initializer for a fixed slot ----
-
-    /**
-     * Returns the {@link StarterUnion} stored in the given slot,
-     * initializing it if necessary.
-     * <p>
-     * If the slot is empty, the supplied builder is invoked once to
-     * construct a {@link StarterUnion}. The result is stored atomically
-     * using {@link AtomicReference#compareAndSet(Object, Object)} to ensure
-     * thread safety under concurrent access. If another thread initializes
-     * the slot first, its value is returned instead.
-     * </p>
-     *
-     * @param slot  the atomic slot holding the cached {@link StarterUnion}
-     * @param build a factory to build the union if the slot is empty
-     * @return the cached or newly built {@link StarterUnion}
-     * @throws RuntimeException if the builder throws an exception
-     */
-    private static StarterUnion getOrInit(AtomicReference<StarterUnion> slot,
-                                          java.util.concurrent.Callable<StarterUnion> build) {
-        StarterUnion v = slot.get();
-        if (v != null) return v;
-        try {
-            StarterUnion built = build.call();
-            return slot.compareAndSet(null, built) ? built : slot.get();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * Container for all per-dictionary {@link StarterUnion} slots.
-     * <p>
-     * Each field corresponds to a specific {@link UnionKey} and is backed
-     * by an {@link AtomicReference}, allowing a union to be built once and
-     * reused safely across threads. Unions are initialized lazily via
-     * {@link #getOrInit(java.util.concurrent.atomic.AtomicReference, java.util.concurrent.Callable)}
-     * the first time they are requested by {@link #unionFor(UnionKey)}.
-     * </p>
-     *
-     * <p>
-     * Using {@code AtomicReference} avoids synchronization on the entire
-     * {@code Unions} container and ensures that each slot can be
-     * independently and efficiently initialized under concurrent access.
-     * </p>
-     */
-    static final class Unions {
-        // S2T / T2S (+ punct)
-        final AtomicReference<StarterUnion> s2t = new AtomicReference<>();
-        final AtomicReference<StarterUnion> s2t_punct = new AtomicReference<>();
-        final AtomicReference<StarterUnion> t2s = new AtomicReference<>();
-        final AtomicReference<StarterUnion> t2s_punct = new AtomicReference<>();
-
-        // TW
-        final AtomicReference<StarterUnion> tw_phrases_only = new AtomicReference<>();
-        final AtomicReference<StarterUnion> tw_variants_only = new AtomicReference<>();
-        final AtomicReference<StarterUnion> tw_phrases_rev_only = new AtomicReference<>();
-        final AtomicReference<StarterUnion> tw_rev_pair = new AtomicReference<>();
-        final AtomicReference<StarterUnion> tw2sp_r1_tw_rev_triple = new AtomicReference<>();
-
-        // HK
-        final AtomicReference<StarterUnion> hk_variants_only = new AtomicReference<>();
-        final AtomicReference<StarterUnion> hk_rev_pair = new AtomicReference<>();
-
-        // JP
-        final AtomicReference<StarterUnion> jp_variants_only = new AtomicReference<>();
-        final AtomicReference<StarterUnion> jp_rev_triple = new AtomicReference<>();
-    }
-
-    // NEW: Plan Cache in DictionaryMaxlength itself
-
     /**
      * Derived caches for this dictionary instance.
      * <p>
@@ -733,9 +558,8 @@ public class DictionaryMaxlength {
      * </p>
      * <ul>
      *   <li>{@link ConversionPlanCache} – caches prepared {@link DictRefs}
-     *       for each {@link OpenccConfig} and punctuation mode.</li>
-     *   <li>{@link Unions} – caches lazily built {@link StarterUnion}
-     *       sets for each {@link UnionKey}.</li>
+     *       for each {@link OpenccConfig} and punctuation mode, along with
+     *       its internal {@link UnionCache}.</li>
      * </ul>
      * <p>
      * Both caches are marked {@code transient} to exclude them from
@@ -765,9 +589,8 @@ public class DictionaryMaxlength {
      * Clears all runtime caches associated with this dictionary.
      * <p>
      * This removes any cached {@link DictRefs} from the internal
-     * {@link ConversionPlanCache} and resets all {@link StarterUnion}
-     * instances. Subsequent conversions will rebuild these structures
-     * lazily as needed.
+     * {@link ConversionPlanCache}. Subsequent conversions will rebuild
+     * these runtime structures lazily as needed.
      * </p>
      * <p>
      * This method does <strong>not</strong> modify or unload the core
@@ -776,7 +599,7 @@ public class DictionaryMaxlength {
      */
     public void clearCaches() {
         planCache.clear();
-        clearUnions();
     }
 
 }
+
