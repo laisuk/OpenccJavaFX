@@ -550,56 +550,5 @@ public class DictionaryMaxlength {
             throw new RuntimeException("Failed to write JSON to: " + outputPath, e);
         }
     }
-    /**
-     * Derived caches for this dictionary instance.
-     * <p>
-     * These caches store runtime-only data structures that accelerate
-     * conversion without affecting serialization or persisted state.
-     * </p>
-     * <ul>
-     *   <li>{@link ConversionPlanCache} – caches prepared {@link DictRefs}
-     *       for each {@link OpenccConfig} and punctuation mode, along with
-     *       its internal {@link UnionCache}.</li>
-     * </ul>
-     * <p>
-     * Both caches are marked {@code transient} to exclude them from
-     * serialization. They are automatically reinitialized when the
-     * dictionary is deserialized or reconstructed.
-     * </p>
-     */
-    private transient final ConversionPlanCache planCache = new ConversionPlanCache(() -> this);
-
-    /**
-     * Retrieves (or lazily builds) the {@link DictRefs} for the specified
-     * configuration and punctuation mode.
-     * <p>
-     * If a cached plan already exists, it is returned immediately;
-     * otherwise a new one is constructed, cached, and reused for future calls.
-     * </p>
-     *
-     * @param cfg         the conversion configuration
-     * @param punctuation whether punctuation conversion is enabled
-     * @return the cached or newly built {@link DictRefs} instance
-     */
-    public DictRefs getPlan(OpenccConfig cfg, boolean punctuation) {
-        return planCache.getPlan(cfg, punctuation);
-    }
-
-    /**
-     * Clears all runtime caches associated with this dictionary.
-     * <p>
-     * This removes any cached {@link DictRefs} from the internal
-     * {@link ConversionPlanCache}. Subsequent conversions will rebuild
-     * these runtime structures lazily as needed.
-     * </p>
-     * <p>
-     * This method does <strong>not</strong> modify or unload the core
-     * dictionary data itself.
-     * </p>
-     */
-    public void clearCaches() {
-        planCache.clear();
-    }
-
 }
 

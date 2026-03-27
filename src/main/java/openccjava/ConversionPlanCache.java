@@ -41,6 +41,8 @@ public final class ConversionPlanCache {
      * Supplier of the backing {@link DictionaryMaxlength}.
      */
     private final Provider provider;
+    private static final Map<DictionaryMaxlength, ConversionPlanCache> INSTANCES =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     /**
      * Primary cache mapping from {@link PlanKey} (config + punctuation)
@@ -55,7 +57,7 @@ public final class ConversionPlanCache {
      * @param provider the dictionary provider, must not be {@code null}
      * @throws NullPointerException if {@code provider} is {@code null}
      */
-    public ConversionPlanCache(Provider provider) {
+    private ConversionPlanCache(Provider provider) {
         this.provider = Objects.requireNonNull(provider);
         this.unionCache = new UnionCache(this.provider.get());
     }
@@ -74,6 +76,39 @@ public final class ConversionPlanCache {
     }
 
     /**
+     * Returns the shared plan cache for the given dictionary instance.
+     * <p>
+     * Cache ownership lives here so callers can focus on conversion logic
+     * rather than lifecycle management.
+     * </p>
+     *
+     * @param dictionary the backing dictionary instance
+     * @return the shared cache for that dictionary
+     */
+    public static ConversionPlanCache forDictionary(DictionaryMaxlength dictionary) {
+        Objects.requireNonNull(dictionary, "dictionary");
+        synchronized (INSTANCES) {
+            ConversionPlanCache existing = INSTANCES.get(dictionary);
+            if (existing != null) return existing;
+            ConversionPlanCache created = new ConversionPlanCache(() -> dictionary);
+            INSTANCES.put(dictionary, created);
+            return created;
+        }
+    }
+
+    /**
+     * Retrieves or builds a cached plan using the shared cache for the given dictionary.
+     *
+     * @param dictionary  the backing dictionary
+     * @param config      the OpenCC configuration
+     * @param punctuation whether punctuation conversion is enabled
+     * @return the prepared {@link DictRefs} with unions for this config
+     */
+    public static DictRefs getPlan(DictionaryMaxlength dictionary, OpenccConfig config, boolean punctuation) {
+        return forDictionary(dictionary).getPlan(config, punctuation);
+    }
+
+    /**
      * Clears all cached conversion plans.
      * <p>
      * This also clears the derived {@link StarterUnion} cache used during
@@ -81,8 +116,30 @@ public final class ConversionPlanCache {
      * </p>
      */
     public void clear() {
+        clearCache();
+    }
+
+    /**
+     * Clears all cached conversion plans and derived unions.
+     */
+    public void clearCache() {
         planCache.clear();
         unionCache.clear();
+    }
+
+    /**
+     * Clears the shared cache associated with the given dictionary.
+     *
+     * @param dictionary the backing dictionary whose cached plans should be removed
+     */
+    public static void clearCache(DictionaryMaxlength dictionary) {
+        ConversionPlanCache cache;
+        synchronized (INSTANCES) {
+            cache = INSTANCES.remove(dictionary);
+        }
+        if (cache != null) {
+            cache.clear();
+        }
     }
 
     // ---------------- plan building ----------------

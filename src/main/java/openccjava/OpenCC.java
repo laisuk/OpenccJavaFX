@@ -335,7 +335,7 @@ public class OpenCC {
      * @return the prepared {@link DictRefs} for this configuration
      */
     private DictRefs getDictRefsUnionForConfigId(OpenccConfig cfg, boolean punctuation) {
-        return dictionary.getPlan(cfg, punctuation);
+        return ConversionPlanCache.getPlan(dictionary, cfg, punctuation);
     }
 
     /**
