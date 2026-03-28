@@ -343,11 +343,19 @@ public final class PdfReflowHelper {
             }
 
             // 🔸 9b) Dialog end line: ends with dialog closer.
-            // Flush when the char before closer is strong end,
-            // and bracket safety is satisfied (with a narrow typo override).
+            // Flush only when the character before the closer is a strong sentence end,
+            // so we do not split on quoted fragments such as “不適合換行”.
+            //
+            // Tolerance for imperfect source text:
+            // - normal case: buffer has no bracket issue
+            // - local corruption: current line itself has bracket issue (OCR / typo / page split)
+            // - fallback: if the buffer is already long enough (> 60) and this line ends at a
+            //   strong dialog boundary, allow flush to stop runaway buffer growth caused by
+            //   missing opening quotes or cross-page broken quoted text
             if (PunctSets.tryGetLastNonWhitespace(stripped, lastIdxRef) &&
                     PunctSets.isDialogCloser(lastIdxRef.ch)) {
-                // Check punctuation right before the closer (e.g., “？” / “。”)
+
+                // Check punctuation right before the closer (e.g. “？” / “。”)
                 boolean punctBeforeCloserIsStrong =
                         PunctSets.tryGetPrevNonWhitespace(stripped, lastIdxRef.index, prevRef) &&
                                 PunctSets.isClauseOrEndPunct(prevRef.value);
@@ -358,16 +366,10 @@ public final class PdfReflowHelper {
                 buffer.append(stripped);
                 dialogState.update(stripped);
 
-                // Allow flush if:
-                // - dialog is closed after this line
-                // - punctuation before closer is a strong end
-                // - and either:
-                //     (a) buffer has no bracket issue, OR
-                //     (b) buffer has bracket issue but this line itself is the culprit (OCR/typo),
-                //        so allow a dialog-end flush anyway.
-                if (!dialogState.isUnclosed() &&
-                        punctBeforeCloserIsStrong &&
-                        (!hasUnclosedBracket || lineHasBracketIssue)) {
+                if (!dialogState.isUnclosed() && (
+                        !hasUnclosedBracket ||
+                                lineHasBracketIssue ||
+                                (punctBeforeCloserIsStrong && buffer.length() > 60))) {
                     segments.add(buffer.toString());
                     buffer.setLength(0);
                     dialogState.reset();
