@@ -143,7 +143,7 @@
     -fx-border-radius: 10px;
     -fx-background-radius: 10px;
     -fx-background-insets: 0;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0.2, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 12, 0.2, 0, 4);
 }
 
 /* 🔽 Each item */
@@ -166,6 +166,79 @@
 /* 🔽 Fix transparent scroll area */
 .combo-box-popup .virtual-flow {
     -fx-background-color: transparent;
+}
+
+/* ===== ComboBox popup scrollbar only ===== */
+
+.combo-box-popup .scroll-bar:vertical {
+    -fx-pref-width: 10px;
+    -fx-background-color: transparent;
+}
+
+.combo-box-popup .scroll-bar:horizontal {
+    -fx-pref-height: 10px;
+    -fx-background-color: transparent;
+}
+
+.combo-box-popup .scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-background-radius: 10px;
+}
+
+.combo-box-popup .scroll-bar .thumb {
+    -fx-background-color: rgba(100, 100, 100, 0.35);
+    -fx-background-radius: 10px;
+    -fx-background-insets: 2;
+}
+
+.combo-box-popup .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(100, 100, 100, 0.55);
+}
+
+.combo-box-popup .scroll-bar .thumb:pressed {
+    -fx-background-color: rgba(100, 100, 100, 0.75);
+}
+
+/* optional minimal arrow buttons */
+.combo-box-popup .scroll-bar .increment-button,
+.combo-box-popup .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+
+.combo-box-popup .scroll-bar .increment-arrow,
+.combo-box-popup .scroll-bar .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
+}
+
+/* ===== RichTextFX / generic editor scrollbar ===== */
+
+.virtualized-scroll-pane .scroll-bar:vertical,
+.styled-text-area .scroll-bar:vertical {
+    -fx-pref-width: 12px;
+}
+
+.virtualized-scroll-pane .scroll-bar:horizontal,
+.styled-text-area .scroll-bar:horizontal {
+    -fx-pref-height: 12px;
+}
+
+.virtualized-scroll-pane .scroll-bar .track,
+.styled-text-area .scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+.virtualized-scroll-pane .scroll-bar .thumb,
+.styled-text-area .scroll-bar .thumb {
+    -fx-background-color: rgba(100, 100, 100, 0.40);
+    -fx-background-radius: 10px;
+    -fx-background-insets: 2;
+}
+
+.virtualized-scroll-pane .scroll-bar .thumb:hover,
+.styled-text-area .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(100, 100, 100, 0.60);
 }
 
 .main-tabs {
