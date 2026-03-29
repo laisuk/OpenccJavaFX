@@ -7,12 +7,14 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.2.0] - 2026-03-26
+## [1.2.1] - 2026-03-30
 
 ### Changed
 
 - Update `NumberingContext` for Word document open as text.
 - Update openccjava dictionary.
+- Optimized Reflow to handle unclosed dialog.
+- Update UI to Fluent 2 theme.
 
 ---
 

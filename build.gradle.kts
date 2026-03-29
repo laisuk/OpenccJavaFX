@@ -56,7 +56,7 @@ javafx {
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
-    implementation("org.fxmisc.richtext:richtextfx:0.11.6")
+    implementation("org.fxmisc.richtext:richtextfx:0.11.7")
 
     // JSON serialization/deserialization
     implementation(platform("com.fasterxml.jackson:jackson-bom:2.21.2"))

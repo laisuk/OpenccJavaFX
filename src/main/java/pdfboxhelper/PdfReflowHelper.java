@@ -349,7 +349,7 @@ public final class PdfReflowHelper {
             // Tolerance for imperfect source text:
             // - normal case: buffer has no bracket issue
             // - local corruption: current line itself has bracket issue (OCR / typo / page split)
-            // - fallback: if the buffer is already long enough (> 60) and this line ends at a
+            // - fallback: if the buffer is already long enough (> 120) and this line ends at a
             //   strong dialog boundary, allow flush to stop runaway buffer growth caused by
             //   missing opening quotes or cross-page broken quoted text
             if (PunctSets.tryGetLastNonWhitespace(stripped, lastIdxRef) &&
@@ -369,7 +369,7 @@ public final class PdfReflowHelper {
                 if (!dialogState.isUnclosed() && (
                         !hasUnclosedBracket ||
                                 lineHasBracketIssue ||
-                                (punctBeforeCloserIsStrong && buffer.length() > 60))) {
+                                (punctBeforeCloserIsStrong && buffer.length() > 120))) {
                     segments.add(buffer.toString());
                     buffer.setLength(0);
                     dialogState.reset();
