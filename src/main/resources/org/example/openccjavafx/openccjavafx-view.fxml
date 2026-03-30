@@ -87,8 +87,14 @@
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <CheckBox fx:id="cbZHTW" alignment="CENTER" mnemonicParsing="false" styleClass="fluent-check" text="ZH/TW Idioms（惯用语）" GridPane.columnIndex="3" GridPane.halignment="CENTER" />
-            <CheckBox fx:id="cbPunctuation" alignment="CENTER" mnemonicParsing="false" selected="true" styleClass="fluent-check" text="Puntuations（标点）" GridPane.columnIndex="4" GridPane.halignment="CENTER" />
+            <CheckBox fx:id="cbZHTW" alignment="CENTER" mnemonicParsing="false" styleClass="fluent-check" text="ZH/TW Idioms（惯用语）" GridPane.columnIndex="3" GridPane.halignment="CENTER">
+            <font>
+               <Font size="14.0" />
+            </font></CheckBox>
+            <CheckBox fx:id="cbPunctuation" alignment="CENTER" mnemonicParsing="false" selected="true" styleClass="fluent-check" text="Puntuations（标点）" GridPane.columnIndex="4" GridPane.halignment="CENTER">
+            <font>
+               <Font size="14.0" />
+            </font></CheckBox>
         </children>
     </GridPane>
     <TabPane fx:id="tabPane" prefHeight="579.0" styleClass="main-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
@@ -269,7 +275,7 @@
                                     <!--                                    </TextArea>-->
                                     <VirtualizedScrollPane GridPane.columnIndex="1">
                                         <content>
-                                            <CodeArea fx:id="textAreaPreview" editable="false" prefHeight="200.0" prefWidth="200.0" styleClass="editor-surface" wrapText="true">
+                                            <CodeArea fx:id="textAreaPreview" editable="false" prefHeight="200.0" prefWidth="200.0" styleClass="log-surface" wrapText="true">
                                                 <padding>
                                                     <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                                                 </padding>

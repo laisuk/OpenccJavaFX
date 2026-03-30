@@ -221,8 +221,8 @@
 
 .combo-box-popup .scroll-bar .increment-arrow,
 .combo-box-popup .scroll-bar .decrement-arrow {
-    -fx-shape: "";
-    -fx-padding: 0;
+    /*-fx-shape: "";*/
+    -fx-padding: 2;
 }
 
 /* ===== RichTextFX / generic editor scrollbar ===== */
@@ -339,6 +339,31 @@
     -fx-border-width: 1;
 }
 
+/* ===== Log / batch output (monospace) ===== */
+
+.log-surface {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d9dde3;
+    -fx-border-width: 1px;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+
+    -fx-font-family: "JetBrains Mono", "Consolas", "Fira Code", "Courier New", monospace;
+    -fx-font-size: 12px;
+
+    -fx-highlight-fill: #dbeafe;
+    -fx-highlight-text-fill: #111111;
+}
+
+/* log text inside RichTextFX */
+.log-surface .text {
+    -fx-fill: #111111;
+}
+
+.log-surface:focused {
+    -fx-border-color: #3b82f6;
+}
+
 .virtualized-scroll-pane {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
@@ -351,26 +376,44 @@
     -fx-background-color: transparent;
 }
 
-.list-surface,
-.list-view {
+/* =========================================================
+   ListView - Fluent Style (Light + Dark)
+   ========================================================= */
+
+/* ---------- Base ---------- */
+
+.list-surface {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
 }
 
 .list-view {
     -fx-control-inner-background: #ffffff;
-    -fx-padding: 6px;
-    -fx-background-radius: 14px;
-    -fx-border-radius: 14px;
+    -fx-background-color: #ffffff;
     -fx-border-color: #d9dde3;
     -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-padding: 6px;
 }
+
+/* inner regions */
+.list-view .virtual-flow,
+.list-view .corner {
+    -fx-background-color: transparent;
+}
+
+/* ---------- Cells ---------- */
 
 .list-cell {
     -fx-background-color: transparent;
     -fx-text-fill: #1f2937;
-    -fx-padding: 8px 10px 8px 10px;
+    -fx-padding: 8px 10px;
     -fx-background-radius: 8px;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #f3f6fa;
 }
 
 .list-cell:filled:selected,
@@ -379,8 +422,95 @@
     -fx-text-fill: #0f172a;
 }
 
-.list-cell:filled:hover {
-    -fx-background-color: #f3f6fa;
+/* ---------- Scrollbar (Light) ---------- */
+
+.list-view .scroll-bar:vertical {
+    -fx-pref-width: 12px;
+    -fx-background-color: transparent;
+}
+
+.list-view .scroll-bar:horizontal {
+    -fx-pref-height: 12px;
+    -fx-background-color: transparent;
+}
+
+.list-view .scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-background-radius: 10px;
+}
+
+.list-view .scroll-bar .thumb {
+    -fx-background-color: rgba(100, 100, 100, 0.30);
+    -fx-background-radius: 10px;
+    -fx-background-insets: 2;
+}
+
+.list-view .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(100, 100, 100, 0.50);
+}
+
+.list-view .scroll-bar .thumb:pressed {
+    -fx-background-color: rgba(100, 100, 100, 0.65);
+}
+
+/* arrows */
+.list-view .scroll-bar .increment-button,
+.list-view .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 4;
+}
+
+.list-view .scroll-bar .increment-arrow,
+.list-view .scroll-bar .decrement-arrow {
+    -fx-padding: 4;
+}
+
+/* =========================================================
+   Dark Mode
+   ========================================================= */
+
+.app-root.dark .list-view {
+    -fx-control-inner-background: #202325;
+    -fx-background-color: #202325;
+    -fx-border-color: #454b52;
+}
+
+/* fix viewport + corner */
+.app-root.dark .list-view .virtual-flow,
+.app-root.dark .list-view .corner {
+    -fx-background-color: #202325;
+}
+
+/* cells */
+.app-root.dark .list-cell {
+    -fx-text-fill: #f3f4f6;
+}
+
+.app-root.dark .list-cell:filled:hover {
+    -fx-background-color: #34383d;
+}
+
+.app-root.dark .list-cell:filled:selected,
+.app-root.dark .list-cell:filled:selected:focused {
+    -fx-background-color: #1e3a8a;
+    -fx-text-fill: white;
+}
+
+/* scrollbar */
+.app-root.dark .list-view .scroll-bar .track {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+}
+
+.app-root.dark .list-view .scroll-bar .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.30);
+}
+
+.app-root.dark .list-view .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.50);
+}
+
+.app-root.dark .list-view .scroll-bar .thumb:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.70);
 }
 
 .radio-button,
@@ -548,6 +678,16 @@
     -fx-border-color: #454b52;
     -fx-highlight-fill: #1d4ed8;
     -fx-highlight-text-fill: white;
+}
+
+.app-root.dark .log-surface {
+    -fx-background-color: #202325;
+    -fx-border-color: #454b52;
+}
+
+/* text inside RichTextFX */
+.app-root.dark .log-surface .text {
+    -fx-fill: #e5e7eb;
 }
 
 .app-root.dark .virtualized-scroll-pane {
