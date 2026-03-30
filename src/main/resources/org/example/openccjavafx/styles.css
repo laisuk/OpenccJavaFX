@@ -59,6 +59,11 @@
     -fx-text-fill: #5f6b7a;
 }
 
+.radio-button:selected {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
 .button {
     -fx-background-color: #fbfbfc;
     -fx-text-fill: #1f1f1f;

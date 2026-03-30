@@ -12,8 +12,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.prefs.Preferences;
 
 public class OpenccJavaFxApplication extends Application {
+    private static final String THEME_DARK_CLASS = "dark";
+    private static final String PREF_THEME = "theme";
+    private static final String THEME_SYSTEM = "system";
+    private static final String THEME_LIGHT = "light";
+    private static final String THEME_DARK = "dark";
+
+    private static final Preferences PREFS =
+            Preferences.userNodeForPackage(OpenccJavaFxApplication.class);
+
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(
@@ -36,7 +46,7 @@ public class OpenccJavaFxApplication extends Application {
 
         stage.setTitle("OpenccJavaFX");
 
-        applySystemTheme(root);
+        applySavedOrSystemTheme(root);
 
         stage.setScene(scene);
         stage.show();
@@ -46,14 +56,58 @@ public class OpenccJavaFxApplication extends Application {
         launch();
     }
 
-    private static void applySystemTheme(Parent root) {
-        root.getStyleClass().remove("dark");
-        if (isSystemDarkMode()) {
-            root.getStyleClass().add("dark");
+    public static void applySavedOrSystemTheme(Parent root) {
+        String theme = getSavedThemeMode();
+
+        switch (theme) {
+            case THEME_DARK:
+                applyTheme(root, true);
+                break;
+            case THEME_LIGHT:
+                applyTheme(root, false);
+                break;
+            default:
+                applyTheme(root, isSystemDarkMode());
+                break;
         }
     }
 
-    private static boolean isSystemDarkMode() {
+    public static void applyTheme(Parent root, boolean dark) {
+        root.getStyleClass().remove(THEME_DARK_CLASS);
+        if (dark) {
+            root.getStyleClass().add(THEME_DARK_CLASS);
+        }
+    }
+
+    public static void saveThemeModeSystem() {
+        PREFS.put(PREF_THEME, THEME_SYSTEM);
+    }
+
+    public static void saveThemeModeDark() {
+        PREFS.put(PREF_THEME, THEME_DARK);
+    }
+
+    public static void saveThemeModeLight() {
+        PREFS.put(PREF_THEME, THEME_LIGHT);
+    }
+
+    public static String getSavedThemeMode() {
+        return PREFS.get(PREF_THEME, THEME_SYSTEM);
+    }
+
+    public static boolean isEffectiveDarkMode() {
+        String theme = getSavedThemeMode();
+        switch (theme) {
+            case THEME_DARK:
+                return true;
+            case THEME_LIGHT:
+                return false;
+            default:
+                return isSystemDarkMode();
+        }
+    }
+
+    static boolean isSystemDarkMode() {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
 
         try {
@@ -84,8 +138,6 @@ public class OpenccJavaFxApplication extends Application {
             return false;
         }
 
-        // AppsUseLightTheme = 0  -> dark
-        // AppsUseLightTheme = 1  -> light
         return output.contains("0x0");
     }
 
@@ -97,7 +149,6 @@ public class OpenccJavaFxApplication extends Application {
         String output = readProcessOutput(process);
         int exitCode = process.waitFor();
 
-        // when dark mode is enabled, output is usually "Dark"
         return exitCode == 0 && output.toLowerCase(Locale.ROOT).contains("dark");
     }
 
@@ -113,7 +164,6 @@ public class OpenccJavaFxApplication extends Application {
             return output.toLowerCase(Locale.ROOT).contains("dark");
         }
 
-        // fallback for older GNOME setups
         Process process2 = new ProcessBuilder(
                 "gsettings", "get", "org.gnome.desktop.interface", "gtk-theme"
         ).start();

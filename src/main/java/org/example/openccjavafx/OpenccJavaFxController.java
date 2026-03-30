@@ -6,6 +6,8 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
@@ -127,9 +129,46 @@ public class OpenccJavaFxController {
     private Button btnSaveAs;
     @FXML
     private Button btnStart;
+    @FXML
+    private RadioButton rbThemeSystem;
+    @FXML
+    private RadioButton rbThemeLight;
+    @FXML
+    private RadioButton rbThemeDark;
+    @FXML
+    private ToggleGroup themeGroup;
 
     @FXML
     public void initialize() {
+        String theme = OpenccJavaFxApplication.getSavedThemeMode();
+
+        switch (theme) {
+            case "dark":
+                rbThemeDark.setSelected(true);
+                break;
+            case "light":
+                rbThemeLight.setSelected(true);
+                break;
+            default:
+                rbThemeSystem.setSelected(true);
+                break;
+        }
+
+        applyCurrentTheme();
+
+        themeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null) return;
+
+            if (rbThemeDark.isSelected()) {
+                OpenccJavaFxApplication.saveThemeModeDark();
+            } else if (rbThemeLight.isSelected()) {
+                OpenccJavaFxApplication.saveThemeModeLight();
+            } else {
+                OpenccJavaFxApplication.saveThemeModeSystem();
+            }
+
+            applyCurrentTheme();
+        });
         cbManual.getItems().addAll(CONFIG_LIST);
         cbManual.getSelectionModel().selectFirst();
 //        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
@@ -147,6 +186,16 @@ public class OpenccJavaFxController {
         String javaVersion = System.getProperty("java.version");
         lblStatus.setText("OpenccJavaFX @ Java " + javaVersion);
         setPdfOptionsEnabled(false);
+    }
+
+    private void applyCurrentTheme() {
+        Scene scene = rbThemeSystem.getScene();
+        if (scene == null) return;
+
+        Parent root = scene.getRoot();
+
+        boolean dark = OpenccJavaFxApplication.isEffectiveDarkMode();
+        OpenccJavaFxApplication.applyTheme(root, dark);
     }
 
     @FXML

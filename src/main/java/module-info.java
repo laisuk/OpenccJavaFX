@@ -12,6 +12,7 @@ module org.example.openccjavafx {
     requires org.apache.pdfbox;
     requires org.apache.commons.logging;
     requires org.jsoup;
+    requires java.prefs;
 
     opens org.example.openccjavafx to javafx.fxml;
     exports org.example.openccjavafx;
