@@ -339,6 +339,27 @@
     -fx-border-width: 1;
 }
 
+/* =========================================================
+   Line Numbers (RichTextFX)
+   ========================================================= */
+
+/* Light theme (default) */
+.lineno {
+    -fx-background-color: #f3f4f6;
+    -fx-text-fill: #6b7280;
+    -fx-padding: 0 8px 0 8px;
+    -fx-font-size: 12px;
+    -fx-border-color: transparent #d1d5db transparent transparent;
+    -fx-border-width: 0 1px 0 0;
+}
+
+/* Dark theme */
+.root.dark .lineno {
+    -fx-background-color: #1e1e1e;
+    -fx-text-fill: #9ca3af;
+    -fx-border-color: transparent #2a2a2a transparent transparent;
+}
+
 /* ===== Log / batch output (monospace) ===== */
 
 .log-surface {

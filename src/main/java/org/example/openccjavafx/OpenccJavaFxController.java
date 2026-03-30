@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 import openccjava.OpenCC;
+import org.fxmisc.richtext.LineNumberFactory;
 import pdfboxhelper.PdfBoxHelper;
 import pdfboxhelper.PdfReflowHelper;
 //import org.fxmisc.richtext.LineNumberFactory;
@@ -171,8 +172,8 @@ public class OpenccJavaFxController {
         });
         cbManual.getItems().addAll(CONFIG_LIST);
         cbManual.getSelectionModel().selectFirst();
-//        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
-//        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
+        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
+        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
         cbSaveTarget.getItems().addAll(SAVE_TARGET_LIST);
         cbSaveTarget.getSelectionModel().select(1);
         // Hover status display
