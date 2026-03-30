@@ -6,6 +6,14 @@
     -fx-text-fill: #1f1f1f;
 }
 
+/* Text */
+.root.dark {
+    -fx-text-fill: #f3f4f6;
+    -fx-base-bg: #1f1f1f;
+    -fx-text-main: #f3f4f6;
+}
+
+/* LIGHT (default) */
 .app-root {
     -fx-background-color: #f5f6f8;
 }
@@ -405,4 +413,307 @@
 
 .progress-bar {
     -fx-accent: #2563eb;
+}
+
+/* ===== Dark theme ===== */
+
+.app-root.dark {
+    -fx-background-color: #1f1f1f;
+}
+
+/* general text */
+.app-root.dark .label,
+.app-root.dark .radio-button,
+.app-root.dark .check-box {
+    -fx-text-fill: #f3f4f6;
+}
+
+.app-root.dark .section-label {
+    -fx-text-fill: #ffffff;
+}
+
+.app-root.dark .status-label {
+    -fx-text-fill: #b8c0cc;
+}
+
+/* top bars / panels */
+.app-root.dark .top-strip,
+.app-root.dark .action-bar {
+    -fx-background-color: #2a2d2f;
+    -fx-border-color: #3a3f44;
+}
+
+.app-root.dark .status-bar {
+    -fx-background-color: #26292c;
+    -fx-border-color: #3a3f44;
+}
+
+/* buttons */
+.app-root.dark .button {
+    -fx-background-color: #2a2d2f;
+    -fx-text-fill: #f3f4f6;
+    -fx-border-color: #454b52;
+}
+
+.app-root.dark .button:hover {
+    -fx-background-color: #34383d;
+    -fx-border-color: #59616b;
+}
+
+.app-root.dark .button:pressed {
+    -fx-background-color: #3b4046;
+    -fx-border-color: #68727d;
+}
+
+/* accent button stays blue */
+.app-root.dark .button-accent {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+    -fx-border-color: #2563eb;
+}
+
+.app-root.dark .button-accent:hover {
+    -fx-background-color: #1d4ed8;
+    -fx-border-color: #1d4ed8;
+}
+
+.app-root.dark .button-accent:pressed {
+    -fx-background-color: #1849b8;
+    -fx-border-color: #1849b8;
+}
+
+/* inputs */
+.app-root.dark .combo-box,
+.app-root.dark .text-field,
+.app-root.dark .input-surface {
+    -fx-background-color: #2a2d2f;
+    -fx-text-fill: #f3f4f6;
+    -fx-border-color: #454b52;
+}
+
+.app-root.dark .combo-box:hover,
+.app-root.dark .text-field:hover,
+.app-root.dark .input-surface:hover {
+    -fx-border-color: #5a6470;
+}
+
+.app-root.dark .combo-box:focused,
+.app-root.dark .text-field:focused,
+.app-root.dark .input-surface:focused {
+    -fx-background-color: #2a2d2f;
+    -fx-border-color: #60a5fa;
+}
+
+/* combo box popup */
+.app-root.dark .combo-box-popup .list-view {
+    -fx-background-color: #2a2d2f;
+    -fx-border-color: #454b52;
+}
+
+.app-root.dark .combo-box-popup .list-cell {
+    -fx-background-color: #2a2d2f;
+    -fx-text-fill: #f3f4f6;
+}
+
+.app-root.dark .combo-box-popup .list-cell:hover {
+    -fx-background-color: #34383d;
+}
+
+.app-root.dark .combo-box-popup .list-cell:selected {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+}
+
+/* combo popup scrollbar */
+.app-root.dark .combo-box-popup .scroll-bar .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.28);
+}
+
+.app-root.dark .combo-box-popup .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.42);
+}
+
+.app-root.dark .combo-box-popup .scroll-bar .thumb:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.58);
+}
+
+/* RichTextFX / editor */
+.app-root.dark .editor-surface {
+    -fx-background-color: #202325;
+    -fx-border-color: #454b52;
+    -fx-highlight-fill: #1d4ed8;
+    -fx-highlight-text-fill: white;
+}
+
+.app-root.dark .virtualized-scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar .thumb,
+.app-root.dark .styled-text-area .scroll-bar .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.30);
+}
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar .thumb:hover,
+.app-root.dark .styled-text-area .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.48);
+}
+
+/* tabs */
+.app-root.dark .main-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.app-root.dark .main-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: #2a2d2f;
+    -fx-border-color: #454b52;
+}
+
+.app-root.dark .main-tabs > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: #34383d;
+}
+
+.app-root.dark .main-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: #202325;
+    -fx-border-color: #454b52 #454b52 transparent #454b52;
+}
+
+.app-root.dark .main-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: #cbd5e1;
+}
+
+.app-root.dark .main-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: #ffffff;
+}
+
+.app-root.dark .main-tabs > .tab-content-area {
+    -fx-background-color: #202325;
+    -fx-border-color: #454b52;
+}
+
+/* list views */
+.app-root.dark .list-view {
+    -fx-control-inner-background: #202325;
+    -fx-border-color: #454b52;
+}
+
+.app-root.dark .list-cell {
+    -fx-text-fill: #f3f4f6;
+}
+
+.app-root.dark .list-cell:filled:hover {
+    -fx-background-color: #34383d;
+}
+
+.app-root.dark .list-cell:filled:selected,
+.app-root.dark .list-cell:filled:selected:focused {
+    -fx-background-color: #1e3a8a;
+    -fx-text-fill: white;
+}
+
+/* radio / checkbox visuals */
+.app-root.dark .radio-button .radio,
+.app-root.dark .check-box .box {
+    -fx-background-color: #2a2d2f;
+    -fx-border-color: #7b8794;
+}
+
+.app-root.dark .radio-button:selected .dot {
+    -fx-background-color: #60a5fa;
+}
+
+.app-root.dark .check-box:selected .box {
+    -fx-background-color: #1e3a8a;
+    -fx-border-color: #60a5fa;
+}
+
+.app-root.dark .check-box:selected .mark {
+    -fx-background-color: white;
+}
+
+/* ===== RichTextFX text area dark tuning ===== */
+
+.app-root.dark .editor-surface {
+    -fx-background-color: #202325;
+    -fx-border-color: #454b52;
+    -fx-highlight-fill: #1d4ed8;
+    -fx-highlight-text-fill: white;
+}
+
+/* RichTextFX container */
+.app-root.dark .styled-text-area,
+.app-root.dark .code-area,
+.app-root.dark .generic-styled-area {
+    -fx-background-color: #202325;
+    -fx-text-fill: #f3f4f6;
+}
+
+/* actual rendered text nodes inside RichTextFX */
+.app-root.dark .styled-text-area .text,
+.app-root.dark .code-area .text,
+.app-root.dark .generic-styled-area .text {
+    -fx-fill: #e5e7eb;
+}
+
+/* paragraph background */
+.app-root.dark .styled-text-area .paragraph-box,
+.app-root.dark .code-area .paragraph-box,
+.app-root.dark .generic-styled-area .paragraph-box {
+    -fx-background-color: #202325;
+}
+
+/* caret */
+.app-root.dark .styled-text-area .caret,
+.app-root.dark .code-area .caret,
+.app-root.dark .generic-styled-area .caret {
+    -fx-stroke: #f3f4f6;
+}
+
+/* selection */
+.app-root.dark .styled-text-area .selection,
+.app-root.dark .code-area .selection,
+.app-root.dark .generic-styled-area .selection {
+    -fx-fill: #264f78;
+}
+
+/* scrollbars */
+.app-root.dark .virtualized-scroll-pane .scroll-bar .thumb,
+.app-root.dark .styled-text-area .scroll-bar .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.30);
+}
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar .thumb:hover,
+.app-root.dark .styled-text-area .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.48);
+}
+
+/* ===== RichTextFX / VirtualizedScrollPane dark scrollbar ===== */
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar:vertical {
+    -fx-pref-width: 12px;
+    -fx-background-color: transparent;
+}
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar:horizontal {
+    -fx-pref-height: 12px;
+    -fx-background-color: transparent;
+}
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar .track {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-radius: 10px;
+}
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.38);
+    -fx-background-radius: 10px;
+    -fx-background-insets: 2;
+}
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.55);
+}
+
+.app-root.dark .virtualized-scroll-pane .scroll-bar .thumb:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.72);
 }
