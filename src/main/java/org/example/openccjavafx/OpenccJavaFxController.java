@@ -182,6 +182,7 @@ public class OpenccJavaFxController {
         StatusHoverHelper.bind(cbSaveTarget, lblStatus, "Select target text for saving");
         StatusHoverHelper.bind(btnRefresh, lblStatus, "Reflow PDF CJK Text ");
         StatusHoverHelper.bind(lblPdfOptions, lblStatus, "Click to toggle PDF options");
+        StatusHoverHelper.bind(lblFilename, lblStatus, lblFilename::getText);
 //        StatusHoverHelper.bind(btnStart, lblStatus, "Start convert text with OpenccJava");
         String javaVersion = System.getProperty("java.version");
         lblStatus.setText("OpenccJavaFX @ Java " + javaVersion);
