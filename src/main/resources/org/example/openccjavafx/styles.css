@@ -288,25 +288,20 @@
 /* selected tab */
 .main-tabs > .tab-header-area > .headers-region > .tab:selected {
     -fx-background-color: #ffffff;
-    -fx-border-color: #d8dde3;
+    -fx-border-color: #d8dde3 #d8dde3 transparent #d8dde3;
     -fx-border-width: 1px 1px 0 1px;
     -fx-border-radius: 8px 8px 0 0;
     -fx-background-insets: 0;
     -fx-border-insets: 0;
 }
 
-/* selected accent line */
-.main-tabs > .tab-header-area > .headers-region > .tab:selected {
-    -fx-border-color: #d8dde3 #d8dde3 transparent #d8dde3;
-}
-
-/* text */
+/* tab text */
 .main-tabs > .tab-header-area > .headers-region > .tab .tab-label {
     -fx-text-fill: #475467;
     -fx-font-weight: normal;
 }
 
-/* selected text */
+/* selected tab text */
 .main-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
     -fx-text-fill: #1a1a1a;
     -fx-font-weight: bold;
