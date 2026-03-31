@@ -6,6 +6,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import org.example.openccjavafx.i18n.I18n;
+import org.example.openccjavafx.i18n.UiLanguage;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -43,6 +45,24 @@ public class OpenccJavaFxApplication extends Application {
         return PREFS.getBoolean(PREF_CONVERT_FILENAME, false); // default = false (safer)
     }
 
+//    private static final Preferences PREFS =
+//            Preferences.userNodeForPackage(MainController.class);
+
+    private static final String PREF_UI_LANG = "ui.language";
+
+    public static void saveLanguagePreference(UiLanguage lang) {
+        PREFS.put(PREF_UI_LANG, lang.name());
+    }
+
+    public static UiLanguage loadLanguagePreference() {
+        String value = PREFS.get(PREF_UI_LANG, UiLanguage.ENGLISH.name());
+        try {
+            return UiLanguage.valueOf(value);
+        } catch (IllegalArgumentException ex) {
+            return UiLanguage.ENGLISH;
+        }
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(
@@ -63,7 +83,7 @@ public class OpenccJavaFxApplication extends Application {
         );
         stage.getIcons().add(icon);
 
-        stage.setTitle("OpenccJavaFX");
+        stage.setTitle(I18n.get("app.title"));
 
         applySavedOrSystemTheme(root);
 

@@ -19,6 +19,8 @@ import openccjava.OpenccConfig;
 import openxmlhelper.EpubHelper;
 import openxmlhelper.OpenDocumentHelper;
 import openxmlhelper.OpenXmlHelper;
+import org.example.openccjavafx.i18n.I18n;
+import org.example.openccjavafx.i18n.UiLanguage;
 import org.fxmisc.richtext.CodeArea;
 
 import java.io.BufferedReader;
@@ -43,27 +45,30 @@ public class OpenccJavaFxController {
             ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp"
     ));
 
-    private static final List<String> CONFIG_LIST = Arrays.asList(
-            "s2t (简->繁)",
-            "s2tw (简->繁台",
-            "s2twp (简->繁台/惯)",
-            "s2hk (简->繁港)",
-            "t2s (繁->简)",
-            "t2tw (繁->繁台)",
-            "t2twp (繁->繁台/惯)",
-            "t2hk (繁->繁港)",
-            "tw2s (繁台->简)",
-            "tw2sp (繁台->简/惯)",
-            "tw2t (繁台->繁)",
-            "tw2tp (繁台->繁/惯)",
-            "hk2s (繁港->简)",
-            "hk2t (繁港->繁)",
-            "t2jp (日舊->日新)",
-            "jp2t (日新->日舊)");
+    private static final List<ConfigItem> CONFIG_LIST = Arrays.asList(
+            new ConfigItem("s2t", "config.manual.s2t"),
+            new ConfigItem("s2tw", "config.manual.s2tw"),
+            new ConfigItem("s2twp", "config.manual.s2twp"),
+            new ConfigItem("s2hk", "config.manual.s2hk"),
+            new ConfigItem("t2s", "config.manual.t2s"),
+            new ConfigItem("t2tw", "config.manual.t2tw"),
+            new ConfigItem("t2twp", "config.manual.t2twp"),
+            new ConfigItem("t2hk", "config.manual.t2hk"),
+            new ConfigItem("tw2s", "config.manual.tw2s"),
+            new ConfigItem("tw2sp", "config.manual.tw2sp"),
+            new ConfigItem("tw2t", "config.manual.tw2t"),
+            new ConfigItem("tw2tp", "config.manual.tw2tp"),
+            new ConfigItem("hk2s", "config.manual.hk2s"),
+            new ConfigItem("hk2t", "config.manual.hk2t"),
+            new ConfigItem("t2jp", "config.manual.t2jp"),
+            new ConfigItem("jp2t", "config.manual.jp2t")
+    );
 
     private static final List<String> SAVE_TARGET_LIST = Arrays.asList(
             "Source",
             "Destination");
+
+    private int currentSourceCode = 0; // 0=non-zho, 1=hant, 2=hans
 
     @FXML
 //    private TextArea textAreaSource;
@@ -82,6 +87,8 @@ public class OpenccJavaFxController {
     private RadioButton rbManual;
     @FXML
     private RadioButton rbStd;
+    @FXML
+    private RadioButton rbZHTW;
     @FXML
     private RadioButton rbHK;
     @FXML
@@ -115,7 +122,7 @@ public class OpenccJavaFxController {
     @FXML
     private TextField textFieldPath;
     @FXML
-    private ComboBox<String> cbManual;
+    private ComboBox<ConfigItem> cbManual;
     @FXML
     private ComboBox<String> cbSaveTarget;
     @FXML
@@ -140,6 +147,8 @@ public class OpenccJavaFxController {
     private RadioButton rbThemeDark;
     @FXML
     private ToggleGroup themeGroup;
+    @FXML
+    private ComboBox<UiLanguage> cbLanguage;
 
     @FXML
     public void initialize() {
@@ -170,6 +179,24 @@ public class OpenccJavaFxController {
             applyCurrentTheme();
         });
 
+        UiLanguage saved = OpenccJavaFxApplication.loadLanguagePreference();
+        I18n.setLocale(saved.getLocale());
+        cbLanguage.getItems().setAll(UiLanguage.values());
+        cbLanguage.setValue(saved);
+
+        cbLanguage.setOnAction(event -> {
+            UiLanguage selected = cbLanguage.getValue();
+            if (selected != null) {
+                I18n.setLocale(selected.getLocale());
+                applyTexts();
+                updateRuntimeStatus();
+                OpenccJavaFxApplication.saveLanguagePreference(selected);
+            }
+        });
+
+        applyTexts();
+        updateRuntimeStatus();
+
         cbManual.getItems().addAll(CONFIG_LIST);
         cbManual.getSelectionModel().selectFirst();
         cbLineNumber.setSelected(OpenccJavaFxApplication.getShowLineNumber());
@@ -199,8 +226,6 @@ public class OpenccJavaFxController {
         StatusHoverHelper.bind(lblPdfOptions, lblStatus, "Click to toggle PDF options");
         StatusHoverHelper.bind(lblFilename, lblStatus, lblFilename::getText);
 //        StatusHoverHelper.bind(btnStart, lblStatus, "Start convert text with OpenccJava");
-        String javaVersion = System.getProperty("java.version");
-        lblStatus.setText("OpenccJavaFX @ Java " + javaVersion);
         setPdfOptionsEnabled(false);
     }
 
@@ -220,6 +245,27 @@ public class OpenccJavaFxController {
         } else {
             area.setParagraphGraphicFactory(null);
         }
+    }
+
+    private void applyTexts() {
+        rbS2t.setText(I18n.get("config.s2t"));
+        rbT2s.setText(I18n.get("config.t2s"));
+        rbManual.setText(I18n.get("config.manual"));
+
+        rbStd.setText(I18n.get("variant.general"));
+        rbZHTW.setText(I18n.get("variant.tw"));
+        rbHK.setText(I18n.get("variant.hk"));
+
+        cbZHTW.setText(I18n.get("variant.twIdioms"));
+        cbPunctuation.setText(I18n.get("option.punctuation"));
+    }
+
+    private void updateRuntimeStatus() {
+        lblStatus.setText(I18n.format(
+                "status.runtime",
+                I18n.get("app.title"),
+                System.getProperty("java.version")
+        ));
     }
 
     @FXML
@@ -365,17 +411,24 @@ public class OpenccJavaFxController {
         textAreaDestination.replaceText(convertedText);
 
         if (rbManual.isSelected()) {
-            lblDestinationCode.setText(cbManual.getValue() != null ? cbManual.getValue() : config);
-        } else if (!lblSourceCode.getText().contains("non") && !lblSourceCode.getText().isEmpty()) {
-            lblDestinationCode.setText(lblSourceCode.getText().contains("Hans") ? "zh-Hant (繁体)" : "zh-Hans (简体)");
+            ConfigItem selected = cbManual.getValue();
+            lblDestinationCode.setText(selected != null ? selected.getCode() : config);
         } else {
-            lblDestinationCode.setText(lblSourceCode.getText());
+            switch (currentSourceCode) {
+                case 1: // source is Hant -> destination becomes Hans
+                    lblDestinationCode.setText(I18n.get("lang.dest.hans"));
+                    break;
+                case 2: // source is Hans -> destination becomes Hant
+                    lblDestinationCode.setText(I18n.get("lang.dest.hant"));
+                    break;
+                default:
+                    lblDestinationCode.setText(I18n.get("lang.dest.non"));
+                    break;
+            }
         }
 
-        lblStatus.setText(String.format(
-                hasSelection
-                        ? "Selected text converted in %,d ms. [ %s ]"
-                        : "Conversion completed in %,d ms. [ %s ]",
+        lblStatus.setText(I18n.format(
+                hasSelection ? "status.convert.selected" : "status.convert.full",
                 elapsedMillis,
                 config
         ));
@@ -529,19 +582,26 @@ public class OpenccJavaFxController {
 
 
     private void updateSourceInfo(int textCode) {
+        currentSourceCode = textCode;
+
         switch (textCode) {
             case 1:
                 rbT2s.setSelected(true);
-                lblSourceCode.setText("zh-Hant (繁体)");
+                lblSourceCode.setText(I18n.get("lang.source.hant"));
                 break;
             case 2:
                 rbS2t.setSelected(true);
-                lblSourceCode.setText("zh-Hans (简体)");
+                lblSourceCode.setText(I18n.get("lang.source.hans"));
                 break;
             default:
-                lblSourceCode.setText("non-zho (其它)");
+                lblSourceCode.setText(I18n.get("lang.source.non"));
         }
-        lblSourceCharCount.setText(String.format("[ %,d chars ]", textAreaSource.getText().length()));
+
+        lblSourceCharCount.setText(I18n.format(
+                "status.charCount",
+                textAreaSource.getText().length()
+        ));
+
         if (openFileName != null) {
             lblFilename.setText(new File(openFileName).getName());
             lblStatus.setText(openFileName);
@@ -569,7 +629,7 @@ public class OpenccJavaFxController {
         }
 
         if (rbManual.isSelected()) {
-            String v = cbManual.getValue();
+            String v = cbManual.getValue().getCode();
             if (v != null) {
                 int sp = v.indexOf(' ');
                 String key = sp >= 0 ? v.substring(0, sp) : v;
