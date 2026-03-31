@@ -187,10 +187,9 @@ public class OpenccJavaFxController {
 
 //        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
 //        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
+
         cbConvertFilename.setSelected(OpenccJavaFxApplication.getConvertFilename());
-        cbConvertFilename.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            OpenccJavaFxApplication.saveConvertFilename(newVal);
-        });
+        cbConvertFilename.selectedProperty().addListener((obs, oldVal, newVal) -> OpenccJavaFxApplication.saveConvertFilename(newVal));
         cbSaveTarget.getItems().addAll(SAVE_TARGET_LIST);
         cbSaveTarget.getSelectionModel().select(1);
         // Hover status display
