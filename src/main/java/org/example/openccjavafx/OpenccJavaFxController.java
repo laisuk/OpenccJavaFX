@@ -336,22 +336,29 @@ public class OpenccJavaFxController {
     }
 
     private void startMainConversion() {
-        String inputText = textAreaSource.getText();
-        if (inputText.isEmpty()) {
+        String fullText = textAreaSource.getText();
+        if (fullText.isEmpty()) {
             lblStatus.setText("Nothing to convert.");
             return;
         }
 
+        String inputText = textAreaSource.getSelectedText();
+        boolean hasSelection = inputText != null && !inputText.isEmpty();
+
+        if (!hasSelection) {
+            inputText = fullText;
+        }
+
         if (lblSourceCode.getText().isEmpty()) {
-            updateSourceInfo(OpenCC.zhoCheck(inputText));
+            updateSourceInfo(OpenCC.zhoCheck(fullText));
         }
 
         String config = getCurrentConfig();
         openccInstance.setConfig(config);
 
-        long startTime = System.nanoTime(); // Start timer before convert()
+        long startTime = System.nanoTime();
         String convertedText = openccInstance.convert(inputText, cbPunctuation.isSelected());
-        long endTime = System.nanoTime();   // End timer after convert()
+        long endTime = System.nanoTime();
 
         long elapsedMillis = (endTime - startTime) / 1_000_000;
 
@@ -365,7 +372,13 @@ public class OpenccJavaFxController {
             lblDestinationCode.setText(lblSourceCode.getText());
         }
 
-        lblStatus.setText(String.format("Conversion completed in %,d ms. [ %s ]", elapsedMillis, config));
+        lblStatus.setText(String.format(
+                hasSelection
+                        ? "Selected text converted in %,d ms. [ %s ]"
+                        : "Conversion completed in %,d ms. [ %s ]",
+                elapsedMillis,
+                config
+        ));
     }
 
     private void startBatchConversion() {
