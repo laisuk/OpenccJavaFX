@@ -144,7 +144,6 @@ public class OpenccJavaFxController {
     @FXML
     public void initialize() {
         String theme = OpenccJavaFxApplication.getSavedThemeMode();
-
         switch (theme) {
             case "dark":
                 rbThemeDark.setSelected(true);
@@ -156,7 +155,6 @@ public class OpenccJavaFxController {
                 rbThemeSystem.setSelected(true);
                 break;
         }
-
         applyCurrentTheme();
 
         themeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
@@ -169,9 +167,9 @@ public class OpenccJavaFxController {
             } else {
                 OpenccJavaFxApplication.saveThemeModeSystem();
             }
-
             applyCurrentTheme();
         });
+
         cbManual.getItems().addAll(CONFIG_LIST);
         cbManual.getSelectionModel().selectFirst();
         cbLineNumber.setSelected(OpenccJavaFxApplication.getShowLineNumber());
