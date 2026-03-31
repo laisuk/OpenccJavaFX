@@ -17,12 +17,31 @@ import java.util.prefs.Preferences;
 public class OpenccJavaFxApplication extends Application {
     private static final String THEME_DARK_CLASS = "dark";
     private static final String PREF_THEME = "theme";
+    private static final String PREF_SHOW_LINE_NUMBER = "showLineNumber";
+    private static final String PREF_CONVERT_FILENAME = "convertFilename";
     private static final String THEME_SYSTEM = "system";
     private static final String THEME_LIGHT = "light";
     private static final String THEME_DARK = "dark";
 
+
     private static final Preferences PREFS =
             Preferences.userNodeForPackage(OpenccJavaFxApplication.class);
+
+    public static void saveShowLineNumber(boolean show) {
+        PREFS.putBoolean(PREF_SHOW_LINE_NUMBER, show);
+    }
+
+    public static boolean getShowLineNumber() {
+        return PREFS.getBoolean(PREF_SHOW_LINE_NUMBER, true);
+    }
+
+    public static void saveConvertFilename(boolean enabled) {
+        PREFS.putBoolean(PREF_CONVERT_FILENAME, enabled);
+    }
+
+    public static boolean getConvertFilename() {
+        return PREFS.getBoolean(PREF_CONVERT_FILENAME, false); // default = false (safer)
+    }
 
     @Override
     public void start(Stage stage) throws IOException {

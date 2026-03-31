@@ -91,6 +91,8 @@ public class OpenccJavaFxController {
     @FXML
     private CheckBox cbConvertFilename;
     @FXML
+    private CheckBox cbLineNumber;
+    @FXML
     private Label lblSourceCode;
     @FXML
     private Label lblDestinationCode;
@@ -172,8 +174,23 @@ public class OpenccJavaFxController {
         });
         cbManual.getItems().addAll(CONFIG_LIST);
         cbManual.getSelectionModel().selectFirst();
-        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
-        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
+        cbLineNumber.setSelected(OpenccJavaFxApplication.getShowLineNumber());
+
+        applyLineNumber(textAreaSource, cbLineNumber.isSelected());
+        applyLineNumber(textAreaDestination, cbLineNumber.isSelected());
+
+        cbLineNumber.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            applyLineNumber(textAreaSource, newVal);
+            applyLineNumber(textAreaDestination, newVal);
+            OpenccJavaFxApplication.saveShowLineNumber(newVal);
+        });
+
+//        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
+//        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
+        cbConvertFilename.setSelected(OpenccJavaFxApplication.getConvertFilename());
+        cbConvertFilename.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            OpenccJavaFxApplication.saveConvertFilename(newVal);
+        });
         cbSaveTarget.getItems().addAll(SAVE_TARGET_LIST);
         cbSaveTarget.getSelectionModel().select(1);
         // Hover status display
@@ -198,6 +215,14 @@ public class OpenccJavaFxController {
 
         boolean dark = OpenccJavaFxApplication.isEffectiveDarkMode();
         OpenccJavaFxApplication.applyTheme(root, dark);
+    }
+
+    private void applyLineNumber(CodeArea area, boolean enabled) {
+        if (enabled) {
+            area.setParagraphGraphicFactory(LineNumberFactory.get(area));
+        } else {
+            area.setParagraphGraphicFactory(null);
+        }
     }
 
     @FXML

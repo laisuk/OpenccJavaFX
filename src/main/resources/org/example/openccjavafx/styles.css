@@ -347,10 +347,12 @@
 .lineno {
     -fx-background-color: #f3f4f6;
     -fx-text-fill: #6b7280;
-    -fx-padding: 0 8px 0 8px;
+    -fx-padding: 0 0px 0 0px;
     -fx-font-size: 12px;
     -fx-border-color: transparent #d1d5db transparent transparent;
     -fx-border-width: 0 1px 0 0;
+    /*-fx-min-width: 20px;        !* reduce gutter width *!*/
+    -fx-alignment: TOP-RIGHT;
 }
 
 /* Dark theme */
