@@ -312,7 +312,7 @@ public final class PdfBoxHelper {
 
         SinglePassPageCollector(boolean withHeader,
                                 BiConsumer<Integer, Integer> progressCallback,
-                                int totalPages) throws IOException {
+                                int totalPages) {
             this.withHeader = withHeader;
             this.progressCallback = progressCallback;
             this.totalPages = totalPages;
