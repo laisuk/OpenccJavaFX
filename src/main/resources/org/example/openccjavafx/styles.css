@@ -484,6 +484,72 @@
 }
 
 /* =========================================================
+   ProgressBar / ProgressIndicator - Fluent Style
+   ========================================================= */
+
+/* ---------- Base (Light) ---------- */
+
+.progress-bar,
+.progress-indicator {
+    -fx-accent: #2563eb; /* primary blue */
+}
+
+/* track */
+.progress-bar .track {
+    -fx-background-color: #e5e7eb;
+    -fx-background-radius: 999px;
+}
+
+/* progress fill */
+.progress-bar .bar {
+    -fx-background-color: #2563eb;
+    -fx-background-radius: 999px;
+}
+
+/* indeterminate animation */
+.progress-bar:indeterminate .bar {
+    -fx-background-color: linear-gradient(to right, transparent, #2563eb, transparent);
+}
+
+/* ProgressIndicator (circular) */
+.progress-indicator .indicator {
+    -fx-background-color: transparent;
+}
+
+.progress-indicator .progress {
+    -fx-background-color: #2563eb;
+}
+
+/* =========================================================
+   Dark Theme Overrides
+   ========================================================= */
+
+.dark .progress-bar,
+.dark .progress-indicator {
+    -fx-accent: #3b82f6; /* slightly brighter blue */
+}
+
+/* track */
+.dark .progress-bar .track {
+    -fx-background-color: #2a2f36;
+}
+
+/* progress fill */
+.dark .progress-bar .bar {
+    -fx-background-color: #3b82f6;
+}
+
+/* indeterminate animation */
+.dark .progress-bar:indeterminate .bar {
+    -fx-background-color: linear-gradient(to right, transparent, #3b82f6, transparent);
+}
+
+/* circular indicator */
+.dark .progress-indicator .progress {
+    -fx-background-color: #3b82f6;
+}
+
+/* =========================================================
    Dark Mode
    ========================================================= */
 
