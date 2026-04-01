@@ -244,24 +244,7 @@ public final class PdfBoxHelper {
                 stripper.setStartPage(i);
                 stripper.setEndPage(i);
 
-                String pageText = stripper.getText(doc);
-                pageText = cleanText(pageText != null ? pageText.trim() : "");
-
-                if (sb.length() != 0) {
-                    sb.append(System.lineSeparator()).append(System.lineSeparator());
-                }
-
-                if (withHeader) {
-                    sb.append("=== [Page ")
-                            .append(i)
-                            .append("/")
-                            .append(total)
-                            .append("] ===")
-                            .append(System.lineSeparator())
-                            .append(System.lineSeparator());
-                }
-
-                sb.append(pageText);
+                appendExtractedPage(sb, stripper.getText(doc), i, total, withHeader);
 
                 if (progressCallback != null) {
                     progressCallback.accept(i, total);
@@ -273,6 +256,64 @@ public final class PdfBoxHelper {
             LOGGER.log(Level.SEVERE, "Failed to extract text from PDF: " + file, e);
             throw e;
         }
+    }
+
+    static void appendExtractedPage(StringBuilder sb,
+                                    String rawPageText,
+                                    int pageNumber,
+                                    int totalPages,
+                                    boolean withHeader) {
+        String lineSeparator = System.lineSeparator();
+        String pageText = cleanText(rawPageText != null ? rawPageText : "");
+        boolean emptyPage = pageText.trim().isEmpty();
+
+        if (emptyPage) {
+            if (withHeader) {
+                appendPageHeader(sb, pageNumber, totalPages, lineSeparator);
+            } else {
+                appendEmptyPageSeparator(sb, lineSeparator);
+            }
+            return;
+        }
+
+        if (withHeader) {
+            appendPageHeader(sb, pageNumber, totalPages, lineSeparator);
+        }
+
+        sb.append(pageText);
+    }
+
+    private static void appendPageHeader(StringBuilder sb,
+                                         int pageNumber,
+                                         int totalPages,
+                                         String lineSeparator) {
+        if (sb.length() != 0) {
+            sb.append(lineSeparator).append(lineSeparator);
+        }
+
+        sb.append("=== [Page ")
+                .append(pageNumber)
+                .append("/")
+                .append(totalPages)
+                .append("] ===")
+                .append(lineSeparator)
+                .append(lineSeparator);
+    }
+
+    private static void appendEmptyPageSeparator(StringBuilder sb, String lineSeparator) {
+        if (sb.length() == 0) {
+            sb.append(lineSeparator);
+            return;
+        }
+
+        if (!endsWithNewline(sb)) {
+            sb.append(lineSeparator);
+        }
+        sb.append(lineSeparator);
+    }
+
+    private static boolean endsWithNewline(StringBuilder sb) {
+        return sb.length() > 0 && sb.charAt(sb.length() - 1) == '\n';
     }
 
     // ========================================================================
