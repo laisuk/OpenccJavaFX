@@ -56,6 +56,8 @@ public class PunctSets {
      * Order and pairing MUST stay consistent with DIALOG_OPENERS.
      */
     private static final String DIALOG_CLOSERS = "”’」』﹂﹄";
+    private static final boolean[] DIALOG_OPENER_TABLE = new boolean[Character.MAX_VALUE + 1];
+    private static final boolean[] DIALOG_CLOSER_TABLE = new boolean[Character.MAX_VALUE + 1];
 
     // -------------------------
     // Soft continuation punctuation
@@ -130,6 +132,13 @@ public class PunctSets {
         for (char c : CJK_PUNCT_END_CHARS)
             CJK_PUNCT_END_TABLE[c] = true;
 
+        for (int i = 0; i < DIALOG_OPENERS.length(); i++) {
+            DIALOG_OPENER_TABLE[DIALOG_OPENERS.charAt(i)] = true;
+        }
+        for (int i = 0; i < DIALOG_CLOSERS.length(); i++) {
+            DIALOG_CLOSER_TABLE[DIALOG_CLOSERS.charAt(i)] = true;
+        }
+
         // init bracket pairs
         Map<Character, Character> map = new HashMap<>();
 
@@ -166,11 +175,11 @@ public class PunctSets {
     }
 
     public static boolean isDialogOpener(char ch) {
-        return DIALOG_OPENERS.indexOf(ch) >= 0;
+        return DIALOG_OPENER_TABLE[ch];
     }
 
     public static boolean isDialogCloser(char ch) {
-        return DIALOG_CLOSERS.indexOf(ch) >= 0;
+        return DIALOG_CLOSER_TABLE[ch];
     }
 
     // ---------------------------------------------------------------------
@@ -270,6 +279,41 @@ public class PunctSets {
 
         // Unclosed opener(s) only matters if we saw any bracket at all
         return seenBracket && top != 0;
+    }
+
+    public static boolean hasUnclosedDialogQuote(CharSequence s) {
+        if (s == null || s.length() == 0) {
+            return false;
+        }
+
+        int[] balance = new int[DIALOG_OPENERS.length()];
+
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
+
+            int openIndex = DIALOG_OPENERS.indexOf(ch);
+            if (openIndex >= 0) {
+                balance[openIndex]++;
+                continue;
+            }
+
+            int closeIndex = DIALOG_CLOSERS.indexOf(ch);
+            if (closeIndex >= 0) {
+                if (balance[closeIndex] > 0) {
+                    balance[closeIndex]--;
+                } else {
+                    return true; // dangling closer on this line
+                }
+            }
+        }
+
+        for (int n : balance) {
+            if (n > 0) {
+                return true; // unclosed opener remains
+            }
+        }
+
+        return false;
     }
 
     /**

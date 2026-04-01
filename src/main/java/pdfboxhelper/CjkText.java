@@ -390,9 +390,35 @@ public class CjkText {
      * Range wrapper to reuse your existing isMostlyCjk(String) without changing it.
      */
     private static boolean isMostlyCjkRange(String s, int start, int end) {
-        // Trim range again is not needed; caller already trimmed inner.
-        // Allocate only for inner segment (typically short).
-        return isMostlyCjk(s.substring(start, end));
+        if (start >= end) {
+            return false;
+        }
+
+        int cjk = 0;
+        int ascii = 0;
+
+        for (int i = start; i < end; i++) {
+            char ch = s.charAt(i);
+
+            if (Character.isWhitespace(ch)) {
+                continue;
+            }
+
+            if (isDigitAsciiOrFullWidth(ch)) {
+                continue;
+            }
+
+            if (isCjk(ch)) {
+                cjk++;
+                continue;
+            }
+
+            if (ch <= 0x7F && Character.isLetter(ch)) {
+                ascii++;
+            }
+        }
+
+        return cjk > 0 && cjk >= ascii;
     }
 
 // ------ Bracket Boundary end ------

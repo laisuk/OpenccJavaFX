@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * Small utility class wrapping PDFBox 3.x text extraction for OpenccJavaFX.
@@ -53,7 +54,7 @@ public final class PdfBoxHelper {
      *   <li>U+FEFF ZERO WIDTH NO-BREAK SPACE (BOM)</li>
      * </ul>
      */
-    private static final String ZERO_WIDTH_REGEX = "[\u200B\u200C\u200D\uFEFF]";
+    private static final Pattern ZERO_WIDTH_PATTERN = Pattern.compile("[\u200B\u200C\u200D\uFEFF]");
 
     /**
      * Removes common zero-width characters from the given text.
@@ -65,7 +66,7 @@ public final class PdfBoxHelper {
         if (text == null || text.isEmpty()) {
             return text;
         }
-        return text.replaceAll(ZERO_WIDTH_REGEX, "");
+        return ZERO_WIDTH_PATTERN.matcher(text).replaceAll("");
     }
 
     // ========================================================================

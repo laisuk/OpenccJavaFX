@@ -94,7 +94,15 @@ public final class PdfReflowHelper {
             )
     );
 
+    private static final char[] METADATA_SEPARATOR_TABLE = new char[Character.MAX_VALUE + 1];
+
     private PdfReflowHelper() {
+    }
+
+    static {
+        for (char separator : PunctSets.METADATA_SEPARATORS) {
+            METADATA_SEPARATOR_TABLE[separator] = 1;
+        }
     }
 
     // ======================================================================
@@ -546,7 +554,7 @@ public final class PdfReflowHelper {
         }
 
         // Reject headings with unclosed brackets
-        if (PunctSets.hasUnclosedBracket(s)) {
+        if (PunctSets.hasUnclosedBracket(s) || PunctSets.hasUnclosedDialogQuote(s)) {
             return false;
         }
 
@@ -636,7 +644,7 @@ public final class PdfReflowHelper {
         }
 
         // C) find first separator
-        int idx = CjkText.indexOfAny(line, PunctSets.METADATA_SEPARATORS);
+        int idx = indexOfAnyMetadataSeparator(line);
         if (idx <= 0 || idx > 10) {
             return false;
         }
@@ -679,6 +687,15 @@ public final class PdfReflowHelper {
             }
         }
         return s.substring(start);
+    }
+
+    private static int indexOfAnyMetadataSeparator(String line) {
+        for (int i = 0; i < line.length(); i++) {
+            if (METADATA_SEPARATOR_TABLE[line.charAt(i)] != 0) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**

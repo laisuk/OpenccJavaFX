@@ -74,6 +74,12 @@ dependencies {
     implementation("org.jsoup:jsoup:1.22.1")
 }
 
+sourceSets {
+    test {
+        java.srcDirs("tests")
+    }
+}
+
 tasks.withType<Jar> {
     manifest {
         attributes["Main-Class"] = "org.example.openccjavafx.OpenccJavaFxApplication"
