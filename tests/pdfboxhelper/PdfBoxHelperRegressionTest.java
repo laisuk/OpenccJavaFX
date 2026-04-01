@@ -70,6 +70,40 @@ class PdfBoxHelperRegressionTest {
     }
 
     @Test
+    void progressCallbackReportsSequentialPageNumbers() throws IOException {
+        File pdf = INDENT_FIXTURE.toFile();
+        assertTrue(pdf.isFile(), "Missing PDF fixture: " + INDENT_FIXTURE.toAbsolutePath());
+
+        StringBuilder seen = new StringBuilder();
+        AtomicInteger calls = new AtomicInteger();
+        AtomicInteger lastTotal = new AtomicInteger();
+
+        PdfBoxHelper.extractText(pdf, false, (current, total) -> {
+            calls.incrementAndGet();
+            lastTotal.set(total);
+            if (seen.length() != 0) {
+                seen.append(',');
+            }
+            seen.append(current).append('/').append(total);
+        });
+
+        assertTrue(lastTotal.get() > 0, "Expected progress callback to report total pages");
+        assertEquals(lastTotal.get(), calls.get(),
+                "Expected one progress callback per page");
+
+        StringBuilder expected = new StringBuilder();
+        for (int page = 1; page <= lastTotal.get(); page++) {
+            if (expected.length() != 0) {
+                expected.append(',');
+            }
+            expected.append(page).append('/').append(lastTotal.get());
+        }
+
+        assertEquals(expected.toString(), seen.toString(),
+                "Progress callback should report sequential 1-based page numbers with stable total pages");
+    }
+
+    @Test
     void emptyPageRemainsVisibleWithoutHeaders() {
         StringBuilder sb = new StringBuilder();
 

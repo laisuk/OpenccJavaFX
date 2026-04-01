@@ -2,6 +2,7 @@ package pdfboxhelper;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.io.File;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -188,26 +190,14 @@ public final class PdfBoxHelper {
     public static List<String> extractTextPerPage(File file) throws IOException {
         Objects.requireNonNull(file, "file must not be null");
 
-        List<String> pages = new ArrayList<>();
-
         try (PDDocument doc = Loader.loadPDF(file)) {
             ensureNotEncrypted(doc);
-
-            PDFTextStripper stripper = createStripper();
-            int total = doc.getNumberOfPages();
-
-            for (int i = 1; i <= total; i++) {
-                stripper.setStartPage(i);
-                stripper.setEndPage(i);
-                String text = stripper.getText(doc);
-                pages.add(cleanText(text != null ? text : ""));
-            }
+            return extractTextPerPageSinglePass(doc);
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Failed to extract text per page from PDF: " + file, e);
             throw e;
         }
 
-        return pages;
     }
 
     /**
@@ -233,29 +223,28 @@ public final class PdfBoxHelper {
                 return cleanText(text);
             }
 
-            // Per-page extraction:
-            // - used whenever headers are requested, OR
-            // - when a progress callback is provided.
-            PDFTextStripper stripper = createStripper();
-            int total = doc.getNumberOfPages();
-            StringBuilder sb = new StringBuilder(8192);
-
-            for (int i = 1; i <= total; i++) {
-                stripper.setStartPage(i);
-                stripper.setEndPage(i);
-
-                appendExtractedPage(sb, stripper.getText(doc), i, total, withHeader);
-
-                if (progressCallback != null) {
-                    progressCallback.accept(i, total);
-                }
-            }
-
-            return sb.toString();
+            // Single-pass extraction for header/progress modes.
+            return extractTextSinglePass(doc, withHeader, progressCallback);
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Failed to extract text from PDF: " + file, e);
             throw e;
         }
+    }
+
+    private static String extractTextSinglePass(PDDocument doc,
+                                                boolean withHeader,
+                                                BiConsumer<Integer, Integer> progressCallback) throws IOException {
+        int totalPages = doc.getNumberOfPages();
+        SinglePassPageCollector stripper = new SinglePassPageCollector(withHeader, progressCallback, totalPages);
+        stripper.writeText(doc, new StringWriter());
+        return stripper.getCombinedText();
+    }
+
+    private static List<String> extractTextPerPageSinglePass(PDDocument doc) throws IOException {
+        int totalPages = doc.getNumberOfPages();
+        SinglePassPageCollector stripper = new SinglePassPageCollector(false, null, totalPages);
+        stripper.writeText(doc, new StringWriter());
+        return stripper.getPages();
     }
 
     static void appendExtractedPage(StringBuilder sb,
@@ -310,6 +299,55 @@ public final class PdfBoxHelper {
             sb.append(lineSeparator);
         }
         sb.append(lineSeparator);
+    }
+
+    private static final class SinglePassPageCollector extends PDFTextStripper {
+        private final boolean withHeader;
+        private final BiConsumer<Integer, Integer> progressCallback;
+        private final int totalPages;
+        private final StringBuilder combinedText = new StringBuilder(8192);
+        private final List<String> pages = new ArrayList<>();
+        private final StringWriter wholeOutput = new StringWriter(8192);
+        private int pageStartOffset;
+
+        SinglePassPageCollector(boolean withHeader,
+                                BiConsumer<Integer, Integer> progressCallback,
+                                int totalPages) throws IOException {
+            this.withHeader = withHeader;
+            this.progressCallback = progressCallback;
+            this.totalPages = totalPages;
+        }
+
+        @Override
+        public void writeText(PDDocument doc, java.io.Writer outputStream) throws IOException {
+            super.writeText(doc, wholeOutput);
+        }
+
+        @Override
+        protected void startPage(PDPage page) throws IOException {
+            pageStartOffset = wholeOutput.getBuffer().length();
+            super.startPage(page);
+        }
+
+        @Override
+        protected void endPage(PDPage page) throws IOException {
+            super.endPage(page);
+            StringBuffer buffer = wholeOutput.getBuffer();
+            String pageText = buffer.substring(pageStartOffset, buffer.length());
+            pages.add(cleanText(pageText));
+            appendExtractedPage(combinedText, pageText, getCurrentPageNo(), totalPages, withHeader);
+            if (progressCallback != null) {
+                progressCallback.accept(getCurrentPageNo(), totalPages);
+            }
+        }
+
+        String getCombinedText() {
+            return combinedText.toString();
+        }
+
+        List<String> getPages() {
+            return pages;
+        }
     }
 
     private static boolean endsWithNewline(StringBuilder sb) {
@@ -393,7 +431,7 @@ public final class PdfBoxHelper {
 
             // Look for ASCII "%PDF-" marker
             for (int i = 0; i <= readLen - 5; i++) {
-                if (buffer[i]     == '%' &&
+                if (buffer[i] == '%' &&
                         buffer[i + 1] == 'P' &&
                         buffer[i + 2] == 'D' &&
                         buffer[i + 3] == 'F' &&
