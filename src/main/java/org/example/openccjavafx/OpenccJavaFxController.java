@@ -19,8 +19,10 @@ import openccjava.OpenccConfig;
 import openxmlhelper.EpubHelper;
 import openxmlhelper.OpenDocumentHelper;
 import openxmlhelper.OpenXmlHelper;
+import org.example.openccjavafx.config.AppPreferences;
 import org.example.openccjavafx.i18n.I18n;
 import org.example.openccjavafx.i18n.UiLanguage;
+import org.example.openccjavafx.theme.ThemeManager;
 import org.fxmisc.richtext.CodeArea;
 
 import java.io.BufferedReader;
@@ -152,7 +154,7 @@ public class OpenccJavaFxController {
 
     @FXML
     public void initialize() {
-        String theme = OpenccJavaFxApplication.getSavedThemeMode();
+        String theme = AppPreferences.getSavedThemeMode();
         switch (theme) {
             case "dark":
                 rbThemeDark.setSelected(true);
@@ -170,16 +172,16 @@ public class OpenccJavaFxController {
             if (newVal == null) return;
 
             if (rbThemeDark.isSelected()) {
-                OpenccJavaFxApplication.saveThemeModeDark();
+                AppPreferences.saveThemeModeDark();
             } else if (rbThemeLight.isSelected()) {
-                OpenccJavaFxApplication.saveThemeModeLight();
+                AppPreferences.saveThemeModeLight();
             } else {
-                OpenccJavaFxApplication.saveThemeModeSystem();
+                AppPreferences.saveThemeModeSystem();
             }
             applyCurrentTheme();
         });
 
-        UiLanguage saved = OpenccJavaFxApplication.loadLanguagePreference();
+        UiLanguage saved = AppPreferences.loadLanguagePreference();
         I18n.setLocale(saved.getLocale());
         cbLanguage.getItems().setAll(UiLanguage.values());
         cbLanguage.setValue(saved);
@@ -190,7 +192,7 @@ public class OpenccJavaFxController {
                 I18n.setLocale(selected.getLocale());
                 applyTexts();
                 updateRuntimeStatus();
-                OpenccJavaFxApplication.saveLanguagePreference(selected);
+                AppPreferences.saveLanguagePreference(selected);
             }
         });
 
@@ -199,7 +201,7 @@ public class OpenccJavaFxController {
 
         cbManual.getItems().addAll(CONFIG_LIST);
         cbManual.getSelectionModel().selectFirst();
-        cbLineNumber.setSelected(OpenccJavaFxApplication.getShowLineNumber());
+        cbLineNumber.setSelected(AppPreferences.getShowLineNumber());
 
         applyLineNumber(textAreaSource, cbLineNumber.isSelected());
         applyLineNumber(textAreaDestination, cbLineNumber.isSelected());
@@ -207,14 +209,14 @@ public class OpenccJavaFxController {
         cbLineNumber.selectedProperty().addListener((obs, oldVal, newVal) -> {
             applyLineNumber(textAreaSource, newVal);
             applyLineNumber(textAreaDestination, newVal);
-            OpenccJavaFxApplication.saveShowLineNumber(newVal);
+            AppPreferences.saveShowLineNumber(newVal);
         });
 
 //        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
 //        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
 
-        cbConvertFilename.setSelected(OpenccJavaFxApplication.getConvertFilename());
-        cbConvertFilename.selectedProperty().addListener((obs, oldVal, newVal) -> OpenccJavaFxApplication.saveConvertFilename(newVal));
+        cbConvertFilename.setSelected(AppPreferences.getConvertFilename());
+        cbConvertFilename.selectedProperty().addListener((obs, oldVal, newVal) -> AppPreferences.saveConvertFilename(newVal));
         cbSaveTarget.getItems().addAll(SAVE_TARGET_LIST);
         cbSaveTarget.getSelectionModel().select(1);
         // Hover status display
@@ -235,8 +237,8 @@ public class OpenccJavaFxController {
 
         Parent root = scene.getRoot();
 
-        boolean dark = OpenccJavaFxApplication.isEffectiveDarkMode();
-        OpenccJavaFxApplication.applyTheme(root, dark);
+        boolean dark = ThemeManager.isEffectiveDarkMode();
+        ThemeManager.applyTheme(root, dark);
     }
 
     private void applyLineNumber(CodeArea area, boolean enabled) {
