@@ -286,14 +286,17 @@ public final class PdfReflowHelper {
 
             // Finalizer: strong sentence end → flush immediately. Do not remove.
             // If the current line completes a strong sentence, append it and flush immediately.
-            if (buffer.length() > 0 && !dialogState.isUnclosed() && !hasUnclosedBracket) {
+            // Allow forced flush for very long buffers even if bracket state is broken,
+            // to recover from OCR/author unmatched bracket typos.
+            if (buffer.length() > 0
+                    && !dialogState.isUnclosed()
+                    && (!hasUnclosedBracket || buffer.length() > 120)) {
                 if (PunctSets.tryGetLastNonWhitespace(stripped, lastRef)
                         && PunctSets.isStrongSentenceEnd(lastRef.value)) {
                     buffer.append(stripped);          // buffer now has new value
                     segments.add(buffer.toString());  // emit UPDATED bufferText, not old bufferText
                     buffer.setLength(0);              // clear buffer
                     dialogState.reset();
-                    dialogState.update(stripped);
                     continue;
                 }
             }
