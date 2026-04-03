@@ -11,13 +11,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import java.util.stream.Collectors;
-import java.util.function.Predicate;
+import java.util.stream.Stream;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -77,10 +77,20 @@ public class OfficeHelper {
      * and then restore them afterward.
      */
     private static final Map<String, Pattern> FONT_PATTERNS;
+
+    /**
+     * Matches an XLSX inline-string cell:
+     * {@code <c ... t="inlineStr" ...>...</c>}
+     */
     private static final Pattern XLSX_INLINE_STRING_CELL_PATTERN = Pattern.compile(
             "<c\\b(?=[^>]*\\bt=(?:\"inlineStr\"|'inlineStr'))[^>]*>.*?</c>",
             Pattern.DOTALL
     );
+
+    /**
+     * Matches text nodes inside inline-string content:
+     * {@code <t ...>TEXT</t>}
+     */
     private static final Pattern XLSX_TEXT_NODE_PATTERN = Pattern.compile(
             "(<t\\b[^>]*>)(.*?)(</t>)",
             Pattern.DOTALL
@@ -92,7 +102,9 @@ public class OfficeHelper {
         map.put("xlsx", Pattern.compile("(val=\")(.*?)(\")"));
         map.put("pptx", Pattern.compile("(typeface=\")(.*?)(\")"));
 
-        Pattern odPattern = Pattern.compile("((?:style:font-name(?:-asian|-complex)?|svg:font-family|style:name)=[\"'])([^\"']+)([\"'])");
+        Pattern odPattern = Pattern.compile(
+                "((?:style:font-name(?:-asian|-complex)?|svg:font-family|style:name)=[\"'])([^\"']+)([\"'])"
+        );
         map.put("odt", odPattern);
         map.put("ods", odPattern);
         map.put("odp", odPattern);
@@ -252,7 +264,7 @@ public class OfficeHelper {
                 String xml = new String(bytes, StandardCharsets.UTF_8);
                 Map<String, String> fontMap = new HashMap<>();
 
-                if (keepFont) {
+                if (keepFont && shouldMaskFonts(format, relativePath)) {
                     Pattern pattern = getFontPattern(format);
                     if (pattern != null) {
                         Matcher matcher = pattern.matcher(xml);
@@ -262,7 +274,15 @@ public class OfficeHelper {
                         while (matcher.find()) {
                             String marker = "__F_O_N_T_" + counter++ + "__";
                             fontMap.put(marker, matcher.group(2));
-                            matcher.appendReplacement(sb, matcher.group(1) + marker + matcher.group(3));
+
+                            String group3 = matcher.groupCount() >= 3 && matcher.group(3) != null
+                                    ? matcher.group(3)
+                                    : "";
+
+                            matcher.appendReplacement(
+                                    sb,
+                                    Matcher.quoteReplacement(matcher.group(1) + marker + group3)
+                            );
                         }
                         matcher.appendTail(sb);
                         xml = sb.toString();
@@ -274,7 +294,7 @@ public class OfficeHelper {
                     throw new RuntimeException("native error: " + converter.getLastError());
                 }
 
-                if (keepFont) {
+                if (!fontMap.isEmpty()) {
                     for (Map.Entry<String, String> entry : fontMap.entrySet()) {
                         converted = converted.replace(entry.getKey(), entry.getValue());
                     }
@@ -285,9 +305,11 @@ public class OfficeHelper {
             }
 
             if (convertedCount == 0) {
-                return new MemoryResult(false,
+                return new MemoryResult(
+                        false,
                         "⚠️ No valid XML fragments found in format: " + format,
-                        null);
+                        null
+                );
             }
 
             tempZipOut = Files.createTempFile(format + "_out_", "." + format);
@@ -353,7 +375,6 @@ public class OfficeHelper {
             MemoryResult core = convert(inputBytes, format, converter, punctuation, keepFont);
 
             if (!core.success) {
-                // Propagate error message, no data retained
                 return new FileResult(false, core.message);
             }
 
@@ -370,7 +391,6 @@ public class OfficeHelper {
                 Files.write(outPath, core.data);
             }
 
-            // FileResult does not expose data – no need to null anything
             return new FileResult(true, core.message);
         } catch (IOException ex) {
             return new FileResult(false, "❌ I/O error during conversion: " + ex.getMessage());
@@ -398,13 +418,16 @@ public class OfficeHelper {
             while ((entry = zis.getNextEntry()) != null) {
                 Path newPath = targetDir.resolve(entry.getName()).normalize();
                 if (!newPath.startsWith(targetDir)) {
-                    continue; // Prevent ZIP slip
+                    continue;
                 }
 
                 if (entry.isDirectory()) {
                     Files.createDirectories(newPath);
                 } else {
-                    Files.createDirectories(newPath.getParent());
+                    Path parent = newPath.getParent();
+                    if (parent != null) {
+                        Files.createDirectories(parent);
+                    }
                     Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
                 }
             }
@@ -499,7 +522,6 @@ public class OfficeHelper {
         try (FileOutputStream fos = new FileOutputStream(outputZip.toFile());
              ZipOutputStream zos = new ZipOutputStream(fos)) {
 
-            // Add mimetype file first, uncompressed
             ZipEntry mimeEntry = new ZipEntry("mimetype");
             mimeEntry.setMethod(ZipEntry.STORED);
 
@@ -507,7 +529,6 @@ public class OfficeHelper {
             mimeEntry.setSize(mimeBytes.length);
             mimeEntry.setCompressedSize(mimeBytes.length);
 
-            // CRC for Java 8 compatibility
             CRC32 crc = new CRC32();
             crc.update(mimeBytes, 0, mimeBytes.length);
             mimeEntry.setCrc(crc.getValue());
@@ -516,7 +537,6 @@ public class OfficeHelper {
             zos.write(mimeBytes);
             zos.closeEntry();
 
-            // Add all other files
             try (Stream<Path> stream = Files.walk(sourceDir)) {
                 stream
                         .filter(p -> Files.isRegularFile(p) && !p.equals(mimePath))
@@ -561,7 +581,11 @@ public class OfficeHelper {
 
             case "xlsx": {
                 List<Path> targets = new ArrayList<>();
-                targets.add(Paths.get("xl/sharedStrings.xml"));
+
+                Path sharedStrings = baseDir.resolve("xl/sharedStrings.xml");
+                if (Files.isRegularFile(sharedStrings)) {
+                    targets.add(Paths.get("xl/sharedStrings.xml"));
+                }
 
                 Path worksheetsDir = baseDir.resolve("xl/worksheets");
                 if (Files.isDirectory(worksheetsDir)) {
@@ -616,10 +640,10 @@ public class OfficeHelper {
             case "epub": {
                 Predicate<Path> isTarget = p -> {
                     String name = p.getFileName().toString().toLowerCase();
-                    return name.endsWith(".xhtml") ||
-                            name.endsWith(".html") ||
-                            name.endsWith(".opf") ||
-                            name.endsWith(".ncx");
+                    return name.endsWith(".xhtml")
+                            || name.endsWith(".html")
+                            || name.endsWith(".opf")
+                            || name.endsWith(".ncx");
                 };
 
                 try (Stream<Path> stream = Files.walk(baseDir)) {
@@ -640,19 +664,42 @@ public class OfficeHelper {
     }
 
     /**
+     * Returns whether font masking should be applied for the given file.
+     *
+     * <p>For XLSX, broad {@code val="..."} masking on worksheet XML is risky because
+     * worksheet files contain metadata and structural attributes unrelated to fonts.
+     * Therefore, XLSX font masking is limited to {@code xl/sharedStrings.xml} only.</p>
+     */
+    private static boolean shouldMaskFonts(String format, Path relativePath) {
+        if (!"xlsx".equals(format)) {
+            return true;
+        }
+
+        String normalized = relativePath.toString().replace('\\', '/');
+        return "xl/sharedStrings.xml".equals(normalized);
+    }
+
+    /**
      * Returns a regular expression {@link Pattern} for extracting font declarations
      * in the specified document format.
      *
      * <p>See {@link #FONT_PATTERNS} for the supported formats and attributes.</p>
      *
-     * @param format the document format key (e.g., {@code docx}, {@code xlsx}, {@code pptx},
-     *               {@code odt}, {@code ods}, {@code odp}, {@code epub})
+     * @param format the document format key
      * @return the format-specific font extraction {@link Pattern}, or {@code null} if unsupported
      */
     private static Pattern getFontPattern(String format) {
         return FONT_PATTERNS.get(format);
     }
 
+    /**
+     * Converts one XML/XHTML content fragment according to its format and relative path.
+     *
+     * <p>XLSX worksheet XML is handled narrowly:
+     * only inline-string cells are rewritten, and only their {@code <t>} text nodes
+     * are converted. Shared strings and other formats continue to use whole-fragment
+     * conversion.</p>
+     */
     private static String convertXmlContent(
             String format,
             Path relativePath,
@@ -666,17 +713,27 @@ public class OfficeHelper {
         return converter.convert(xml, punctuation);
     }
 
+    /**
+     * Returns whether the relative path points to an XLSX worksheet XML file.
+     */
     private static boolean isWorksheetPath(Path relativePath) {
         String normalized = relativePath.toString().replace('\\', '/');
         return normalized.startsWith("xl/worksheets/") && normalized.endsWith(".xml");
     }
 
+    /**
+     * Converts only XLSX inline-string cells in a worksheet XML file.
+     */
     private static String convertXlsxInlineStrings(String xml, OpenCC converter, boolean punctuation) {
         Matcher cellMatcher = XLSX_INLINE_STRING_CELL_PATTERN.matcher(xml);
         StringBuffer xmlOut = new StringBuffer();
 
         while (cellMatcher.find()) {
-            String convertedCell = convertXlsxInlineStringCell(cellMatcher.group(), converter, punctuation);
+            String convertedCell = convertXlsxInlineStringCell(
+                    cellMatcher.group(),
+                    converter,
+                    punctuation
+            );
             cellMatcher.appendReplacement(xmlOut, Matcher.quoteReplacement(convertedCell));
         }
         cellMatcher.appendTail(xmlOut);
@@ -684,6 +741,9 @@ public class OfficeHelper {
         return xmlOut.toString();
     }
 
+    /**
+     * Converts only {@code <t>} text nodes inside one XLSX inline-string cell.
+     */
     private static String convertXlsxInlineStringCell(String cellXml, OpenCC converter, boolean punctuation) {
         Matcher textMatcher = XLSX_TEXT_NODE_PATTERN.matcher(cellXml);
         StringBuffer cellOut = new StringBuffer();
@@ -693,6 +753,7 @@ public class OfficeHelper {
             if (convertedText == null) {
                 throw new IllegalStateException("native error: " + converter.getLastError());
             }
+
             String replacement = textMatcher.group(1) + convertedText + textMatcher.group(3);
             textMatcher.appendReplacement(cellOut, Matcher.quoteReplacement(replacement));
         }
@@ -712,12 +773,13 @@ public class OfficeHelper {
      * @param dirPath the root directory to delete
      */
     private static void deleteRecursive(Path dirPath) {
-        if (dirPath == null || !Files.exists(dirPath)) return;
+        if (dirPath == null || !Files.exists(dirPath)) {
+            return;
+        }
 
         try {
             try (Stream<Path> paths = Files.walk(dirPath)) {
-                paths
-                        .sorted(Comparator.reverseOrder()) // Delete children before parents
+                paths.sorted(Comparator.reverseOrder())
                         .forEach(p -> {
                             try {
                                 Files.delete(p);
