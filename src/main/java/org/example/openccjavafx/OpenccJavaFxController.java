@@ -10,6 +10,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
+import javafx.scene.text.Font;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -34,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import openccjava.OpenCC;
 import org.fxmisc.richtext.LineNumberFactory;
@@ -71,6 +73,8 @@ public class OpenccJavaFxController {
             "Destination");
 
     private int currentSourceCode = 0; // 0=non-zho, 1=hant, 2=hans
+
+    private static final int DEFAULT_EDITOR_FONT_SIZE = 16;
 
     @FXML
 //    private TextArea textAreaSource;
@@ -127,6 +131,10 @@ public class OpenccJavaFxController {
     private ComboBox<ConfigItem> cbManual;
     @FXML
     private ComboBox<String> cbSaveTarget;
+    @FXML
+    private ComboBox<String> cbEditorFont;
+    @FXML
+    private Spinner<Integer> spnFontSize;
     @FXML
     private Label lblPdfOptions;
     @FXML
@@ -221,7 +229,7 @@ public class OpenccJavaFxController {
         cbSaveTarget.getSelectionModel().select(1);
         // Hover status display
         applyStatusHover();
-        setPdfOptionsEnabled(false);
+        initEditorFontControls();
     }
 
     private void applyCurrentTheme() {
@@ -272,6 +280,89 @@ public class OpenccJavaFxController {
         StatusHoverHelper.bind(lblPdfOptions, lblStatus, "Click to toggle PDF options");
         StatusHoverHelper.bind(lblFilename, lblStatus, lblFilename::getText);
 //        StatusHoverHelper.bind(btnStart, lblStatus, "Start convert text with OpenccJava");
+    }
+
+    private void initEditorFontControls() {
+        List<String> fonts = Font.getFamilies().stream()
+                .filter(f -> {
+                    if (f == null) {
+                        return false;
+                    }
+                    String s = f.trim();
+                    if (s.isEmpty()) {
+                        return false;
+                    }
+                    String lower = s.toLowerCase(Locale.ROOT);
+                    return !lower.contains("wingdings") && !lower.contains("symbol");
+                })
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .collect(Collectors.toList());
+
+        cbEditorFont.setItems(FXCollections.observableArrayList(fonts));
+        cbEditorFont.setCellFactory(param -> createFontListCell());
+        cbEditorFont.setButtonCell(createFontListCell());
+
+        spnFontSize.setValueFactory(
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(10, 40, 16)
+        );
+        spnFontSize.setEditable(true);
+
+        cbEditorFont.valueProperty().addListener((observable, oldValue, newValue) -> applyEditorFontStyle());
+
+        spnFontSize.valueProperty().addListener((observable, oldValue, newValue) -> applyEditorFontStyle());
+
+        if (!fonts.isEmpty()) {
+            cbEditorFont.setValue(fonts.get(0));
+        }
+
+        applyEditorFontStyle();
+    }
+
+    private ListCell<String> createFontListCell() {
+        return new ListCell<String>() {
+            @Override
+            protected void updateItem(String font, boolean empty) {
+                super.updateItem(font, empty);
+
+                if (empty || font == null || font.trim().isEmpty()) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+
+                setText(font);
+                setStyle("-fx-font-family: \"" + escapeCssFontFamily(font) + "\";");
+            }
+        };
+    }
+
+    private void applyEditorFontStyle() {
+        String font = cbEditorFont.getValue();
+        Integer sizeValue = spnFontSize.getValue();
+
+        int size = sizeValue != null ? sizeValue : DEFAULT_EDITOR_FONT_SIZE;
+
+        StringBuilder style = new StringBuilder();
+
+        if (font != null && !font.trim().isEmpty()) {
+            style.append("-fx-font-family: \"")
+                    .append(escapeCssFontFamily(font))
+                    .append("\";");
+        }
+
+        style.append("-fx-font-size: ")
+                .append(size)
+                .append("px;");
+
+        String finalStyle = style.toString();
+
+        textAreaSource.setStyle(finalStyle);
+        textAreaDestination.setStyle(finalStyle);
+    }
+
+    private String escapeCssFontFamily(String font) {
+        return font.replace("\"", "\\\"");
     }
 
     @FXML
