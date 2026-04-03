@@ -10,7 +10,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
-import javafx.scene.text.Font;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -24,6 +23,7 @@ import org.example.openccjavafx.config.AppPreferences;
 import org.example.openccjavafx.i18n.I18n;
 import org.example.openccjavafx.i18n.UiLanguage;
 import org.example.openccjavafx.theme.ThemeManager;
+import org.example.openccjavafx.ui.EditorFontHelper;
 import org.fxmisc.richtext.CodeArea;
 
 import java.io.BufferedReader;
@@ -35,7 +35,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import openccjava.OpenCC;
 import org.fxmisc.richtext.LineNumberFactory;
@@ -73,8 +72,6 @@ public class OpenccJavaFxController {
             "Destination");
 
     private int currentSourceCode = 0; // 0=non-zho, 1=hant, 2=hans
-
-    private static final int DEFAULT_EDITOR_FONT_SIZE = 16;
 
     @FXML
 //    private TextArea textAreaSource;
@@ -283,86 +280,52 @@ public class OpenccJavaFxController {
     }
 
     private void initEditorFontControls() {
-        List<String> fonts = Font.getFamilies().stream()
-                .filter(f -> {
-                    if (f == null) {
-                        return false;
-                    }
-                    String s = f.trim();
-                    if (s.isEmpty()) {
-                        return false;
-                    }
-                    String lower = s.toLowerCase(Locale.ROOT);
-                    return !lower.contains("wingdings") && !lower.contains("symbol");
-                })
-                .distinct()
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .collect(Collectors.toList());
+        List<String> fonts = EditorFontHelper.getAvailableEditorFonts();
+        String savedFontFamily = AppPreferences.getEditorFontFamily();
+        String initialFontFamily = EditorFontHelper.resolveInitialEditorFontFamily(fonts, savedFontFamily);
+        int savedFontSize = AppPreferences.getEditorFontSize();
 
         cbEditorFont.setItems(FXCollections.observableArrayList(fonts));
-        cbEditorFont.setCellFactory(param -> createFontListCell());
-        cbEditorFont.setButtonCell(createFontListCell());
+        cbEditorFont.setCellFactory(param -> EditorFontHelper.createFontListCell());
+        cbEditorFont.setButtonCell(EditorFontHelper.createFontListCell());
 
         spnFontSize.setValueFactory(
-                new SpinnerValueFactory.IntegerSpinnerValueFactory(10, 40, 16)
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(10, 40, savedFontSize)
         );
         spnFontSize.setEditable(true);
 
-        cbEditorFont.valueProperty().addListener((observable, oldValue, newValue) -> applyEditorFontStyle());
+        cbEditorFont.setValue(initialFontFamily);
+        spnFontSize.getValueFactory().setValue(savedFontSize);
 
-        spnFontSize.valueProperty().addListener((observable, oldValue, newValue) -> applyEditorFontStyle());
+        cbEditorFont.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null && !newValue.trim().isEmpty()) {
+                AppPreferences.setEditorFontFamily(newValue);
+            }
+            applyEditorFontStyle();
+        });
 
-        if (!fonts.isEmpty()) {
-            cbEditorFont.setValue(fonts.get(0));
-        }
+        spnFontSize.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                AppPreferences.setEditorFontSize(newValue);
+            }
+            applyEditorFontStyle();
+        });
 
         applyEditorFontStyle();
-    }
-
-    private ListCell<String> createFontListCell() {
-        return new ListCell<String>() {
-            @Override
-            protected void updateItem(String font, boolean empty) {
-                super.updateItem(font, empty);
-
-                if (empty || font == null || font.trim().isEmpty()) {
-                    setText(null);
-                    setStyle("");
-                    return;
-                }
-
-                setText(font);
-                setStyle("-fx-font-family: \"" + escapeCssFontFamily(font) + "\";");
-            }
-        };
     }
 
     private void applyEditorFontStyle() {
         String font = cbEditorFont.getValue();
         Integer sizeValue = spnFontSize.getValue();
-
-        int size = sizeValue != null ? sizeValue : DEFAULT_EDITOR_FONT_SIZE;
-
-        StringBuilder style = new StringBuilder();
-
-        if (font != null && !font.trim().isEmpty()) {
-            style.append("-fx-font-family: \"")
-                    .append(escapeCssFontFamily(font))
-                    .append("\";");
-        }
-
-        style.append("-fx-font-size: ")
-                .append(size)
-                .append("px;");
-
-        String finalStyle = style.toString();
+        String finalStyle = EditorFontHelper.buildEditorFontStyle(
+                font,
+                sizeValue,
+                AppPreferences.getEditorFontSize()
+        );
 
         textAreaSource.setStyle(finalStyle);
         textAreaDestination.setStyle(finalStyle);
-    }
-
-    private String escapeCssFontFamily(String font) {
-        return font.replace("\"", "\\\"");
+        textAreaPreview.setStyle(finalStyle);
     }
 
     @FXML
