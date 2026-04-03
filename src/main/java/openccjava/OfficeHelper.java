@@ -77,6 +77,14 @@ public class OfficeHelper {
      * and then restore them afterward.
      */
     private static final Map<String, Pattern> FONT_PATTERNS;
+    private static final Pattern XLSX_INLINE_STRING_CELL_PATTERN = Pattern.compile(
+            "<c\\b(?=[^>]*\\bt=(?:\"inlineStr\"|'inlineStr'))[^>]*>.*?</c>",
+            Pattern.DOTALL
+    );
+    private static final Pattern XLSX_TEXT_NODE_PATTERN = Pattern.compile(
+            "(<t\\b[^>]*>)(.*?)(</t>)",
+            Pattern.DOTALL
+    );
 
     static {
         Map<String, Pattern> map = new HashMap<>();
@@ -261,7 +269,7 @@ public class OfficeHelper {
                     }
                 }
 
-                String converted = converter.convert(xml, punctuation);
+                String converted = convertXmlContent(format, relativePath, xml, converter, punctuation);
                 if (converted == null) {
                     throw new RuntimeException("native error: " + converter.getLastError());
                 }
@@ -551,8 +559,25 @@ public class OfficeHelper {
             case "docx":
                 return Collections.singletonList(Paths.get("word/document.xml"));
 
-            case "xlsx":
-                return Collections.singletonList(Paths.get("xl/sharedStrings.xml"));
+            case "xlsx": {
+                List<Path> targets = new ArrayList<>();
+                targets.add(Paths.get("xl/sharedStrings.xml"));
+
+                Path worksheetsDir = baseDir.resolve("xl/worksheets");
+                if (Files.isDirectory(worksheetsDir)) {
+                    try (Stream<Path> stream = Files.walk(worksheetsDir)) {
+                        stream
+                                .filter(Files::isRegularFile)
+                                .filter(p -> p.getFileName().toString().endsWith(".xml"))
+                                .map(baseDir::relativize)
+                                .forEach(targets::add);
+                    } catch (IOException e) {
+                        LOGGER.log(Level.WARNING, "Failed to collect xlsx worksheet targets", e);
+                    }
+                }
+
+                return targets;
+            }
 
             case "pptx": {
                 Path pptDir = baseDir.resolve("ppt");
@@ -626,6 +651,54 @@ public class OfficeHelper {
      */
     private static Pattern getFontPattern(String format) {
         return FONT_PATTERNS.get(format);
+    }
+
+    private static String convertXmlContent(
+            String format,
+            Path relativePath,
+            String xml,
+            OpenCC converter,
+            boolean punctuation
+    ) {
+        if ("xlsx".equals(format) && isWorksheetPath(relativePath)) {
+            return convertXlsxInlineStrings(xml, converter, punctuation);
+        }
+        return converter.convert(xml, punctuation);
+    }
+
+    private static boolean isWorksheetPath(Path relativePath) {
+        String normalized = relativePath.toString().replace('\\', '/');
+        return normalized.startsWith("xl/worksheets/") && normalized.endsWith(".xml");
+    }
+
+    private static String convertXlsxInlineStrings(String xml, OpenCC converter, boolean punctuation) {
+        Matcher cellMatcher = XLSX_INLINE_STRING_CELL_PATTERN.matcher(xml);
+        StringBuffer xmlOut = new StringBuffer();
+
+        while (cellMatcher.find()) {
+            String convertedCell = convertXlsxInlineStringCell(cellMatcher.group(), converter, punctuation);
+            cellMatcher.appendReplacement(xmlOut, Matcher.quoteReplacement(convertedCell));
+        }
+        cellMatcher.appendTail(xmlOut);
+
+        return xmlOut.toString();
+    }
+
+    private static String convertXlsxInlineStringCell(String cellXml, OpenCC converter, boolean punctuation) {
+        Matcher textMatcher = XLSX_TEXT_NODE_PATTERN.matcher(cellXml);
+        StringBuffer cellOut = new StringBuffer();
+
+        while (textMatcher.find()) {
+            String convertedText = converter.convert(textMatcher.group(2), punctuation);
+            if (convertedText == null) {
+                throw new IllegalStateException("native error: " + converter.getLastError());
+            }
+            String replacement = textMatcher.group(1) + convertedText + textMatcher.group(3);
+            textMatcher.appendReplacement(cellOut, Matcher.quoteReplacement(replacement));
+        }
+        textMatcher.appendTail(cellOut);
+
+        return cellOut.toString();
     }
 
     /**
