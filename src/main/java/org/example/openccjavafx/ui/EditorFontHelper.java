@@ -51,7 +51,7 @@ public final class EditorFontHelper {
     }
 
     public static ListCell<String> createFontListCell() {
-        return new ListCell<String>() {
+        return new ListCell<>() {
             @Override
             protected void updateItem(String font, boolean empty) {
                 super.updateItem(font, empty);
