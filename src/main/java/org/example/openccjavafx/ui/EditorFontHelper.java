@@ -15,14 +15,14 @@ public final class EditorFontHelper {
 
     public static List<String> getAvailableEditorFonts() {
         Set<String> uniqueFonts = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        List<String> availableFamilies = Font.getFamilies();
+        List<String> availableFontNames = Font.getFontNames();
 
-        for (String family : availableFamilies) {
-            if (family == null) {
+        for (String fontName : availableFontNames) {
+            if (fontName == null) {
                 continue;
             }
 
-            String trimmed = family.trim();
+            String trimmed = fontName.trim();
             if (trimmed.isEmpty()) {
                 continue;
             }
