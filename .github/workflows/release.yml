@@ -17,6 +17,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: ubuntu-24.04-arm
+            os_tag: linux-arm64
+            gradle_cmd: ./gradlew
+
           - os: ubuntu-latest
             os_tag: linux
             gradle_cmd: ./gradlew
