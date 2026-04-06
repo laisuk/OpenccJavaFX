@@ -7,7 +7,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.2.1] - 2026-03-30
+## [1.2.1] - 2026-04-07
 
 ### Changed
 
@@ -15,7 +15,9 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 - Update openccjava dictionary.
 - Optimized `Reflow` to handle unclosed dialog and certain quote symbol typo.
 - Update UI to `Fluent 2` theme.
+- Added `Settings` tab.
 - Update conversion core to `OpenccJava v1.2.1`.
+- Release build with Java 21 for better performance.
 
 ---
 
