@@ -1,0 +1,255 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            os_tag: linux
+            gradle_cmd: ./gradlew
+
+          - os: windows-latest
+            os_tag: windows
+            gradle_cmd: .\gradlew.bat
+
+          - os: macos-latest
+            os_tag: macos
+            gradle_cmd: ./gradlew
+
+          - os: macos-15-intel
+            os_tag: macos-intel
+            gradle_cmd: ./gradlew
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Temurin JDK 21 (with jpackage)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Install Linux packaging deps
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            fakeroot desktop-file-utils xz-utils binutils rpm
+
+      - name: Install WiX Toolset (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          choco install wixtoolset --no-progress -y
+          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          if (-not (Test-Path $wixPath)) { $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin" }
+          if (-not (Test-Path $wixPath)) { throw "WiX bin folder not found." }
+          "WIX=$wixPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $wixPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & "$wixPath\candle.exe" -? | Out-Null
+          & "$wixPath\light.exe"  -? | Out-Null
+
+      - name: Make gradlew executable (non-Windows)
+        if: ${{ matrix.os != 'windows-latest' }}
+        shell: bash
+        run: chmod +x gradlew
+
+      - name: Show Java & Gradle versions (Unix)
+        if: ${{ matrix.os != 'windows-latest' }}
+        shell: bash
+        run: |
+          java -version
+          ${{ matrix.gradle_cmd }} --version
+
+      - name: Show Java & Gradle versions (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          java -version
+          ${{ matrix.gradle_cmd }} --version
+
+      # Build JVM archives once on Linux only
+      - name: Build JVM archives
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ${{ matrix.gradle_cmd }} --no-daemon clean distTar distZip
+
+      - name: Stage JVM archives
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p release-assets
+
+          tar_file="$(find build/distributions -maxdepth 1 -type f -name '*.tar' | head -n 1)"
+          zip_file="$(find build/distributions -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+
+          test -n "$tar_file"
+          test -n "$zip_file"
+
+          cp "$tar_file" "release-assets/openccjavafx-${VERSION}.jvm.tar"
+          cp "$zip_file" "release-assets/openccjavafx-${VERSION}.jvm.zip"
+
+      - name: Build Windows MSI
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=msi
+
+      - name: Build Linux DEB and RPM
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage \
+            -PinstallerType=deb \
+            -PinstallerOut=build/installer/deb
+
+          ${{ matrix.gradle_cmd }} --no-daemon jpackage \
+            -PinstallerType=rpm \
+            -PinstallerOut=build/installer/rpm
+
+          shopt -s globstar nullglob
+          debs=(build/installer/**/*.deb build/jpackage/**/*.deb)
+          if (( ${#debs[@]} == 0 )); then
+            echo "::error::No .deb file generated." >&2
+            exit 1
+          fi
+
+      - name: Build macOS DMG
+        if: ${{ startsWith(matrix.os, 'macos') }}
+        shell: bash
+        run: |
+          ${{ matrix.gradle_cmd }} --no-daemon clean jpackage -PinstallerType=dmg
+
+      - name: Zip app-image (Unix)
+        if: ${{ matrix.os != 'windows-latest' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p release-assets
+
+          if [ -d build/jpackage ]; then
+            cd build/jpackage
+            zip -r "../../release-assets/openccjavafx-${VERSION}-app-image-${{ matrix.os_tag }}.zip" .
+          fi
+
+      - name: Zip app-image (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+
+          if (Test-Path "build/jpackage") {
+            Compress-Archive -Path "build/jpackage/*" -DestinationPath "release-assets/openccjavafx-$version-app-image-${{ matrix.os_tag }}.zip" -Force
+          }
+
+      - name: Stage Linux installers
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p release-assets
+
+          deb_file="$(find build/installer build/jpackage -type f -name '*.deb' | head -n 1)"
+          rpm_file="$(find build/installer build/jpackage -type f -name '*.rpm' | head -n 1)"
+
+          test -n "$deb_file"
+          test -n "$rpm_file"
+
+          cp "$deb_file" "release-assets/openccjavafx-${VERSION}-installer-linux-deb.zip.tmp.deb"
+          cp "$rpm_file" "release-assets/openccjavafx-${VERSION}-installer-linux-rpm.zip.tmp.rpm"
+
+          mkdir -p tmp/deb tmp/rpm
+          cp "$deb_file" tmp/deb/
+          cp "$rpm_file" tmp/rpm/
+
+          (cd tmp/deb && zip -r "../../release-assets/openccjavafx-${VERSION}-installer-linux-deb.zip" .)
+          (cd tmp/rpm && zip -r "../../release-assets/openccjavafx-${VERSION}-installer-linux-rpm.zip" .)
+
+      - name: Stage macOS installers
+        if: ${{ startsWith(matrix.os, 'macos') }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p release-assets tmp/macos
+
+          dmg_file="$(find build/jpackage -type f \( -name '*.dmg' -o -name '*.pkg' \) | head -n 1)"
+          if [ -n "$dmg_file" ]; then
+            cp "$dmg_file" tmp/macos/
+            zip -r "release-assets/openccjavafx-${VERSION}-installers-${{ matrix.os_tag }}.zip" tmp/macos
+          fi
+
+      - name: Stage Windows installer
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          New-Item -ItemType Directory -Force -Path tmp/windows | Out-Null
+
+          $installer = Get-ChildItem -Path build/jpackage -Recurse -Include *.msi | Select-Object -First 1
+          if ($null -ne $installer) {
+            Copy-Item $installer.FullName tmp/windows/
+            Compress-Archive -Path "tmp/windows/*" -DestinationPath "release-assets/openccjavafx-$version-installers-windows.zip" -Force
+          }
+
+      - name: Upload staged release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-${{ matrix.os_tag }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  release:
+    name: create release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all staged assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-assets-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Show files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ls -lah release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
