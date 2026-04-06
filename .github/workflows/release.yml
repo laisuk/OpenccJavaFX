@@ -85,10 +85,17 @@ jobs:
           java -version
           ${{ matrix.gradle_cmd }} --version
 
-      - name: Build JVM zip
+      - name: Build JVM zip (Unix)
+        if: ${{ matrix.os != 'windows-latest' }}
         shell: bash
         run: |
           set -euxo pipefail
+          ${{ matrix.gradle_cmd }} --no-daemon clean distZip
+
+      - name: Build JVM zip (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
           ${{ matrix.gradle_cmd }} --no-daemon clean distZip
 
       - name: Stage JVM zip (Unix)
