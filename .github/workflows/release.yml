@@ -152,9 +152,17 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p release-assets
 
-          if [ -d build/jpackage ]; then
-            cd build/jpackage
-            zip -r "../../release-assets/openccjavafx-${VERSION}-app-image-${{ matrix.os_tag }}.zip" .
+          app_dir="$(find build/jpackage -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -n "${app_dir:-}" ]; then
+            base_name="$(basename "$app_dir")"
+            parent_dir="$(dirname "$app_dir")"
+            (
+              cd "$parent_dir"
+              zip -r "../../release-assets/openccjavafx-${VERSION}-app-image-${{ matrix.os_tag }}.zip" "$base_name"
+            )
+          else
+            echo "::error::No app-image directory found under build/jpackage" >&2
+            exit 1
           fi
 
       - name: Zip app-image (Windows)
@@ -164,9 +172,15 @@ jobs:
           $version = $env:GITHUB_REF_NAME -replace '^v', ''
           New-Item -ItemType Directory -Force -Path release-assets | Out-Null
 
-          if (Test-Path "build/jpackage") {
-            Compress-Archive -Path "build/jpackage/*" -DestinationPath "release-assets/openccjavafx-$version-app-image-${{ matrix.os_tag }}.zip" -Force
+          $appDir = Get-ChildItem -Path build/jpackage -Directory | Select-Object -First 1
+          if ($null -eq $appDir) {
+            throw "No app-image directory found under build/jpackage"
           }
+
+          Compress-Archive `
+            -Path $appDir.FullName `
+            -DestinationPath "release-assets/openccjavafx-$version-app-image-${{ matrix.os_tag }}.zip" `
+            -Force
 
       - name: Stage Linux installers
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
