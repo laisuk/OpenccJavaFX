@@ -85,31 +85,38 @@ jobs:
           java -version
           ${{ matrix.gradle_cmd }} --version
 
-      # Build JVM archives once on Linux only
-      - name: Build JVM archives
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Build JVM zip
         shell: bash
         run: |
           set -euxo pipefail
-          ${{ matrix.gradle_cmd }} --no-daemon clean distTar distZip
+          ${{ matrix.gradle_cmd }} --no-daemon clean distZip
 
-      - name: Stage JVM archives
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Stage JVM zip (Unix)
+        if: ${{ matrix.os != 'windows-latest' }}
         shell: bash
         run: |
           set -euxo pipefail
-
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p release-assets
 
-          tar_file="$(find build/distributions -maxdepth 1 -type f -name '*.tar' | head -n 1)"
           zip_file="$(find build/distributions -maxdepth 1 -type f -name '*.zip' | head -n 1)"
-
-          test -n "$tar_file"
           test -n "$zip_file"
 
-          cp "$tar_file" "release-assets/openccjavafx-${VERSION}.jvm.tar"
-          cp "$zip_file" "release-assets/openccjavafx-${VERSION}.jvm.zip"
+          cp "$zip_file" "release-assets/openccjavafx-${VERSION}.jvm-${{ matrix.os_tag }}.zip"
+
+      - name: Stage JVM zip (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+
+          $zipFile = Get-ChildItem -Path build/distributions -Filter *.zip | Select-Object -First 1
+          if ($null -eq $zipFile) {
+            throw "No JVM zip found under build/distributions"
+          }
+
+          Copy-Item $zipFile.FullName "release-assets/openccjavafx-$version.jvm-${{ matrix.os_tag }}.zip"
 
       - name: Build Windows MSI
         if: ${{ matrix.os == 'windows-latest' }}
@@ -196,9 +203,6 @@ jobs:
           test -n "$deb_file"
           test -n "$rpm_file"
 
-          cp "$deb_file" "release-assets/openccjavafx-${VERSION}-installer-linux-deb.zip.tmp.deb"
-          cp "$rpm_file" "release-assets/openccjavafx-${VERSION}-installer-linux-rpm.zip.tmp.rpm"
-
           mkdir -p tmp/deb tmp/rpm
           cp "$deb_file" tmp/deb/
           cp "$rpm_file" tmp/rpm/
@@ -217,7 +221,10 @@ jobs:
           dmg_file="$(find build/jpackage -type f \( -name '*.dmg' -o -name '*.pkg' \) | head -n 1)"
           if [ -n "$dmg_file" ]; then
             cp "$dmg_file" tmp/macos/
-            zip -r "release-assets/openccjavafx-${VERSION}-installers-${{ matrix.os_tag }}.zip" tmp/macos
+            (
+              cd tmp/macos
+              zip -r "../../release-assets/openccjavafx-${VERSION}-installers-${{ matrix.os_tag }}.zip" .
+            )
           fi
 
       - name: Stage Windows installer
