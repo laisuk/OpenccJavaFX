@@ -31,11 +31,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Temurin JDK 17 (with jpackage)
+      - name: Set up Temurin JDK 21 (with jpackage)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
           cache: gradle
 
       - name: Install Linux packaging deps (lean)

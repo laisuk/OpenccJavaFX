@@ -13,8 +13,9 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 - Update `NumberingContext` for Word document open as text.
 - Update openccjava dictionary.
-- Optimized Reflow to handle unclosed dialog.
-- Update UI to Fluent 2 theme.
+- Optimized `Reflow` to handle unclosed dialog and certain quote symbol typo.
+- Update UI to `Fluent 2` theme.
+- Update conversion core to `OpenccJava v1.2.1`.
 
 ---
 
