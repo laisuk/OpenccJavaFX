@@ -704,18 +704,17 @@ public final class PdfReflowHelper {
     /**
      * Style-layer repeat collapse for PDF headings / title lines.
      * <p>
-     * Conceptually similar to the regex:
-     * (.{4,10}?)\1{2,3}
-     * <p>
-     * but implemented with token- and phrase-aware logic so that
-     * CJK headings such as:
+     * Conceptually similar to repeated-pattern matching, but implemented with
+     * token- and phrase-aware logic so that repeated CJK headings such as:
      * <p>
      * "背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟"
      * <p>
      * collapse cleanly to a single phrase.
      * <p>
-     * This also avoids collapsing natural text such as "哈哈哈哈哈哈"
-     * by enforcing a base-unit length of 4–10 and at least 3 repeats.
+     * This routine is intentionally conservative:
+     * repeated word-sequences require at least 3 consecutive repeats, and
+     * repeated substring collapse inside a token only applies to base units
+     * of length 4–10 with at least 3 repeats.
      */
     private static String collapseRepeatedSegments(String line) {
         if (line == null || line.isEmpty())
