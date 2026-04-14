@@ -331,7 +331,10 @@
 
 .editor-surface:focused {
     -fx-border-color: #3b82f6;
-    -fx-border-width: 1;
+    -fx-border-width: 1px;
+
+    /* subtle glow */
+    -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.35), 8, 0.2, 0, 0);
 }
 
 /* =========================================================
@@ -380,6 +383,10 @@
 
 .log-surface:focused {
     -fx-border-color: #3b82f6;
+    -fx-border-width: 1px;
+
+    /* subtle glow */
+    -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.35), 8, 0.2, 0, 0);
 }
 
 .virtualized-scroll-pane {
@@ -413,6 +420,14 @@
     -fx-background-radius: 14px;
     -fx-border-radius: 14px;
     -fx-padding: 6px;
+}
+
+.list-view:focused {
+    -fx-border-color: #3b82f6;
+    -fx-border-width: 1px;
+
+    /* subtle glow */
+    -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.35), 8, 0.2, 0, 0);
 }
 
 /* inner regions */
@@ -564,6 +579,14 @@
 .app-root.dark .list-view .corner {
     -fx-background-color: #202325;
 }
+
+.app-root.dark .list-view:focused {
+    -fx-border-color: #3b82f6;
+    -fx-border-width: 1px;
+
+    -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.35), 8, 0.2, 0, 0);
+}
+
 
 /* cells */
 .app-root.dark .list-cell {
@@ -764,6 +787,14 @@
     -fx-highlight-text-fill: white;
 }
 
+.app-root.dark .editor-surface:focused,
+.app-root.dark .log-surface:focused {
+    -fx-border-color: #3b82f6;
+    -fx-border-width: 1px;
+
+    -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.35), 8, 0.2, 0, 0);
+}
+
 .app-root.dark .log-surface {
     -fx-background-color: #202325;
     -fx-border-color: #454b52;
@@ -864,7 +895,7 @@
 
 .app-root.dark .editor-surface {
     -fx-background-color: #202325;
-    -fx-border-color: #454b52;
+    /*-fx-border-color: #454b52;*/
     -fx-highlight-fill: #1d4ed8;
     -fx-highlight-text-fill: white;
 }
