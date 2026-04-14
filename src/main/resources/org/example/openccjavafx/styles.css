@@ -867,8 +867,13 @@
 
 .app-root.dark .list-cell:filled:selected,
 .app-root.dark .list-cell:filled:selected:focused {
-    -fx-background-color: #1e3a8a;
+    /*-fx-background-color: #1e3a8a;*/
+    -fx-background-color: rgba(59, 130, 246, 0.22);
     -fx-text-fill: white;
+}
+
+.app-root.dark .list-cell:filled:selected:hover {
+    -fx-background-color: rgba(59, 130, 246, 0.28);
 }
 
 /* radio / checkbox visuals */
