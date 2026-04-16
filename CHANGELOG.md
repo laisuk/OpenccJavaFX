@@ -7,6 +7,16 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.2.2-beta1] - 2026-04-17
+
+### Changed
+
+- Update dictionary data.
+- UI retouch.
+- Optimized CJK text paragraph reflow.
+
+---
+
 ## [1.2.1] - 2026-04-07
 
 ### Changed
