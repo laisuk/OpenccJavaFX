@@ -86,7 +86,18 @@
 }
 
 .button-secondary {
-    -fx-font-weight: bold;
+    /*-fx-font-weight: bold;*/
+}
+
+.button-secondary {
+    -fx-padding: 0 8 0 8;   /* give icon breathing space */
+    -fx-alignment: center;
+
+    /* DO NOT restrict width too tightly */
+    -fx-min-width: 38px;
+    /*-fx-pref-width: 36px;*/
+    -fx-pref-height: 30px;
+    /*-fx-font-size: 12px;*/
 }
 
 .button-accent {
@@ -113,11 +124,21 @@
 .tool-button {
     -fx-background-color: #f5f6f8;
     -fx-text-fill: #334155;
-    -fx-font-weight: 700;
+    /*-fx-font-weight: 700;*/
     -fx-padding: 4px 10px 4px 10px;
     -fx-background-radius: 6px;
     -fx-border-radius: 9px;
+    -fx-pref-height: 30px;
+}
 
+.app-icon {
+    -fx-fill: -fx-text-base-color;
+    -fx-text-fill: -fx-text-base-color;
+}
+
+.toolbar-button .app-icon {
+    -fx-fill: #ffffff;
+    -fx-text-fill: #ffffff;
 }
 
 .combo-box,
@@ -981,4 +1002,77 @@
 
 .app-root.dark .virtualized-scroll-pane .scroll-bar .thumb:pressed {
     -fx-background-color: rgba(255, 255, 255, 0.72);
+}
+
+/* =========================================================
+   Spinner - Dark Mode
+   ========================================================= */
+
+.app-root.dark .spinner {
+    -fx-background-color: transparent;
+}
+
+/* text field area */
+.app-root.dark .spinner .text-field {
+    -fx-background-color: #2b3340;
+    -fx-text-fill: #f5f7fa;
+    -fx-prompt-text-fill: #9aa4b2;
+
+    -fx-background-radius: 12px 0 0 12px;
+    -fx-border-color: #4b5563;
+    -fx-border-radius: 12px 0 0 12px;
+    -fx-border-width: 1px 0 1px 1px;
+
+    -fx-highlight-fill: #3b82f6;
+    -fx-highlight-text-fill: white;
+    -fx-padding: 0 10 0 10;
+}
+
+/* right button column container */
+.app-root.dark .spinner .increment-arrow-button,
+.app-root.dark .spinner .decrement-arrow-button {
+    -fx-background-color: #2b3340;
+    -fx-border-color: #4b5563;
+    -fx-border-width: 1px 1px 1px 0;
+    -fx-padding: 0 8 0 8;
+}
+
+/* top button */
+.app-root.dark .spinner .increment-arrow-button {
+    -fx-background-radius: 0 12px 0 0;
+    -fx-border-radius: 0 12px 0 0;
+}
+
+/* bottom button */
+.app-root.dark .spinner .decrement-arrow-button {
+    -fx-background-radius: 0 0 12px 0;
+    -fx-border-radius: 0 0 12px 0;
+}
+
+/* arrow glyphs */
+.app-root.dark .spinner .increment-arrow,
+.app-root.dark .spinner .decrement-arrow {
+    -fx-background-color: #e5e7eb;
+}
+
+/* hover */
+.app-root.dark .spinner .increment-arrow-button:hover,
+.app-root.dark .spinner .decrement-arrow-button:hover {
+    -fx-background-color: #344155;
+}
+
+/* pressed */
+.app-root.dark .spinner .increment-arrow-button:pressed,
+.app-root.dark .spinner .decrement-arrow-button:pressed {
+    -fx-background-color: #1f2937;
+}
+
+/* focused spinner */
+.app-root.dark .spinner:focused .text-field {
+    -fx-border-color: #60a5fa;
+}
+
+.app-root.dark .spinner:focused .increment-arrow-button,
+.app-root.dark .spinner:focused .decrement-arrow-button {
+    -fx-border-color: #60a5fa;
 }

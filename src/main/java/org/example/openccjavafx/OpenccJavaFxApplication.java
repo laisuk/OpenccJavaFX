@@ -8,6 +8,7 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import org.example.openccjavafx.i18n.I18n;
 import org.example.openccjavafx.theme.ThemeManager;
+import org.example.openccjavafx.ui.icon.AppIconFont;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -16,6 +17,7 @@ public class OpenccJavaFxApplication extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+        AppIconFont.load();
         FXMLLoader loader = new FXMLLoader(
                 OpenccJavaFxApplication.class.getResource("openccjavafx-view.fxml")
         );
