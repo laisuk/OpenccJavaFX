@@ -136,7 +136,6 @@ public enum OpenccConfig {
     private static Map<String, OpenccConfig> buildLookup() {
         Map<String, OpenccConfig> m = new HashMap<>();
         for (OpenccConfig c : values()) {
-            m.put(c.name().toLowerCase(Locale.ROOT), c);
             m.put(c.toCanonicalName(), c);
         }
         return Collections.unmodifiableMap(m);
@@ -214,3 +213,4 @@ public enum OpenccConfig {
         return tryParse(value) != null;
     }
 }
+

@@ -96,6 +96,11 @@ public class OfficeHelper {
             Pattern.DOTALL
     );
 
+    /**
+     * Matches temporary font placeholders inserted while preserving font declarations.
+     */
+    private static final Pattern FONT_MARKER_PATTERN = Pattern.compile("__F_O_N_T_(\\d+)__");
+
     static {
         Map<String, Pattern> map = new HashMap<>();
         map.put("docx", Pattern.compile("(w:(?:eastAsia|ascii|hAnsi|cs)=\")(.*?)(\")"));
@@ -295,9 +300,7 @@ public class OfficeHelper {
                 }
 
                 if (!fontMap.isEmpty()) {
-                    for (Map.Entry<String, String> entry : fontMap.entrySet()) {
-                        converted = converted.replace(entry.getKey(), entry.getValue());
-                    }
+                    converted = restoreFontMarkers(converted, fontMap);
                 }
 
                 Files.write(fullPath, converted.getBytes(StandardCharsets.UTF_8));
@@ -353,7 +356,7 @@ public class OfficeHelper {
      * file-in / file-out processing is sufficient and more memory efficient.</p>
      *
      * @param inputFile   the input Office or EPUB file
-     * @param outputFile  the destination file to write the converted result
+     * @param outputFile  the destination file to write the converted result; must not be {@code null}
      * @param format      the file format (e.g., {@code docx}, {@code odt}, {@code epub})
      * @param converter   the {@link OpenCC} instance to use for conversion
      * @param punctuation whether to convert punctuation characters
@@ -370,6 +373,10 @@ public class OfficeHelper {
             boolean punctuation,
             boolean keepFont
     ) {
+        if (outputFile == null) {
+            return new FileResult(false, "Output file must not be null.");
+        }
+
         try {
             byte[] inputBytes = Files.readAllBytes(inputFile.toPath());
             MemoryResult core = convert(inputBytes, format, converter, punctuation, keepFont);
@@ -382,19 +389,29 @@ public class OfficeHelper {
                 return new FileResult(false, "❌ Core conversion returned no data.");
             }
 
-            if (outputFile != null) {
-                Path outPath = outputFile.toPath();
-                Path parent = outPath.getParent();
-                if (parent != null) {
-                    Files.createDirectories(parent);
-                }
-                Files.write(outPath, core.data);
+            Path outPath = outputFile.toPath();
+            Path parent = outPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
             }
+            Files.write(outPath, core.data);
 
             return new FileResult(true, core.message);
         } catch (IOException ex) {
             return new FileResult(false, "❌ I/O error during conversion: " + ex.getMessage());
         }
+    }
+
+    private static String restoreFontMarkers(String converted, Map<String, String> fontMap) {
+        Matcher matcher = FONT_MARKER_PATTERN.matcher(converted);
+        StringBuffer restored = new StringBuffer();
+        while (matcher.find()) {
+            String marker = matcher.group();
+            String replacement = fontMap.get(marker);
+            matcher.appendReplacement(restored, Matcher.quoteReplacement(replacement != null ? replacement : marker));
+        }
+        matcher.appendTail(restored);
+        return restored.toString();
     }
 
     /**

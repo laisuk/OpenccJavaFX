@@ -1,6 +1,8 @@
 package openccjava;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.*;
@@ -23,8 +25,9 @@ import java.util.function.BiConsumer;
  * <ul>
  *     <li>{@code dict}: key-value pairs of source→target</li>
  *     <li>{@code maxLength}: the longest phrase/key length</li>
+ *     <li>{@code minLength}: the shortest phrase/key length</li>
  * </ul>
- * Holds multiple dictionary entries, each with a defined maximum key length.
+ * Holds multiple dictionary entries, each with defined key-length metadata.
  * Used for efficient longest-match text conversion.
  */
 public class DictionaryMaxlength {
@@ -37,7 +40,7 @@ public class DictionaryMaxlength {
     }
 
     /**
-     * Represents a dictionary entry with mapping data and max phrase length.
+     * Represents a dictionary entry with mapping data and key-length metadata.
      */
     @JsonFormat(shape = JsonFormat.Shape.ARRAY)
     public static class DictEntry {
@@ -67,6 +70,28 @@ public class DictionaryMaxlength {
         }
 
         /**
+         * Creates a dictionary entry from the public array-shaped JSON contract.
+         *
+         * <p>The current format is {@code [dict, maxLength, minLength]}. Older
+         * snapshots that only stored {@code [dict, maxLength]} are also accepted,
+         * and derive {@code minLength} from the dictionary contents.</p>
+         *
+         * @param dict      dictionary mapping strings
+         * @param maxLength maximum key length
+         * @param minLength minimum key length; may be {@code null} for older snapshots
+         */
+        @JsonCreator
+        public DictEntry(
+                @JsonProperty(index = 0, value = "dict") Map<String, String> dict,
+                @JsonProperty(index = 1, value = "maxLength") Integer maxLength,
+                @JsonProperty(index = 2, value = "minLength") Integer minLength
+        ) {
+            this.dict = dict == null ? new HashMap<String, String>() : new HashMap<>(dict);
+            this.maxLength = maxLength == null ? 0 : maxLength;
+            this.minLength = minLength == null ? computeMinLength(this.dict) : minLength;
+        }
+
+        /**
          * Constructs a new dictionary entry.
          *
          * @param dict      The dictionary mapping strings.
@@ -78,8 +103,20 @@ public class DictionaryMaxlength {
             this.maxLength = maxLength;
             this.minLength = minLength;
         }
-    }
 
+        private static int computeMinLength(Map<String, String> dict) {
+            if (dict == null || dict.isEmpty()) {
+                return 0;
+            }
+            int min = Integer.MAX_VALUE;
+            for (String key : dict.keySet()) {
+                if (key != null) {
+                    min = Math.min(min, key.length());
+                }
+            }
+            return min == Integer.MAX_VALUE ? 0 : min;
+        }
+    }
     // Dictionary fields (populated via JSON or fallback loading)
     // Simplified to Traditional
     /**
@@ -551,4 +588,5 @@ public class DictionaryMaxlength {
         }
     }
 }
+
 

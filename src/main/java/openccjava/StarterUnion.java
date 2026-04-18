@@ -19,7 +19,6 @@ import java.util.*;
  *   <li>{@code astralMask} – for all starters in the Supplementary Planes
  *       (U+10000 to U+10FFFF), stored as an offset from {@code BMP_LIMIT}</li>
  * </ul>
- * </p>
  *
  * <p>
  * Instances of this class are immutable and thread-safe once constructed.
@@ -205,7 +204,6 @@ public final class StarterUnion {
      *   <li>For non-BMP characters (astral planes), the return value is {@code 2}
      *       (a surrogate pair).</li>
      * </ul>
-     * </p>
      *
      * @param codePoint the Unicode code point
      * @return {@code 1} for BMP characters, {@code 2} for non-BMP characters
@@ -240,3 +238,4 @@ public final class StarterUnion {
         return c1;
     }
 }
+

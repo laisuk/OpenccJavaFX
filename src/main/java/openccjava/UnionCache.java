@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * the serialized dictionary model.
  * </p>
  */
-public final class UnionCache {
+final class UnionCache {
     private final DictionaryMaxlength dictionary;
     private volatile Slots slots = new Slots();
 
@@ -117,3 +117,4 @@ public final class UnionCache {
         final AtomicReference<StarterUnion> jp_rev_triple = new AtomicReference<>();
     }
 }
+
