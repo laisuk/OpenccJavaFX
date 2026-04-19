@@ -97,6 +97,7 @@
 }
 
 .button-secondary .app-icon {
+    /* DO NOT use --font-size for font icon*/
     /*-fx-font-size: 14px;*/
     -fx-opacity: 0.9;
 }
@@ -139,6 +140,7 @@
 }
 
 .app-icon {
+    /* DO NOT use --font-size for font icon*/
     /*-fx-font-size: 18px;*/
 }
 
