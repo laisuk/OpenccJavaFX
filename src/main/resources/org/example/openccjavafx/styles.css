@@ -90,7 +90,7 @@
 }
 
 .button-secondary {
-    -fx-padding: 0 8 0 8;   /* give icon breathing space */
+    -fx-padding: 0 5 0 5;   /* give icon breathing space */
     -fx-alignment: center;
 
     /* DO NOT restrict width too tightly */
