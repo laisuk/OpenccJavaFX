@@ -124,6 +124,8 @@ public class OpenccJavaFxController {
     @FXML
     private Button btnOpenFile;
     @FXML
+    private Button btnExit;
+    @FXML
     private Button btnClearSource;
     @FXML
     private Button btnPaste;
@@ -251,7 +253,7 @@ public class OpenccJavaFxController {
         // Hover status display
         applyStatusHover();
         initEditorFontControls();
-        initStartButton();
+        initUiButtons();
     }
 
     private void applyCurrentTheme() {
@@ -283,6 +285,13 @@ public class OpenccJavaFxController {
 
         cbZHTW.setText(I18n.get("variant.twIdioms"));
         cbPunctuation.setText(I18n.get("option.punctuation"));
+
+        btnPaste.setText(I18n.get("button.paste"));
+        btnCopy.setText(I18n.get("button.copy"));
+
+        lblOpenFile.setText(I18n.get("button.openFile"));
+        lblStart.setText(I18n.get("button.start"));
+        lblExit.setText(I18n.get("button.exit"));
     }
 
     private void updateRuntimeStatus() {
@@ -363,12 +372,19 @@ public class OpenccJavaFxController {
 //        textAreaPreview.setStyle(finalStyle);
     }
 
-    private Label lblStartText; // keep for i18n
+    private final Label lblOpenFile = new Label();
+    private final Label lblStart = new Label();
+    private final Label lblExit = new Label();
 
-    private void initStartButton() {
-        btnStart.setGraphic(buildIconText(AppIconGlyph.PLAY, "button.start", 16));
+    private void initUiButtons() {
+        btnOpenFile.setGraphic(buildIconText(AppIconGlyph.OPEN_FILE, "button.openFile", 18, lblOpenFile));
+
+        btnStart.setGraphic(buildIconText(AppIconGlyph.PLAY, "button.start", 20, lblStart));
         btnStart.setText(null);
 
+        btnExit.setGraphic(buildIconText(AppIconGlyph.POWER, "button.exit", 18, lblExit));
+
+        // icon-only buttons unchanged
         btnRefresh.setGraphic(new SymbolIcon(AppIconGlyph.REFRESH, 20));
         btnClearSource.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
         btnClearDestination.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
@@ -381,13 +397,13 @@ public class OpenccJavaFxController {
         btnClearPreview.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
     }
 
-    private HBox buildIconText(AppIconGlyph glyph, String textKey, double size) {
+    private HBox buildIconText(AppIconGlyph glyph, String textKey, double size, Label textRef) {
         SymbolIcon icon = new SymbolIcon(glyph, size);
 
-        Label text = new Label(I18n.get(textKey));
-        text.getStyleClass().add("button-text");
+        textRef.setText(I18n.get(textKey));
+        textRef.getStyleClass().add("button-text");
 
-        HBox box = new HBox(icon, text);
+        HBox box = new HBox(icon, textRef);
         box.getStyleClass().add("button-content");
 
         return box;

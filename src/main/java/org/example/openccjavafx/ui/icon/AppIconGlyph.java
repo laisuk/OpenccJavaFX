@@ -8,6 +8,7 @@ public enum AppIconGlyph {
     PLAY_ATL("\uE102"),
     HOME("\uE10F"),
     INFO("\uE946"),
+    POWER("\ue7e8"),
 
     // Clipboard
     COPY("\uE16F"),

@@ -102,6 +102,15 @@
     -fx-opacity: 0.9;
 }
 
+.button-secondary .button-content {
+    -fx-spacing: 6;
+    -fx-alignment: center;
+}
+
+.button-secondary .button-text {
+    -fx-text-fill: -fx-text-base-color;
+}
+
 .button-accent {
     -fx-background-color: #2563eb;
     -fx-text-fill: white;
@@ -125,15 +134,15 @@
 
 .button-accent .app-icon {
     -fx-text-fill: white;
-    -fx-translate-y: 0px;
+    -fx-translate-y: 1px;
 }
 
-.button-content {
+.button-accent .button-content {
     -fx-spacing: 6;
     -fx-alignment: center;
 }
 
-.button-text {
+.button-accent .button-text {
     -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-text-fill: white;
