@@ -121,6 +121,14 @@ public class OpenccJavaFxController {
     @FXML
     private Button btnOpenFile;
     @FXML
+    private Button btnClearSource;
+    @FXML
+    private Button btnPaste;
+    @FXML
+    private Button btnClearDestination;
+    @FXML
+    private Button btnCopy;
+    @FXML
     private ListView<String> listViewSource;
     @FXML
     private TextField textFieldPath;
@@ -146,6 +154,18 @@ public class OpenccJavaFxController {
     private Button btnSaveAs;
     @FXML
     private Button btnStart;
+    @FXML
+    private Button btnAdd;
+    @FXML
+    private Button btnRemove;
+    @FXML
+    private Button btnClearList;
+    @FXML
+    private Button btnPreviewSource;
+    @FXML
+    private Button btnSelectPath;
+    @FXML
+    private Button btnClearPreview;
     @FXML
     private RadioButton rbThemeSystem;
     @FXML
@@ -269,13 +289,23 @@ public class OpenccJavaFxController {
     }
 
     private void applyStatusHover() {
-        StatusHoverHelper.bind(cbPunctuation, lblStatus, "Convert CJK quote punctuations");
-        StatusHoverHelper.bind(btnOpenFile, lblStatus, "Open a file");
-        StatusHoverHelper.bind(btnSaveAs, lblStatus, "Save current text in Source/Destination");
-        StatusHoverHelper.bind(cbSaveTarget, lblStatus, "Select target text for saving");
-        StatusHoverHelper.bind(btnRefresh, lblStatus, "Reflow PDF CJK Text ");
-        StatusHoverHelper.bind(lblPdfOptions, lblStatus, "Click to toggle PDF options");
+        StatusHoverHelper.bind(cbPunctuation, lblStatus, I18n.get("hint.punctuation"));
+        StatusHoverHelper.bind(btnOpenFile, lblStatus, I18n.get("hint.openFile"));
+        StatusHoverHelper.bind(btnRefresh, lblStatus, I18n.get("hint.refreshPdf"));
+        StatusHoverHelper.bind(btnClearSource, lblStatus, I18n.get("hint.clearSource"));
+        StatusHoverHelper.bind(btnPaste, lblStatus, I18n.get("hint.paste"));
+        StatusHoverHelper.bind(cbSaveTarget, lblStatus, I18n.get("hint.saveTarget"));
+        StatusHoverHelper.bind(btnSaveAs, lblStatus, I18n.get("hint.saveAs"));
+        StatusHoverHelper.bind(btnClearDestination, lblStatus, I18n.get("hint.clearDestination"));
+        StatusHoverHelper.bind(btnCopy, lblStatus, I18n.get("hint.copy"));
+        StatusHoverHelper.bind(lblPdfOptions, lblStatus, I18n.get("hint.pdfOptions"));
         StatusHoverHelper.bind(lblFilename, lblStatus, lblFilename::getText);
+        StatusHoverHelper.bind(btnAdd, lblStatus, I18n.get("hint.add"));
+        StatusHoverHelper.bind(btnRemove, lblStatus, I18n.get("hint.remove"));
+        StatusHoverHelper.bind(btnClearList, lblStatus, I18n.get("hint.clearList"));
+        StatusHoverHelper.bind(btnPreviewSource, lblStatus, I18n.get("hint.previewSource"));
+        StatusHoverHelper.bind(btnSelectPath, lblStatus, I18n.get("hint.selectPath"));
+        StatusHoverHelper.bind(btnClearPreview, lblStatus, I18n.get("hint.clearPreview"));
 //        StatusHoverHelper.bind(btnStart, lblStatus, "Start convert text with OpenccJava");
     }
 
