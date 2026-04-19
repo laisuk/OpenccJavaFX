@@ -355,7 +355,7 @@ public class OpenccJavaFxController {
 
         textAreaSource.setStyle(finalStyle);
         textAreaDestination.setStyle(finalStyle);
-        textAreaPreview.setStyle(finalStyle);
+//        textAreaPreview.setStyle(finalStyle);
     }
 
     @FXML

@@ -368,6 +368,7 @@
     -fx-text-fill: #6b7280;
     -fx-padding: 0 0px 0 0px;
     -fx-font-size: 12px;
+    -fx-font-family: "Consolas", "Cascadia Mono", "Sarasa Mono SC", "Noto Sans Mono CJK SC", monospace;
     -fx-border-color: transparent #d1d5db transparent transparent;
     -fx-border-width: 0 1px 0 0;
     /*-fx-min-width: 20px;        !* reduce gutter width *!*/
@@ -391,7 +392,7 @@
     -fx-background-radius: 10px;
 
     -fx-font-family: "JetBrains Mono", "Consolas", "Fira Code", "Courier New", monospace;
-    -fx-font-size: 12px;
+    -fx-font-size: 14px;
 
     -fx-highlight-fill: #dbeafe;
     -fx-highlight-text-fill: #111111;
