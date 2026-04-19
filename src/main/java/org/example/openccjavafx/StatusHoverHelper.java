@@ -1,82 +1,112 @@
 package org.example.openccjavafx;
 
 import javafx.animation.PauseTransition;
-import javafx.scene.control.Label;
 import javafx.scene.Node;
+import javafx.scene.control.Label;
 import javafx.util.Duration;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
  * Utility to show a temporary status-bar message when hovering over UI controls.
+ * <p>
+ * All bound controls share one hover session so delayed hints from older controls
+ * cannot overwrite the currently active one.
  */
 public final class StatusHoverHelper {
+
+    private static final Duration SHOW_DELAY = Duration.millis(250);
+    private static final Duration HIDE_DELAY = Duration.millis(300);
+
+    private static Node currentTarget;
+    private static Node activeHintOwner;
+    private static Label currentStatusBar;
+
+    private static String savedStatus = "";
+    private static String shownHint = "";
+
+    private static final PauseTransition showDelay = new PauseTransition(SHOW_DELAY);
+    private static final PauseTransition hideDelay = new PauseTransition(HIDE_DELAY);
+
+    private static Supplier<String> pendingHintSupplier;
+
+    static {
+        showDelay.setOnFinished(e -> {
+            if (currentTarget == null || currentStatusBar == null || pendingHintSupplier == null) {
+                return;
+            }
+
+            if (!currentTarget.isHover()) {
+                return;
+            }
+
+            String hintText = pendingHintSupplier.get();
+            if (hintText == null) {
+                hintText = "";
+            }
+
+            currentStatusBar.setText(hintText);
+            shownHint = hintText;
+            activeHintOwner = currentTarget;
+        });
+
+        hideDelay.setOnFinished(e -> {
+            if (currentStatusBar == null) {
+                return;
+            }
+
+            // Only restore if no replacement hover has already taken over.
+            if (activeHintOwner != null && !activeHintOwner.isHover()
+                    && currentStatusBar.getText().equals(shownHint)) {
+                currentStatusBar.setText(savedStatus);
+            }
+
+            activeHintOwner = null;
+            shownHint = "";
+        });
+    }
 
     private StatusHoverHelper() {
     }
 
-    /**
-     * Binds a hover hint message to a Node, temporarily overriding the status label.
-     *
-     * @param target       UI control to attach (Button, Label, ImageView, etc.)
-     * @param statusBar    Label that shows the current status message
-     * @param hintSupplier Supplies the hover text to display at hover time
-     */
     public static void bind(Node target, Label statusBar, Supplier<String> hintSupplier) {
         Objects.requireNonNull(target, "target must not be null");
         Objects.requireNonNull(statusBar, "statusBar must not be null");
         Objects.requireNonNull(hintSupplier, "hintSupplier must not be null");
 
-        AtomicReference<String> savedStatus = new AtomicReference<>("");
-        AtomicReference<String> shownHint = new AtomicReference<>("");
-        AtomicBoolean hintActive = new AtomicBoolean(false);
-
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-
-        delay.setOnFinished(e -> {
-            if (!target.isHover()) {
-                return;
-            }
-
-            if (!statusBar.getText().equals(savedStatus.get())) {
-                return;
-            }
-
-            String hintText = hintSupplier.get();
-            if (hintText == null) {
-                hintText = "";
-            }
-
-            statusBar.setText(hintText);
-            shownHint.set(hintText);
-            hintActive.set(true);
-        });
-
         target.setOnMouseEntered(event -> {
-            savedStatus.set(statusBar.getText());
-            shownHint.set("");
-            hintActive.set(false);
-            delay.playFromStart();
+            hideDelay.stop();
+            showDelay.stop();
+
+            currentTarget = target;
+            currentStatusBar = statusBar;
+            pendingHintSupplier = hintSupplier;
+
+            // Save current text only when there is no active hover hint shown.
+            if (activeHintOwner == null || !statusBar.getText().equals(shownHint)) {
+                savedStatus = statusBar.getText();
+            }
+
+            showDelay.playFromStart();
         });
 
         target.setOnMouseExited(event -> {
-            delay.stop();
+            showDelay.stop();
 
-            if (hintActive.get() && statusBar.getText().equals(shownHint.get())) {
-                statusBar.setText(savedStatus.get());
+            // Only schedule hide if this target owns the currently shown hint.
+            if (activeHintOwner == target) {
+                currentTarget = target;
+                currentStatusBar = statusBar;
+                hideDelay.playFromStart();
+            } else if (currentTarget == target) {
+                // Left before hint was shown: invalidate pending target.
+                currentTarget = null;
+                pendingHintSupplier = null;
             }
-
-            hintActive.set(false);
-            shownHint.set("");
         });
     }
 
-    /**
-     * Convenience overload for static text.
-     */
     public static void bind(Node target, Label statusBar, String hintText) {
         bind(target, statusBar, () -> hintText);
     }
