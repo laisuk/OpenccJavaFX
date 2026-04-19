@@ -117,6 +117,26 @@
     -fx-border-color: #1849b8;
 }
 
+.button-accent .app-icon {
+    -fx-text-fill: white;
+    -fx-translate-y: 2px;
+}
+
+.button-content {
+    -fx-spacing: 6;
+    -fx-alignment: center;
+}
+
+.button-text {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.app-icon {
+    -fx-font-size: 16px;
+}
+
 .tool-button {
     -fx-background-color: #f5f6f8;
     -fx-text-fill: #334155;
@@ -125,16 +145,6 @@
     -fx-background-radius: 6px;
     -fx-border-radius: 9px;
     -fx-pref-height: 30px;
-}
-
-.app-icon {
-    -fx-fill: -fx-text-base-color;
-    -fx-text-fill: -fx-text-base-color;
-}
-
-.toolbar-button .app-icon {
-    -fx-fill: #ffffff;
-    -fx-text-fill: #ffffff;
 }
 
 .combo-box,

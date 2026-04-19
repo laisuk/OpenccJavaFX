@@ -552,7 +552,7 @@
             <RowConstraints minHeight="35.0" prefHeight="35.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="100.0" styleClass="button-accent" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
+            <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="120.0" styleClass="button-accent" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
                 <font>
                     <Font name="System Bold" size="14.0" />
                 </font>

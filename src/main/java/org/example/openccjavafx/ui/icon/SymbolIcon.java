@@ -1,19 +1,23 @@
 package org.example.openccjavafx.ui.icon;
 
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
 import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.control.Label;
 
 public class SymbolIcon extends Label {
+    private static final double DEFAULT_SIZE = 16;
+
     private final ObjectProperty<AppIconGlyph> icon = new SimpleObjectProperty<>();
-    private final DoubleProperty iconSize = new SimpleDoubleProperty(16);
+    private final DoubleProperty iconSize = new SimpleDoubleProperty(DEFAULT_SIZE);
 
     public SymbolIcon() {
         initialize();
+    }
+
+    public SymbolIcon(AppIconGlyph glyph) {
+        this(glyph, DEFAULT_SIZE);
     }
 
     public SymbolIcon(AppIconGlyph glyph, double size) {
@@ -25,15 +29,19 @@ public class SymbolIcon extends Label {
     private void initialize() {
         getStyleClass().add("app-icon");
 
-        icon.addListener((obs, oldVal, newVal) -> refresh());
-        iconSize.addListener((obs, oldVal, newVal) -> refresh());
+        icon.addListener((obs, oldVal, newVal) -> updateGlyph());
+        iconSize.addListener((obs, oldVal, newVal) -> updateFont());
 
-        refresh();
+        updateGlyph();
+        updateFont();
     }
 
-    private void refresh() {
+    private void updateGlyph() {
         AppIconGlyph glyph = getIcon();
         setText(glyph == null ? "" : glyph.glyph());
+    }
+
+    private void updateFont() {
         setFont(AppIconFont.font(getIconSize()));
     }
 
