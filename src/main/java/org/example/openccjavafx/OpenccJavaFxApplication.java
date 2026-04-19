@@ -17,7 +17,7 @@ public class OpenccJavaFxApplication extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        AppIconFont.load();
+//        AppIconFont.load();
         FXMLLoader loader = new FXMLLoader(
                 OpenccJavaFxApplication.class.getResource("openccjavafx-view.fxml")
         );

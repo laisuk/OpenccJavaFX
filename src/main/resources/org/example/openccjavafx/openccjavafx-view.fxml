@@ -206,15 +206,15 @@
                                             <Insets />
                                         </opaqueInsets>
                                     </Label>
-                                    <Button fx:id="btnRefresh" alignment="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" styleClass="button-secondary" text="" textAlignment="CENTER" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" styleClass="button-secondary" textAlignment="CENTER" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets right="113.0" top="5.0" />
                                         </GridPane.margin>
                                         <font>
-                                            <Font name="Segoe Fluent Icons" size="16.0" />
+                                            <Font size="16.0" />
                                         </font>
                                     </Button>
-                                    <Button fx:id="btnSaveAs" alignment="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" styleClass="button-secondary" text="" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" styleClass="button-secondary" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets right="108.0" top="5.0" />
                                         </GridPane.margin>
@@ -222,18 +222,12 @@
                                             <Font name="Segoe Fluent Icons" size="18.0" />
                                         </font>
                                     </Button>
-                                    <Button fx:id="btnClearSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearSourceClicked" styleClass="button-secondary" text="AC" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <font>
-                                            <Font name="System Bold" size="12.0" />
-                                        </font>
+                                    <Button fx:id="btnClearSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearSourceClicked" styleClass="button-secondary" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets right="70.0" top="5.0" />
                                         </GridPane.margin>
                                     </Button>
-                                    <Button fx:id="btnClearDestination" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearDestinationClicked" styleClass="button-secondary" text="AC" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <font>
-                                            <Font name="System Bold" size="12.0" />
-                                        </font>
+                                    <Button fx:id="btnClearDestination" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearDestinationClicked" styleClass="button-secondary" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets right="65.0" top="5.0" />
                                         </GridPane.margin>
@@ -298,34 +292,22 @@
                                         <children>
                                             <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0">
                                                 <children>
-                                                    <Button fx:id="btnAdd" alignment="CENTER" contentDisplay="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnAddClicked" styleClass="button-secondary" text="" textAlignment="CENTER" HBox.hgrow="ALWAYS">
-                                                        <font>
-                                                            <Font name="Segoe Fluent Icons" size="22.0" />
-                                                        </font>
+                                                    <Button fx:id="btnAdd" alignment="CENTER" contentDisplay="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnAddClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
                                                             <Insets right="5.0" top="5.0" />
                                                         </HBox.margin>
                                                     </Button>
-                                                    <Button fx:id="btnRemove" alignment="CENTER" contentDisplay="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnRemoveClicked" styleClass="button-secondary" text="" textAlignment="CENTER" HBox.hgrow="ALWAYS">
-                                                        <font>
-                                                            <Font name="Segoe Fluent Icons" size="22.0" />
-                                                        </font>
+                                                    <Button fx:id="btnRemove" alignment="CENTER" contentDisplay="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnRemoveClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
                                                             <Insets right="5.0" top="5.0" />
                                                         </HBox.margin>
                                                     </Button>
-                                                    <Button fx:id="btnClearList" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnClearListClicked" styleClass="button-secondary" text="" textAlignment="CENTER" HBox.hgrow="ALWAYS">
-                                                        <font>
-                                                            <Font name="Segoe Fluent Icons" size="18.0" />
-                                                        </font>
+                                                    <Button fx:id="btnClearList" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnClearListClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
                                                             <Insets right="5.0" top="5.0" />
                                                         </HBox.margin>
                                                     </Button>
-                                                    <Button fx:id="btnPreviewSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnPreviewSourceClicked" styleClass="button-secondary" text="" textAlignment="CENTER" HBox.hgrow="ALWAYS">
-                                                        <font>
-                                                            <Font name="Segoe Fluent Icons" size="20.0" />
-                                                        </font>
+                                                    <Button fx:id="btnPreviewSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnPreviewSourceClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                           <HBox.margin>
                                              <Insets top="5.0" />
                                           </HBox.margin>
@@ -345,20 +327,17 @@
                                                 </font>
                                             </Label>
                                             <TextField fx:id="textFieldPath" prefHeight="25.0" prefWidth="284.0" promptText="Please set output folder before start" styleClass="input-surface" HBox.hgrow="ALWAYS" />
-                                            <Button fx:id="btnSelectPath" alignment="CENTER" contentDisplay="CENTER" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnSelectPathClicked" styleClass="button-secondary" text="" textAlignment="CENTER">
+                                            <Button fx:id="btnSelectPath" alignment="CENTER" contentDisplay="CENTER" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnSelectPathClicked" styleClass="button-secondary" textAlignment="CENTER">
                                                 <HBox.margin>
                                                     <Insets left="5.0" right="5.0" />
                                                 </HBox.margin>
-                                    <font>
-                                       <Font name="Segoe Fluent Icons" size="18.0" />
-                                    </font>
                                             </Button>
-                                            <Button fx:id="btnClearPreview" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnClearPreviewClicked" styleClass="button-secondary" text="" textAlignment="CENTER">
+                                            <Button fx:id="btnClearPreview" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnClearPreviewClicked" styleClass="button-secondary" textAlignment="CENTER">
                                                 <HBox.margin>
                                                     <Insets />
                                                 </HBox.margin>
                                                 <font>
-                                                    <Font name="Segoe Fluent Icons" size="18.0" />
+                                                    <Font name="Sylfaen" size="12.0" />
                                                 </font>
                                             </Button>
                                         </children>
@@ -552,7 +531,7 @@
             <RowConstraints minHeight="35.0" prefHeight="35.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="120.0" styleClass="button-accent" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
+            <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="100.0" styleClass="button-accent" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
                 <font>
                     <Font name="System Bold" size="14.0" />
                 </font>

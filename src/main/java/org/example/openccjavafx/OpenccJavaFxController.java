@@ -5,13 +5,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -27,7 +25,6 @@ import org.example.openccjavafx.i18n.I18n;
 import org.example.openccjavafx.i18n.UiLanguage;
 import org.example.openccjavafx.theme.ThemeManager;
 import org.example.openccjavafx.ui.EditorFontHelper;
-import org.example.openccjavafx.ui.icon.AppIconFont;
 import org.example.openccjavafx.ui.icon.AppIconGlyph;
 import org.example.openccjavafx.ui.icon.SymbolIcon;
 import org.fxmisc.richtext.CodeArea;
@@ -255,18 +252,6 @@ public class OpenccJavaFxController {
         applyStatusHover();
         initEditorFontControls();
         initStartButton();
-
-        FlowPane pane = new FlowPane();
-
-        for (int i = 0xE000; i <= 0xF8FF; i++) {
-            String s = String.valueOf((char) i);
-
-            Label label = new Label(s);
-            label.setFont(AppIconFont.font(18));
-            label.setMinSize(32, 32);
-
-            pane.getChildren().add(label);
-        }
     }
 
     private void applyCurrentTheme() {
@@ -381,16 +366,31 @@ public class OpenccJavaFxController {
     private Label lblStartText; // keep for i18n
 
     private void initStartButton() {
-        SymbolIcon icon = new SymbolIcon(AppIconGlyph.PLAY, 18);
+        btnStart.setGraphic(buildIconText(AppIconGlyph.PLAY, "button.start", 16));
+        btnStart.setText(null);
 
-        lblStartText = new Label(I18n.get("button.start"));
-        lblStartText.getStyleClass().add("button-text");
+        btnRefresh.setGraphic(new SymbolIcon(AppIconGlyph.REFRESH, 20));
+        btnClearSource.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
+        btnClearDestination.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
+        btnSaveAs.setGraphic(new SymbolIcon(AppIconGlyph.SAVE, 22));
+        btnAdd.setGraphic(new SymbolIcon(AppIconGlyph.ADD_TO, 20));
+        btnRemove.setGraphic(new SymbolIcon(AppIconGlyph.REMOVE_FROM, 20));
+        btnClearList.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
+        btnPreviewSource.setGraphic(new SymbolIcon(AppIconGlyph.PREVIEW, 20));
+        btnSelectPath.setGraphic(new SymbolIcon(AppIconGlyph.FOLDER_OPEN, 20));
+        btnClearPreview.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
+    }
 
-        HBox content = new HBox(icon, lblStartText);
-        content.getStyleClass().add("button-content");
+    private HBox buildIconText(AppIconGlyph glyph, String textKey, double size) {
+        SymbolIcon icon = new SymbolIcon(glyph, size);
 
-        btnStart.setGraphic(content);
-        btnStart.setText(null); // IMPORTANT
+        Label text = new Label(I18n.get(textKey));
+        text.getStyleClass().add("button-text");
+
+        HBox box = new HBox(icon, text);
+        box.getStyleClass().add("button-content");
+
+        return box;
     }
 
     @FXML

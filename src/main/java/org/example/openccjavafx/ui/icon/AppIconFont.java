@@ -3,54 +3,34 @@ package org.example.openccjavafx.ui.icon;
 import javafx.scene.text.Font;
 
 import java.io.InputStream;
-import java.util.Objects;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class AppIconFont {
     private static final String FONT_RESOURCE = "/fonts/FluentAvalonia.ttf";
-    private static final double DEFAULT_SIZE = 16;
-
-    private static String familyName;
-    private static boolean loaded;
+    private static final Map<Double, Font> CACHE = new ConcurrentHashMap<>();
 
     private AppIconFont() {
     }
 
-    public static void load() {
-        if (loaded) {
-            return;
-        }
+    public static Font font(double size) {
+        return CACHE.computeIfAbsent(size, AppIconFont::loadFontAtSize);
+    }
 
+    private static Font loadFontAtSize(double size) {
         try (InputStream is = AppIconFont.class.getResourceAsStream(FONT_RESOURCE)) {
             if (is == null) {
                 throw new IllegalStateException("Icon font not found: " + FONT_RESOURCE);
             }
 
-            Font font = Font.loadFont(is, DEFAULT_SIZE);
+            Font font = Font.loadFont(is, size);
             if (font == null) {
                 throw new IllegalStateException("Failed to load icon font: " + FONT_RESOURCE);
             }
 
-            familyName = font.getFamily();
-            loaded = true;
+            return font;
         } catch (Exception ex) {
             throw new RuntimeException("Unable to load icon font.", ex);
         }
-    }
-
-    public static Font font(double size) {
-        ensureLoaded();
-        return Font.font(familyName, size);
-    }
-
-    public static String family() {
-        ensureLoaded();
-        return familyName;
-    }
-
-    private static void ensureLoaded() {
-        if (!loaded) {
-            load();
-        }
-        Objects.requireNonNull(familyName, "Icon font family not initialized.");
     }
 }

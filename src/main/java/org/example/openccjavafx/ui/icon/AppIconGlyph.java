@@ -4,7 +4,8 @@ public enum AppIconGlyph {
 
     // General
     REFRESH("\uE149"),
-    PLAY("\uE102"),
+    PLAY("\uE768"),
+    PLAY_ATL("\uE102"),
     HOME("\uE10F"),
     INFO("\uE946"),
 
