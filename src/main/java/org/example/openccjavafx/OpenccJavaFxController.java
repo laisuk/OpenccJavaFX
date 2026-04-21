@@ -213,6 +213,7 @@ public class OpenccJavaFxController {
 
         UiLanguage saved = AppPreferences.loadLanguagePreference();
         I18n.setLocale(saved.getLocale());
+        refreshConfigLabels();
         cbLanguage.getItems().setAll(UiLanguage.values());
         cbLanguage.setValue(saved);
 
@@ -220,6 +221,7 @@ public class OpenccJavaFxController {
             UiLanguage selected = cbLanguage.getValue();
             if (selected != null) {
                 I18n.setLocale(selected.getLocale());
+                refreshConfigLabels();
                 applyTexts();
                 applyStatusHover();
                 updateRuntimeStatus();
@@ -229,22 +231,16 @@ public class OpenccJavaFxController {
 
         applyTexts();
         updateRuntimeStatus();
+        initManualCombo();
 
-        cbManual.getItems().addAll(CONFIG_LIST);
-        cbManual.getSelectionModel().selectFirst();
         cbLineNumber.setSelected(AppPreferences.getShowLineNumber());
-
         applyLineNumber(textAreaSource, cbLineNumber.isSelected());
         applyLineNumber(textAreaDestination, cbLineNumber.isSelected());
-
         cbLineNumber.selectedProperty().addListener((obs, oldVal, newVal) -> {
             applyLineNumber(textAreaSource, newVal);
             applyLineNumber(textAreaDestination, newVal);
             AppPreferences.saveShowLineNumber(newVal);
         });
-
-//        textAreaSource.setParagraphGraphicFactory(LineNumberFactory.get(textAreaSource));
-//        textAreaDestination.setParagraphGraphicFactory(LineNumberFactory.get(textAreaDestination));
 
         cbConvertFilename.setSelected(AppPreferences.getConvertFilename());
         cbConvertFilename.selectedProperty().addListener((obs, oldVal, newVal) -> AppPreferences.saveConvertFilename(newVal));
@@ -259,11 +255,39 @@ public class OpenccJavaFxController {
     private void applyCurrentTheme() {
         Scene scene = rbThemeSystem.getScene();
         if (scene == null) return;
-
         Parent root = scene.getRoot();
-
         boolean dark = ThemeManager.isEffectiveDarkMode();
         ThemeManager.applyTheme(root, dark);
+    }
+
+    private void initManualCombo() {
+        cbManual.getItems().setAll(CONFIG_LIST);
+        cbManual.setCellFactory(listView -> createConfigItemCell());
+        cbManual.setButtonCell(createConfigItemCell());
+        cbManual.getSelectionModel().selectFirst();
+    }
+
+    private ListCell<ConfigItem> createConfigItemCell() {
+        return new ListCell<ConfigItem>() {
+            @Override
+            protected void updateItem(ConfigItem item, boolean empty) {
+                super.updateItem(item, empty);
+
+                textProperty().unbind();
+
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    textProperty().bind(item.labelProperty());
+                }
+            }
+        };
+    }
+
+    private void refreshConfigLabels() {
+        for (ConfigItem item : CONFIG_LIST) {
+            item.refreshLabel();
+        }
     }
 
     private void applyLineNumber(CodeArea area, boolean enabled) {
