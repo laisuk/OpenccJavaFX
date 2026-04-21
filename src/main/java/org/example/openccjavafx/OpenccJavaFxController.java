@@ -310,6 +310,10 @@ public class OpenccJavaFxController {
         cbZHTW.setText(I18n.get("variant.twIdioms"));
         cbPunctuation.setText(I18n.get("option.punctuation"));
 
+        tabMain.setText(I18n.get("tab.main"));
+        tabBatch.setText(I18n.get("tab.batch"));
+        tabSettings.setText(I18n.get("tab.settings"));
+
         btnPaste.setText(I18n.get("button.paste"));
         btnCopy.setText(I18n.get("button.copy"));
 
@@ -321,8 +325,8 @@ public class OpenccJavaFxController {
     private void updateRuntimeStatus() {
         lblStatus.setText(I18n.format(
                 "status.runtime",
-                I18n.get("app.title"),
-                System.getProperty("java.version")
+                System.getProperty("java.version"),
+                I18n.get("app.title")
         ));
     }
 
@@ -344,7 +348,8 @@ public class OpenccJavaFxController {
         StatusHoverHelper.bind(btnPreviewSource, lblStatus, I18n.get("hint.previewSource"));
         StatusHoverHelper.bind(btnSelectPath, lblStatus, I18n.get("hint.selectPath"));
         StatusHoverHelper.bind(btnClearPreview, lblStatus, I18n.get("hint.clearPreview"));
-//        StatusHoverHelper.bind(btnStart, lblStatus, "Start convert text with OpenccJava");
+        StatusHoverHelper.bind(btnStart, lblStatus, I18n.format("hint.start"));
+        StatusHoverHelper.bind(btnExit, lblStatus, I18n.format("hint.exit"));
     }
 
     private void initEditorFontControls() {

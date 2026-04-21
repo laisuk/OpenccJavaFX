@@ -4,6 +4,7 @@
     -fx-font-family: "Segoe UI", "Microsoft JhengHei UI", "PingFang TC", "Noto Sans CJK TC", "Noto Sans CJK SC", "Sans-Serif";
     -fx-font-size: 13px;
     -fx-text-fill: #1f1f1f;
+    -fx-accent: #0078d4;
 }
 
 /* Text */
@@ -331,8 +332,10 @@
 /* selected tab */
 .main-tabs > .tab-header-area > .headers-region > .tab:selected {
     -fx-background-color: #ffffff;
-    -fx-border-color: #d8dde3 #d8dde3 transparent #d8dde3;
-    -fx-border-width: 1px 1px 0 1px;
+    /* top = accent blue, others = normal */
+    -fx-border-color: -fx-accent #d8dde3 transparent #d8dde3;
+    /* make top thinner */
+    -fx-border-width: 2px 1px 0 1px;
     -fx-border-radius: 8px 8px 0 0;
     -fx-background-insets: 0;
     -fx-border-insets: 0;
@@ -879,7 +882,7 @@
 
 .app-root.dark .main-tabs > .tab-header-area > .headers-region > .tab:selected {
     -fx-background-color: #202325;
-    -fx-border-color: #454b52 #454b52 transparent #454b52;
+    -fx-border-color: -fx-accent #454b52 transparent #454b52;
 }
 
 .app-root.dark .main-tabs > .tab-header-area > .headers-region > .tab .tab-label {
