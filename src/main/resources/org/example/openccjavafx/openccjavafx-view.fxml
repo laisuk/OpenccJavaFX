@@ -116,15 +116,15 @@
                                     <RowConstraints minHeight="32.0" prefHeight="32.0" vgrow="NEVER" />
                                 </rowConstraints>
                                 <children>
-                                    <Button fx:id="btnPaste" onMouseClicked="#onBtnPasteClick" prefHeight="0.0" prefWidth="65.0" styleClass="button-secondary" text="Paste" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnPaste" minWidth="30.0" onMouseClicked="#onBtnPasteClick" prefHeight="0.0" styleClass="button-secondary" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets top="5.0" />
+                                            <Insets right="5.0" top="5.0" />
                                         </GridPane.margin>
                               <font>
                                  <Font name="System Bold" size="12.0" />
                               </font>
                                     </Button>
-                                    <Button fx:id="btnCopy" mnemonicParsing="false" onMouseClicked="#onBtnCopyClicked" prefHeight="0.0" prefWidth="60.0" styleClass="button-secondary" text="Copy" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <Button fx:id="btnCopy" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnCopyClicked" prefHeight="0.0" styleClass="button-secondary" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
                                             <Insets top="5.0" />
                                         </GridPane.margin>
@@ -200,7 +200,7 @@
                                     </Label>
                                     <Label fx:id="lblSourceCharCount" alignment="CENTER_RIGHT" textAlignment="RIGHT" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="155.0" />
+                                            <Insets right="140.0" />
                                         </GridPane.margin>
                                         <opaqueInsets>
                                             <Insets />
@@ -208,7 +208,7 @@
                                     </Label>
                                     <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" styleClass="button-secondary" textAlignment="CENTER" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="113.0" top="5.0" />
+                                            <Insets right="93.0" top="5.0" />
                                         </GridPane.margin>
                                         <font>
                                             <Font size="16.0" />
@@ -216,7 +216,7 @@
                                     </Button>
                                     <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" styleClass="button-secondary" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="108.0" top="5.0" />
+                                            <Insets right="86.0" top="5.0" />
                                         </GridPane.margin>
                                         <font>
                                             <Font name="Segoe Fluent Icons" size="18.0" />
@@ -224,17 +224,17 @@
                                     </Button>
                                     <Button fx:id="btnClearSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearSourceClicked" styleClass="button-secondary" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="70.0" top="5.0" />
+                                            <Insets right="49.0" top="5.0" />
                                         </GridPane.margin>
                                     </Button>
                                     <Button fx:id="btnClearDestination" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearDestinationClicked" styleClass="button-secondary" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="65.0" top="5.0" />
+                                            <Insets right="43.0" top="5.0" />
                                         </GridPane.margin>
                                     </Button>
-                                    <ComboBox fx:id="cbSaveTarget" prefWidth="120.0" styleClass="input-surface" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <ComboBox fx:id="cbSaveTarget" prefWidth="125.0" styleClass="input-surface" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                                         <GridPane.margin>
-                                            <Insets right="150.0" top="5.0" />
+                                            <Insets right="130.0" top="5.0" />
                                         </GridPane.margin>
                                     </ComboBox>
                                 </children>

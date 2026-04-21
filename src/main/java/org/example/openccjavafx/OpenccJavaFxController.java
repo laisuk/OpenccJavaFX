@@ -314,8 +314,8 @@ public class OpenccJavaFxController {
         tabBatch.setText(I18n.get("tab.batch"));
         tabSettings.setText(I18n.get("tab.settings"));
 
-        btnPaste.setText(I18n.get("button.paste"));
-        btnCopy.setText(I18n.get("button.copy"));
+//        btnPaste.setText(I18n.get("button.paste"));
+//        btnCopy.setText(I18n.get("button.copy"));
 
         lblOpenFile.setText(I18n.get("button.openFile"));
         lblStart.setText(I18n.get("button.start"));
@@ -416,7 +416,9 @@ public class OpenccJavaFxController {
         // icon-only buttons unchanged
         btnRefresh.setGraphic(new SymbolIcon(AppIconGlyph.REFRESH, 20));
         btnClearSource.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
+        btnPaste.setGraphic(new SymbolIcon(AppIconGlyph.PASTE, 22));
         btnClearDestination.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
+        btnCopy.setGraphic(new SymbolIcon(AppIconGlyph.COPY, 22));
         btnSaveAs.setGraphic(new SymbolIcon(AppIconGlyph.SAVE, 22));
         btnAdd.setGraphic(new SymbolIcon(AppIconGlyph.ADD_TO, 20));
         btnRemove.setGraphic(new SymbolIcon(AppIconGlyph.REMOVE_FROM, 20));
