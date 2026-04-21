@@ -407,11 +407,13 @@ public class OpenccJavaFxController {
 
     private void initUiButtons() {
         btnOpenFile.setGraphic(buildIconText(AppIconGlyph.OPEN_FILE, "button.openFile", 18, lblOpenFile));
+        btnOpenFile.setText(null);
 
         btnStart.setGraphic(buildIconText(AppIconGlyph.PLAY, "button.start", 20, lblStart));
         btnStart.setText(null);
 
         btnExit.setGraphic(buildIconText(AppIconGlyph.POWER, "button.exit", 18, lblExit));
+        btnExit.setText(null);
 
         // icon-only buttons unchanged
         btnRefresh.setGraphic(new SymbolIcon(AppIconGlyph.REFRESH, 20));

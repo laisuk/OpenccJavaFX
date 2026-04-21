@@ -531,7 +531,7 @@
             <RowConstraints minHeight="35.0" prefHeight="35.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="100.0" styleClass="button-accent" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="TOP">
+            <Button fx:id="btnStart" mnemonicParsing="false" onMouseClicked="#onBtnStartClicked" prefHeight="25.0" prefWidth="100.0" styleClass="button-accent" text="Start" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
                 <font>
                     <Font name="System Bold" size="14.0" />
                 </font>
@@ -539,12 +539,12 @@
                     <Insets />
                 </GridPane.margin>
             </Button>
-            <Button fx:id="btnExit" mnemonicParsing="false" onMouseClicked="#onBtnExitClicked" prefHeight="20.0" prefWidth="70.0" styleClass="button-secondary" GridPane.columnIndex="2" GridPane.halignment="RIGHT" GridPane.valignment="TOP">
+            <Button fx:id="btnExit" mnemonicParsing="false" onMouseClicked="#onBtnExitClicked" prefHeight="20.0" prefWidth="70.0" styleClass="button-secondary" GridPane.columnIndex="2" GridPane.halignment="RIGHT" GridPane.valignment="CENTER">
                 <GridPane.margin>
                     <Insets />
                 </GridPane.margin>
             </Button>
-            <Button fx:id="btnOpenFile" mnemonicParsing="false" onMouseClicked="#onBtnOpenFileClicked" prefHeight="20.0" prefWidth="80.0" styleClass="button-secondary" GridPane.halignment="LEFT" GridPane.valignment="TOP">
+            <Button fx:id="btnOpenFile" mnemonicParsing="false" onMouseClicked="#onBtnOpenFileClicked" prefHeight="20.0" prefWidth="80.0" styleClass="button-secondary" GridPane.halignment="LEFT" GridPane.valignment="CENTER">
                 <GridPane.margin>
                     <Insets />
                 </GridPane.margin>
