@@ -998,7 +998,10 @@ public class OpenccJavaFxController {
 
 
     public void onSourceTextChanged() {
-        lblSourceCharCount.setText(String.format("[ %,d chars ]", textAreaSource.getText().length()));
+        lblSourceCharCount.setText(I18n.format(
+                "status.charCount",
+                textAreaSource.getText().length()
+        ));
     }
 
     public void onRbStdClicked() {
