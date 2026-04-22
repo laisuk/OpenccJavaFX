@@ -428,6 +428,9 @@ public class OpenccJavaFxController {
         btnPreviewSource.setGraphic(new SymbolIcon(AppIconGlyph.PREVIEW, 20));
         btnSelectPath.setGraphic(new SymbolIcon(AppIconGlyph.FOLDER_OPEN, 20));
         btnClearPreview.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
+        tabMain.setGraphic(new SymbolIcon(AppIconGlyph.SYNC, 18));
+        tabBatch.setGraphic(new SymbolIcon(AppIconGlyph.MOVE_TO_FOLDER, 20));
+        tabSettings.setGraphic(new SymbolIcon(AppIconGlyph.SETTINGS, 18));
     }
 
     private HBox buildIconText(AppIconGlyph glyph, String textKey, double size, Label textRef) {

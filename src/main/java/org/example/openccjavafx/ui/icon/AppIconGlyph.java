@@ -4,6 +4,9 @@ public enum AppIconGlyph {
 
     // General
     REFRESH("\uE149"),
+    SYNC("\uE895"),
+    SYNC_FOLDER("\ue8f7"),
+    SETTINGS("\ue713"),
     PLAY("\uE768"),
     PLAY_ATL("\uE102"),
     HOME("\uE10F"),
@@ -19,6 +22,7 @@ public enum AppIconGlyph {
     OPEN_FILE("\uE1A5"),
     OPEN_FOLDER_HORIZONTAL("\uED25"),
     FOLDER_OPEN("\uE838"),
+    MOVE_TO_FOLDER("\ue8de"),
     SAVE("\uE105"),
     SAVE_AS("\uE792"),
     EDIT("\uE70F"),
