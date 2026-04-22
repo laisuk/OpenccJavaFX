@@ -17,6 +17,7 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
@@ -290,33 +291,34 @@
                                             <RowConstraints minHeight="10.0" prefHeight="35.0" vgrow="NEVER" />
                                         </rowConstraints>
                                         <children>
-                                            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0">
+                                            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="6.0">
                                                 <children>
                                                     <Button fx:id="btnAdd" alignment="CENTER" contentDisplay="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnAddClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
-                                                            <Insets right="5.0" top="5.0" />
+                                                            <Insets top="5.0" />
                                                         </HBox.margin>
                                                     </Button>
                                                     <Button fx:id="btnRemove" alignment="CENTER" contentDisplay="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnRemoveClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
-                                                            <Insets right="5.0" top="5.0" />
+                                                            <Insets top="5.0" />
                                                         </HBox.margin>
                                                     </Button>
                                                     <Button fx:id="btnClearList" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnClearListClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
-                                                            <Insets right="5.0" top="5.0" />
+                                                            <Insets top="5.0" />
                                                         </HBox.margin>
                                                     </Button>
+                                       <Region HBox.hgrow="ALWAYS" />
                                                     <Button fx:id="btnPreviewSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnPreviewSourceClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                           <HBox.margin>
-                                             <Insets top="5.0" />
+                                             <Insets right="10.0" top="5.0" />
                                           </HBox.margin>
                                                     </Button>
                                                 </children>
                                             </HBox>
                                         </children>
                                     </GridPane>
-                                    <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.columnSpan="2147483647" GridPane.rowIndex="1" GridPane.rowSpan="2147483647">
+                                    <HBox alignment="CENTER_LEFT" spacing="6.0" GridPane.columnIndex="1" GridPane.columnSpan="2147483647" GridPane.rowIndex="1" GridPane.rowSpan="2147483647">
                                         <children>
                                             <Label minWidth="50.0" text="Output:">
                                                 <HBox.margin>
@@ -329,7 +331,7 @@
                                             <TextField fx:id="textFieldPath" prefHeight="25.0" prefWidth="284.0" promptText="Please set output folder before start" styleClass="input-surface" HBox.hgrow="ALWAYS" />
                                             <Button fx:id="btnSelectPath" alignment="CENTER" contentDisplay="CENTER" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnSelectPathClicked" styleClass="button-secondary" textAlignment="CENTER">
                                                 <HBox.margin>
-                                                    <Insets left="5.0" right="5.0" />
+                                                    <Insets />
                                                 </HBox.margin>
                                             </Button>
                                             <Button fx:id="btnClearPreview" minWidth="50.0" mnemonicParsing="false" onMouseClicked="#onBtnClearPreviewClicked" styleClass="button-secondary" textAlignment="CENTER">
