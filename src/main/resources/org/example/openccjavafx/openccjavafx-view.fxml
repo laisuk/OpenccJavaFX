@@ -555,7 +555,7 @@
             <RowConstraints minHeight="20.0" prefHeight="30.0" vgrow="NEVER" />
         </rowConstraints>
         <children>
-            <HBox alignment="BOTTOM_LEFT" prefHeight="100.0" prefWidth="200.0">
+            <HBox alignment="BOTTOM_LEFT">
                 <children>
                     <Label fx:id="lblStatus" styleClass="status-label" text="OpenccJavaFX">
                         <padding>

@@ -519,15 +519,16 @@ public class OpenccJavaFxController {
 
     @FXML
     private void onPdfOptionsToggle() {
-        // 睇下依家係咪 enabled（用其中一個 checkbox 作準）
         boolean currentlyEnabled = !cbAddPageHeader.isDisable();
         boolean enable = !currentlyEnabled;
 
         setPdfOptionsEnabled(enable);
 
-        lblStatus.setText(enable
-                ? "PDF options enabled."
-                : "PDF options disabled.");
+        lblStatus.setText(
+                enable
+                        ? I18n.get("status.pdfOptions.enabled")
+                        : I18n.get("status.pdfOptions.disabled")
+        );
     }
 
     @FXML
@@ -641,7 +642,7 @@ public class OpenccJavaFxController {
     private void startMainConversion() {
         String fullText = textAreaSource.getText();
         if (fullText.isEmpty()) {
-            lblStatus.setText("Nothing to convert.");
+            lblStatus.setText(I18n.get("status.convert.empty"));
             return;
         }
 
@@ -694,18 +695,20 @@ public class OpenccJavaFxController {
     private void startBatchConversion() {
         ObservableList<String> fileList = listViewSource.getItems();
         if (fileList.isEmpty()) {
-            lblStatus.setText("Empty file list.\n");
+            lblStatus.setText(I18n.get("status.batch.emptyFileList"));
             return;
         }
 
         String outputDirectory = textFieldPath.getText();
         Path outputDirectoryPath = Paths.get(outputDirectory);
         if (outputDirectory.isEmpty()) {
-            textAreaPreview.appendText("Output directory is empty.\n");
+            textAreaPreview.appendText(I18n.get("preview.batch.outputDir.empty") + "\n");
             return;
         }
         if (!Files.isDirectory(outputDirectoryPath)) {
-            textAreaPreview.appendText(String.format("Output directory [ %s ] does not exist.\n", outputDirectory));
+            textAreaPreview.appendText(
+                    I18n.format("preview.batch.outputDir.notExist", outputDirectory) + "\n"
+            );
             return;
         }
 
@@ -714,7 +717,7 @@ public class OpenccJavaFxController {
         openccInstance.setConfig(config);
 
         textAreaPreview.clear();
-        lblStatus.setText("Batch conversion in progress...");
+        lblStatus.setText(I18n.get("status.batch.running"));
 
         // Disable Start button while running (optional)
         btnStart.setDisable(true);
@@ -750,13 +753,18 @@ public class OpenccJavaFxController {
                                     true // Keep font
                             );
 
-                            final String msg = String.format(
-                                    "[%d][%s] %s -> %s%n",
+                            String statusText = result.success
+                                    ? I18n.get("preview.batch.msg.done")
+                                    : I18n.get("preview.batch.msg.skipped");
+
+                            String msg = I18n.format(
+                                    "preview.batch.office.done",
                                     counter,
-                                    result.success ? "Done" : "Skipped",
+                                    statusText,
                                     result.success ? outputFilePath : file,
                                     result.message
-                            );
+                            ) + "\n";
+
                             Platform.runLater(() -> textAreaPreview.appendText(msg));
 
                         } else if ("pdf".equals(extNoDot)) {
@@ -767,7 +775,9 @@ public class OpenccJavaFxController {
 
                             final int idx = counter;
                             Platform.runLater(() ->
-                                    textAreaPreview.appendText(String.format("[%d] Processing PDF... Please wait...%n", idx)));
+                                    textAreaPreview.appendText(
+                                            I18n.format("preview.batch.pdf.processing", idx) + "\n"
+                                    ));
 
                             String raw = PdfBoxHelper.extractText(sourceFilePath, addHeader);
 
@@ -785,7 +795,9 @@ public class OpenccJavaFxController {
 //                            final int idx = counter;
                             final Path finalPath = txtOutputPath;
                             Platform.runLater(() ->
-                                    textAreaPreview.appendText(String.format("[%d][Done] -> %s%n", idx, finalPath)));
+                                    textAreaPreview.appendText(
+                                            I18n.format("preview.batch.done", idx, finalPath) + "\n"
+                                    ));
 
                         } else if (FILE_EXTENSIONS.contains(ext)) {
                             // Plain text file
@@ -798,24 +810,29 @@ public class OpenccJavaFxController {
                             final int idx = counter;
                             final Path finalPath = outputFilePath;
                             Platform.runLater(() ->
-                                    textAreaPreview.appendText(String.format("[%d][Done] -> %s%n", idx, finalPath)));
+                                    textAreaPreview.appendText(
+                                            I18n.format("preview.batch.done", idx, finalPath) + "\n"
+                                    ));
 
                         } else {
                             final int idx = counter;
                             final String fileName = file;
                             Platform.runLater(() ->
-                                    textAreaPreview.appendText(String.format(
-                                            "[%d][Skipped] %s -> Not a valid file format%n",
-                                            idx, fileName)));
+                                    textAreaPreview.appendText(
+                                            I18n.format("preview.batch.skipped.invalidFormat", idx, fileName) + "\n"
+                                    ));
                         }
                     } catch (Exception e) {
                         final int idx = counter;
                         final String fileName = file;
-                        final String err = e.getMessage();
+                        final String err = (e.getMessage() != null && !e.getMessage().trim().isEmpty())
+                                ? e.getMessage()
+                                : e.getClass().getSimpleName();
+
                         Platform.runLater(() ->
-                                textAreaPreview.appendText(String.format(
-                                        "[%d][Skipped] %s -> Error: %s%n",
-                                        idx, fileName, err)));
+                                textAreaPreview.appendText(
+                                        I18n.format("preview.batch.skipped.error", idx, fileName, err) + "\n"
+                                ));
                     }
                 }
 
@@ -823,8 +840,9 @@ public class OpenccJavaFxController {
                 long elapsed = endTime - startTime;
 
                 Platform.runLater(() -> {
-                    textAreaPreview.appendText(String.format("Process completed in %,d ms.%n", elapsed));
-                    lblStatus.setText(String.format("Batch conversion completed in %,d ms.", elapsed));
+                    String time = String.format("%,d", elapsed);
+                    textAreaPreview.appendText(I18n.format("preview.batch.completed", time) + "\n");
+                    lblStatus.setText(I18n.format("status.batch.completed", time));
                     btnStart.setDisable(false);
                 });
 
