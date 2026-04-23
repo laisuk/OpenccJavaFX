@@ -24,6 +24,7 @@ import org.example.openccjavafx.config.AppPreferences;
 import org.example.openccjavafx.i18n.I18n;
 import org.example.openccjavafx.i18n.UiLanguage;
 import org.example.openccjavafx.theme.ThemeManager;
+import org.example.openccjavafx.ui.ConversionComboBoxHelper;
 import org.example.openccjavafx.ui.EditorFontHelper;
 import org.example.openccjavafx.ui.icon.AppIconGlyph;
 import org.example.openccjavafx.ui.icon.SymbolIcon;
@@ -50,26 +51,6 @@ public class OpenccJavaFxController {
             ".txt", ".xml", ".srt", ".ass", ".vtt", ".json", ".ttml2",
             ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp"
     ));
-
-    private static final List<ConfigItem> CONFIG_LIST = Arrays.asList(
-            new ConfigItem("s2t", "config.manual.s2t"),
-            new ConfigItem("s2tw", "config.manual.s2tw"),
-            new ConfigItem("s2twp", "config.manual.s2twp"),
-            new ConfigItem("s2hk", "config.manual.s2hk"),
-            new ConfigItem("t2s", "config.manual.t2s"),
-            new ConfigItem("t2tw", "config.manual.t2tw"),
-            new ConfigItem("t2twp", "config.manual.t2twp"),
-            new ConfigItem("t2hk", "config.manual.t2hk"),
-            new ConfigItem("tw2s", "config.manual.tw2s"),
-            new ConfigItem("tw2sp", "config.manual.tw2sp"),
-            new ConfigItem("tw2t", "config.manual.tw2t"),
-            new ConfigItem("tw2tp", "config.manual.tw2tp"),
-            new ConfigItem("hk2s", "config.manual.hk2s"),
-            new ConfigItem("hk2t", "config.manual.hk2t"),
-            new ConfigItem("t2jp", "config.manual.t2jp"),
-            new ConfigItem("jp2t", "config.manual.jp2t")
-    );
-
     private int currentSourceCode = 0; // 0=non-zho, 1=hant, 2=hans
 
     @FXML
@@ -229,8 +210,7 @@ public class OpenccJavaFxController {
 
         UiLanguage saved = AppPreferences.loadLanguagePreference();
         I18n.setLocale(saved.getLocale());
-        refreshConfigLabels();
-        refreshSaveTargetLabels();
+        ConversionComboBoxHelper.refreshLabels();
         cbLanguage.getItems().setAll(UiLanguage.values());
         cbLanguage.setValue(saved);
 
@@ -238,8 +218,7 @@ public class OpenccJavaFxController {
             UiLanguage selected = cbLanguage.getValue();
             if (selected != null) {
                 I18n.setLocale(selected.getLocale());
-                refreshConfigLabels();
-                refreshSaveTargetLabels();
+                ConversionComboBoxHelper.refreshLabels();
                 applyTexts();
                 applyStatusHover();
                 updateRuntimeStatus();
@@ -249,8 +228,8 @@ public class OpenccJavaFxController {
 
         applyTexts();
         updateRuntimeStatus();
-        initManualCombo();
-        initSaveTargetCombo();
+        ConversionComboBoxHelper.setupManualCombo(cbManual);
+        ConversionComboBoxHelper.setupSaveTargetCombo(cbSaveTarget);
 
         cbLineNumber.setSelected(AppPreferences.getShowLineNumber());
         applyLineNumber(textAreaSource, cbLineNumber.isSelected());
@@ -275,71 +254,6 @@ public class OpenccJavaFxController {
         Parent root = scene.getRoot();
         boolean dark = ThemeManager.isEffectiveDarkMode();
         ThemeManager.applyTheme(root, dark);
-    }
-
-    private void initManualCombo() {
-        cbManual.getItems().setAll(CONFIG_LIST);
-        cbManual.setCellFactory(listView -> createConfigItemCell());
-        cbManual.setButtonCell(createConfigItemCell());
-        cbManual.getSelectionModel().selectFirst();
-    }
-
-    private ListCell<ConfigItem> createConfigItemCell() {
-        return new ListCell<ConfigItem>() {
-            @Override
-            protected void updateItem(ConfigItem item, boolean empty) {
-                super.updateItem(item, empty);
-
-                textProperty().unbind();
-
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    textProperty().bind(item.labelProperty());
-                }
-            }
-        };
-    }
-
-    private void refreshConfigLabels() {
-        for (ConfigItem item : CONFIG_LIST) {
-            item.refreshLabel();
-        }
-    }
-
-    private static final List<SaveTargetItem> SAVE_TARGET_LIST = Arrays.asList(
-            new SaveTargetItem("destination"),
-            new SaveTargetItem("source")
-    );
-
-    private void initSaveTargetCombo() {
-        cbSaveTarget.getItems().setAll(SAVE_TARGET_LIST);
-        cbSaveTarget.setCellFactory(listView -> createSaveTargetItemCell());
-        cbSaveTarget.setButtonCell(createSaveTargetItemCell());
-        cbSaveTarget.getSelectionModel().selectFirst();
-    }
-
-    private ListCell<SaveTargetItem> createSaveTargetItemCell() {
-        return new ListCell<SaveTargetItem>() {
-            @Override
-            protected void updateItem(SaveTargetItem item, boolean empty) {
-                super.updateItem(item, empty);
-
-                textProperty().unbind();
-
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    textProperty().bind(item.labelProperty());
-                }
-            }
-        };
-    }
-
-    private void refreshSaveTargetLabels() {
-        for (SaveTargetItem item : SAVE_TARGET_LIST) {
-            item.refreshLabel();
-        }
     }
 
     private void applyLineNumber(CodeArea area, boolean enabled) {
@@ -669,8 +583,8 @@ public class OpenccJavaFxController {
         textAreaDestination.replaceText(convertedText);
 
         if (rbManual.isSelected()) {
-            ConfigItem selected = cbManual.getValue();
-            lblDestinationCode.setText(selected != null ? selected.getCode() : config);
+            String selectedCode = ConversionComboBoxHelper.getSelectedManualCode(cbManual);
+            lblDestinationCode.setText(selectedCode != null ? selectedCode : config);
         } else {
             switch (currentSourceCode) {
                 case 1: // source is Hant -> destination becomes Hans
@@ -904,21 +818,16 @@ public class OpenccJavaFxController {
         }
 
         if (rbManual.isSelected()) {
-            String v = cbManual.getValue().getCode();
-            if (v != null) {
-                int sp = v.indexOf(' ');
-                String key = sp >= 0 ? v.substring(0, sp) : v;
-                OpenccConfig cfg = OpenccConfig.tryParse(key);
-                if (cfg != null) return cfg;
-            }
+            String code = ConversionComboBoxHelper.getSelectedManualCode(cbManual);
+            OpenccConfig cfg = OpenccConfig.tryParse(code);
+            if (cfg != null) return cfg;
         }
-
         return OpenccConfig.S2T; // fallback
     }
 
     public void onBtnOpenFileClicked() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Open Text or PDF File");
+        fileChooser.setTitle(I18n.get("status.openFile.title"));
 
         // Safer initial directory (JavaFX can throw if invalid)
         File dir = new File(System.getProperty("user.home"));
@@ -927,12 +836,12 @@ public class OpenccJavaFxController {
         }
 
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Text Files", "*.txt", "*.md", "*.csv"),
-                new FileChooser.ExtensionFilter("Subtitle Files", "*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2"),
-                new FileChooser.ExtensionFilter("Word Documents", "*.docx", "*.odt"),
-                new FileChooser.ExtensionFilter("Epub Files", "*.epub"),
-                new FileChooser.ExtensionFilter("PDF Files", "*.pdf"),
-                new FileChooser.ExtensionFilter("All Files", "*.*")
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.text"), "*.txt", "*.md", "*.csv"),
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.subtitle"), "*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2"),
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.word"), "*.docx", "*.odt"),
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.epub"), "*.epub"),
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.pdf"), "*.pdf"),
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.all"), "*.*")
         );
 
         // Use your window as owner (replace getStage() with your actual Stage getter)
@@ -940,7 +849,7 @@ public class OpenccJavaFxController {
         if (selectedFile != null && selectedFile.isFile() && selectedFile.exists()) {
             startLoadFileTask(selectedFile);
         } else if (selectedFile != null) {
-            lblStatus.setText("Selected file is not valid.");
+            lblStatus.setText(I18n.get("status.openFile.invalid"));
         }
     }
 
@@ -1165,14 +1074,14 @@ public class OpenccJavaFxController {
         ObservableList<String> currentFileList = listViewSource.getItems();
 
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select Files");
+        fileChooser.setTitle(I18n.get("status.add.title"));
         fileChooser.setInitialDirectory(new File("."));
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("Subtitle Files", Arrays.asList("*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2")),
-                new FileChooser.ExtensionFilter("Office Files", Arrays.asList("*.docx", "*.xlsx", "*.pptx", "*.odt", "*.ods", "*.odp", "*.epub")),
-                new FileChooser.ExtensionFilter("PDF Files", "*.pdf"),
-                new FileChooser.ExtensionFilter("All Files", "*.*")
+                new FileChooser.ExtensionFilter(I18n.get("status.add.filter.text"), "*.txt"),
+                new FileChooser.ExtensionFilter(I18n.get("status.add.filter.subtitle"), Arrays.asList("*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2")),
+                new FileChooser.ExtensionFilter(I18n.get("status.add.filter.office"), Arrays.asList("*.docx", "*.xlsx", "*.pptx", "*.odt", "*.ods", "*.odp", "*.epub")),
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.pdf"), "*.pdf"),
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.all"), "*.*")
         );
 
         List<File> selectedFiles = fileChooser.showOpenMultipleDialog(null);
@@ -1205,7 +1114,7 @@ public class OpenccJavaFxController {
             merged.addAll(pdfList);
 
             listViewSource.setItems(merged);
-            lblStatus.setText(String.format("No of file added to list: %d", count));
+            lblStatus.setText(I18n.format("status.add.added", count));
         }
     }
 
@@ -1214,7 +1123,7 @@ public class OpenccJavaFxController {
         String selectedItem = listViewSource.getSelectionModel().getSelectedItem();
         if (selectedItem != null) {
             currentFileList.remove(selectedItem);
-            lblStatus.setText(String.format("[%s] removed.", selectedItem));
+            lblStatus.setText(I18n.format("status.remove.removed", selectedItem));
         }
         listViewSource.setItems(currentFileList);
     }
@@ -1223,7 +1132,7 @@ public class OpenccJavaFxController {
         ObservableList<String> currentFileList = listViewSource.getItems();
         currentFileList.clear();
         listViewSource.setItems(currentFileList);
-        lblStatus.setText("File list cleared.");
+        lblStatus.setText(I18n.get("status.clearList"));
     }
 
     public void onBtnPreviewSourceClicked() {
@@ -1237,24 +1146,24 @@ public class OpenccJavaFxController {
                     String content = new String(bytes, StandardCharsets.UTF_8);
 //                    textAreaPreview.setText(content);
                     textAreaPreview.replaceText(content);
-                    lblStatus.setText(String.format("File Preview: %s", selectedItem));
+                    lblStatus.setText(I18n.format("status.previewSource.success", selectedItem));
                 } catch (IOException e) {
-                    textAreaPreview.replaceText("Error reading file: " + e.getMessage());
+                    textAreaPreview.replaceText(I18n.format("status.previewSource.readError", e.getMessage()));
                 }
             } else {
-                textAreaPreview.replaceText(String.format("Selected file (%s) is not a valid text file.", getFileExtension(file.getName())));
+                textAreaPreview.replaceText(I18n.format("status.previewSource.invalidTextFile", getFileExtension(file.getName())));
             }
         }
     }
 
     public void onBtnSelectPathClicked() {
         DirectoryChooser directoryChooser = new DirectoryChooser();
-        directoryChooser.setTitle("Select Directory");
+        directoryChooser.setTitle(I18n.get("status.selectPath.title"));
         directoryChooser.setInitialDirectory(new File("."));
         File selectedDirectory = directoryChooser.showDialog(null);
         if (selectedDirectory != null) {
             textFieldPath.setText(selectedDirectory.getAbsolutePath());
-            lblStatus.setText("Output path set to: " + selectedDirectory);
+            lblStatus.setText(I18n.format("status.selectPath.selected", selectedDirectory));
         }
     }
 
@@ -1266,14 +1175,13 @@ public class OpenccJavaFxController {
 
     @FXML
     public void onBtnSaveAsClicked() {
-        SaveTargetItem selected = cbSaveTarget.getValue();
+        String key = ConversionComboBoxHelper.getSelectedSaveTargetKey(cbSaveTarget);
+        String targetLabel = ConversionComboBoxHelper.getSelectedSaveTargetLabel(cbSaveTarget);
 
-        if (selected == null) {
+        if (key == null) {
             lblStatus.setText(I18n.get("status.save.target.notSelected"));
             return;
         }
-
-        String key = selected.getKey();
 
         String content;
         String suggestedName;
@@ -1295,7 +1203,7 @@ public class OpenccJavaFxController {
         }
 
         if (content == null || content.isEmpty()) {
-            lblStatus.setText(I18n.format("status.save.empty", selected.labelProperty().get()));
+            lblStatus.setText(I18n.format("status.save.empty", targetLabel));
             return;
         }
 
@@ -1305,10 +1213,10 @@ public class OpenccJavaFxController {
         fileChooser.setInitialFileName(suggestedName);
 
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("Subtitle Files",
+                new FileChooser.ExtensionFilter(I18n.get("status.add.filter.text"), "*.txt"),
+                new FileChooser.ExtensionFilter(I18n.get("status.add.filter.subtitle"),
                         "*.srt", "*.vtt", "*.ass", "*.xml", "*.ttml2"),
-                new FileChooser.ExtensionFilter("All Files", "*.*")
+                new FileChooser.ExtensionFilter(I18n.get("status.openFile.filter.all"), "*.*")
         );
 
         File selectedFile = fileChooser.showSaveDialog(null);
@@ -1319,14 +1227,14 @@ public class OpenccJavaFxController {
 
                 lblStatus.setText(
                         I18n.format("status.save.success",
-                                selected.labelProperty().get(),
+                                targetLabel,
                                 selectedFile.getAbsolutePath())
                 );
 
             } catch (Exception e) {
                 lblStatus.setText(
                         I18n.format("status.save.error",
-                                selected.labelProperty().get(),
+                                targetLabel,
                                 selectedFile.getAbsolutePath())
                 );
             }
@@ -1374,10 +1282,10 @@ public class OpenccJavaFxController {
                     updateSourceInfo(OpenCC.zhoCheck(text));
                     success = true;
                 } catch (Exception e) {
-                    lblStatus.setText("Error: " + e.getMessage());
+                    lblStatus.setText(I18n.format("status.dnd.textArea.error", e.getMessage()));
                 }
             } else {
-                textAreaSource.replaceText("Not a valid text file.");
+                textAreaSource.replaceText(I18n.get("status.dnd.textArea.invalidTextFile"));
             }
         } else if (dragboard.hasString()) {
             // User dragged in plain text
@@ -1389,7 +1297,7 @@ public class OpenccJavaFxController {
             }
 
             textAreaSource.replaceText(text);
-            openFileName = "<Dropped text>";
+            openFileName = I18n.get("status.dnd.textArea.droppedText");
             updateSourceInfo(OpenCC.zhoCheck(text));
             success = true;
         }
@@ -1437,7 +1345,7 @@ public class OpenccJavaFxController {
             }
             FXCollections.sort(fileList, null);
             listViewSource.setItems(fileList);
-            lblStatus.setText(String.format("Total file added: %d", count));
+            lblStatus.setText(I18n.format("status.dnd.listBox.added", count));
         }
         dragEvent.setDropCompleted(success);
         dragEvent.consume();
