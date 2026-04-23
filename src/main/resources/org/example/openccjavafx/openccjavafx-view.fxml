@@ -114,25 +114,9 @@
                                 </columnConstraints>
                                 <rowConstraints>
                                     <RowConstraints minHeight="100.0" prefHeight="200.0" vgrow="ALWAYS" />
-                                    <RowConstraints minHeight="32.0" prefHeight="32.0" vgrow="NEVER" />
+                                    <RowConstraints minHeight="35.0" prefHeight="35.0" vgrow="NEVER" />
                                 </rowConstraints>
                                 <children>
-                                    <Button fx:id="btnPaste" minWidth="30.0" onMouseClicked="#onBtnPasteClick" prefHeight="0.0" styleClass="button-secondary" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets right="5.0" top="5.0" />
-                                        </GridPane.margin>
-                              <font>
-                                 <Font name="System Bold" size="12.0" />
-                              </font>
-                                    </Button>
-                                    <Button fx:id="btnCopy" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnCopyClicked" prefHeight="0.0" styleClass="button-secondary" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets top="5.0" />
-                                        </GridPane.margin>
-                              <font>
-                                 <Font name="System Bold" size="12.0" />
-                              </font>
-                                    </Button>
                                     <!--                           <TextArea fx:id="textAreaSource" onDragDropped="#onTaDragDropped" onDragOver="#onTaSourceDragOver" onKeyPressed="#onSourceTextChanged" promptText="Paste text, open file or drop file  here to begin." wrapText="true">-->
                                     <!--                              <font>-->
                                     <!--                                 <Font size="14.0" />-->
@@ -167,77 +151,70 @@
                                             </CodeArea>
                                         </content>
                                     </VirtualizedScrollPane>
-                                    <Label fx:id="lblSource" styleClass="section-label" text="Source:" GridPane.rowIndex="1">
-                                        <font>
-                                            <Font name="System Bold" size="14.0" />
-                                        </font>
-                                        <GridPane.margin>
-                                            <Insets left="3.0" />
-                                        </GridPane.margin>
-                                    </Label>
-                                    <Label fx:id="lblDestination" styleClass="section-label" text="Destination:" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                                        <font>
-                                            <Font name="System Bold" size="14.0" />
-                                        </font>
-                                        <GridPane.margin>
-                                            <Insets left="3.0" />
-                                        </GridPane.margin>
-                                    </Label>
-                                    <Label fx:id="lblSourceCode" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets left="60.0" />
-                                        </GridPane.margin>
-                                        <font>
-                                            <Font size="14.0" />
-                                        </font>
-                                    </Label>
-                                    <Label fx:id="lblDestinationCode" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets left="90.0" />
-                                        </GridPane.margin>
-                                        <font>
-                                            <Font size="14.0" />
-                                        </font>
-                                    </Label>
-                                    <Label fx:id="lblSourceCharCount" alignment="CENTER_RIGHT" textAlignment="RIGHT" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets right="140.0" />
-                                        </GridPane.margin>
-                                        <opaqueInsets>
-                                            <Insets />
-                                        </opaqueInsets>
-                                    </Label>
-                                    <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" styleClass="button-secondary" textAlignment="CENTER" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets right="93.0" top="5.0" />
-                                        </GridPane.margin>
-                                        <font>
-                                            <Font size="16.0" />
-                                        </font>
-                                    </Button>
-                                    <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" styleClass="button-secondary" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets right="86.0" top="5.0" />
-                                        </GridPane.margin>
-                                        <font>
-                                            <Font name="Segoe Fluent Icons" size="18.0" />
-                                        </font>
-                                    </Button>
-                                    <Button fx:id="btnClearSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearSourceClicked" styleClass="button-secondary" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets right="49.0" top="5.0" />
-                                        </GridPane.margin>
-                                    </Button>
-                                    <Button fx:id="btnClearDestination" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearDestinationClicked" styleClass="button-secondary" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets right="43.0" top="5.0" />
-                                        </GridPane.margin>
-                                    </Button>
-                                    <ComboBox fx:id="cbSaveTarget" prefWidth="125.0" styleClass="input-surface" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                                        <GridPane.margin>
-                                            <Insets right="130.0" top="5.0" />
-                                        </GridPane.margin>
-                                    </ComboBox>
+                           <HBox alignment="CENTER_LEFT" spacing="8.0" GridPane.rowIndex="1">
+                              <children>
+                                 <Label fx:id="lblSource" styleClass="section-label" text="Source:">
+                                    <font>
+                                       <Font name="System Bold" size="14.0" />
+                                    </font>
+                                 </Label>
+                                 <Label fx:id="lblSourceCode">
+                                    <font>
+                                       <Font size="14.0" />
+                                    </font>
+                                 </Label>
+                                 <Region HBox.hgrow="ALWAYS" />
+                                 <Label fx:id="lblSourceCharCount" textAlignment="RIGHT">
+                                    <opaqueInsets>
+                                       <Insets />
+                                    </opaqueInsets>
+                                 </Label>
+                                 <Button fx:id="btnRefresh" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthRefreshClicked" styleClass="button-secondary" textAlignment="CENTER">
+                                    <font>
+                                       <Font size="16.0" />
+                                    </font>
+                                 </Button>
+                                 <Button fx:id="btnClearSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearSourceClicked" styleClass="button-secondary" />
+                                 <Button fx:id="btnPaste" minWidth="30.0" onMouseClicked="#onBtnPasteClick" prefHeight="0.0" styleClass="button-secondary">
+                                    <font>
+                                       <Font name="System Bold" size="12.0" />
+                                    </font>
+                                 </Button>
+                              </children>
+                              <GridPane.margin>
+                                 <Insets right="5.0" top="5.0" />
+                              </GridPane.margin>
+                           </HBox>
+                           <HBox alignment="CENTER_LEFT" spacing="6.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                              <children>
+                                          <Label fx:id="lblDestination" styleClass="section-label" text="Destination:">
+                                              <font>
+                                                  <Font name="System Bold" size="14.0" />
+                                              </font>
+                                          </Label>
+                                          <Label fx:id="lblDestinationCode">
+                                              <font>
+                                                  <Font size="14.0" />
+                                              </font>
+                                          </Label>
+                                 <Region HBox.hgrow="ALWAYS" />
+                                          <ComboBox fx:id="cbSaveTarget" prefWidth="110.0" styleClass="input-surface" />
+                                          <Button fx:id="btnSaveAs" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnSaveAsClicked" styleClass="button-secondary">
+                                              <font>
+                                                  <Font name="Segoe Fluent Icons" size="18.0" />
+                                              </font>
+                                          </Button>
+                                          <Button fx:id="btnClearDestination" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearDestinationClicked" styleClass="button-secondary" />
+                                          <Button fx:id="btnCopy" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnCopyClicked" styleClass="button-secondary">
+                                    <font>
+                                       <Font name="System Bold" size="12.0" />
+                                    </font>
+                                          </Button>
+                              </children>
+                              <GridPane.margin>
+                                 <Insets left="5.0" top="5.0" />
+                              </GridPane.margin>
+                           </HBox>
                                 </children>
                             </GridPane>
                         </children>
@@ -291,30 +268,33 @@
                                             <RowConstraints minHeight="10.0" prefHeight="35.0" vgrow="NEVER" />
                                         </rowConstraints>
                                         <children>
-                                            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" spacing="6.0">
+                                            <HBox alignment="CENTER_LEFT" spacing="6.0">
                                                 <children>
                                                     <Button fx:id="btnAdd" alignment="CENTER" contentDisplay="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnAddClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
-                                                            <Insets top="5.0" />
+                                                            <Insets />
                                                         </HBox.margin>
                                                     </Button>
                                                     <Button fx:id="btnRemove" alignment="CENTER" contentDisplay="CENTER" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnRemoveClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
-                                                            <Insets top="5.0" />
+                                                            <Insets />
                                                         </HBox.margin>
                                                     </Button>
                                                     <Button fx:id="btnClearList" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnClearListClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                                         <HBox.margin>
-                                                            <Insets top="5.0" />
+                                                            <Insets />
                                                         </HBox.margin>
                                                     </Button>
                                        <Region HBox.hgrow="ALWAYS" />
                                                     <Button fx:id="btnPreviewSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBtnPreviewSourceClicked" styleClass="button-secondary" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                                           <HBox.margin>
-                                             <Insets right="10.0" top="5.0" />
+                                             <Insets />
                                           </HBox.margin>
                                                     </Button>
                                                 </children>
+                                    <GridPane.margin>
+                                       <Insets right="5.0" top="5.0" />
+                                    </GridPane.margin>
                                             </HBox>
                                         </children>
                                     </GridPane>
@@ -343,6 +323,9 @@
                                                 </font>
                                             </Button>
                                         </children>
+                              <GridPane.margin>
+                                 <Insets left="5.0" top="5.0" />
+                              </GridPane.margin>
                                     </HBox>
                                 </children>
                             </GridPane>
@@ -369,7 +352,7 @@
                                 <children>
                                     <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.rowIndex="3">
                                         <children>
-                                            <Label text="Batch Options:">
+                                            <Label fx:id="lblBatchOptions" text="Batch Options:">
                                                 <font>
                                                     <Font name="System Bold" size="14.0" />
                                                 </font>
@@ -420,14 +403,14 @@
                                             </CheckBox>
                                         </children>
                                     </HBox>
-                                    <Label text="Settings:">
+                                    <Label fx:id="lblSettings" text="Settings:">
                                         <font>
                                             <Font name="System Bold" size="18.0" />
                                         </font>
                                     </Label>
                                     <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.rowIndex="4">
                                         <children>
-                                            <Label text="Theme:">
+                                            <Label fx:id="lblTheme" text="Theme:">
                                                 <font>
                                                     <Font name="System Bold" size="14.0" />
                                                 </font>
@@ -457,7 +440,7 @@
                                     </HBox>
                                     <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.rowIndex="1">
                                         <children>
-                                            <Label text="Editor Options:">
+                                            <Label fx:id="lblEditorOptions" text="Editor Options:">
                                                 <font>
                                                     <Font name="System Bold" size="14.0" />
                                                 </font>
@@ -470,7 +453,7 @@
                                                     <Insets left="10.0" />
                                                 </padding>
                                             </CheckBox>
-                                 <Label text="Editor Font:">
+                                 <Label fx:id="lblEditorFont" text="Editor Font:">
                                     <padding>
                                        <Insets left="15.0" />
                                     </padding>
@@ -483,7 +466,7 @@
                                        <Insets left="10.0" />
                                     </HBox.margin>
                                  </ComboBox>
-                                 <Label text="Size:">
+                                 <Label fx:id="lblFontSize" text="Size:">
                                     <HBox.margin>
                                        <Insets left="10.0" />
                                     </HBox.margin>
@@ -500,7 +483,7 @@
                                     </HBox>
                            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.rowIndex="5">
                               <children>
-                                 <Label text="Languge:">
+                                 <Label fx:id="lblLanguage" text="Languge:">
                                     <font>
                                        <Font name="System Bold" size="14.0" />
                                     </font>

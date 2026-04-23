@@ -70,10 +70,6 @@ public class OpenccJavaFxController {
             new ConfigItem("jp2t", "config.manual.jp2t")
     );
 
-    private static final List<String> SAVE_TARGET_LIST = Arrays.asList(
-            "Source",
-            "Destination");
-
     private int currentSourceCode = 0; // 0=non-zho, 1=hant, 2=hans
 
     @FXML
@@ -106,7 +102,11 @@ public class OpenccJavaFxController {
     @FXML
     private CheckBox cbLineNumber;
     @FXML
+    private Label lblSource;
+    @FXML
     private Label lblSourceCode;
+    @FXML
+    private Label lblDestination;
     @FXML
     private Label lblDestinationCode;
     @FXML
@@ -142,13 +142,27 @@ public class OpenccJavaFxController {
     @FXML
     private ComboBox<ConfigItem> cbManual;
     @FXML
-    private ComboBox<String> cbSaveTarget;
+    private ComboBox<SaveTargetItem> cbSaveTarget;
     @FXML
     private ComboBox<String> cbEditorFont;
     @FXML
     private Spinner<Integer> spnFontSize;
     @FXML
+    private Label lblSettings;
+    @FXML
     private Label lblPdfOptions;
+    @FXML
+    private Label lblEditorOptions;
+    @FXML
+    private Label lblEditorFont;
+    @FXML
+    private Label lblFontSize;
+    @FXML
+    private Label lblBatchOptions;
+    @FXML
+    private Label lblTheme;
+    @FXML
+    private Label lblLanguage;
     @FXML
     private CheckBox cbAddPageHeader;
     @FXML
@@ -216,6 +230,7 @@ public class OpenccJavaFxController {
         UiLanguage saved = AppPreferences.loadLanguagePreference();
         I18n.setLocale(saved.getLocale());
         refreshConfigLabels();
+        refreshSaveTargetLabels();
         cbLanguage.getItems().setAll(UiLanguage.values());
         cbLanguage.setValue(saved);
 
@@ -224,6 +239,7 @@ public class OpenccJavaFxController {
             if (selected != null) {
                 I18n.setLocale(selected.getLocale());
                 refreshConfigLabels();
+                refreshSaveTargetLabels();
                 applyTexts();
                 applyStatusHover();
                 updateRuntimeStatus();
@@ -234,6 +250,7 @@ public class OpenccJavaFxController {
         applyTexts();
         updateRuntimeStatus();
         initManualCombo();
+        initSaveTargetCombo();
 
         cbLineNumber.setSelected(AppPreferences.getShowLineNumber());
         applyLineNumber(textAreaSource, cbLineNumber.isSelected());
@@ -246,8 +263,6 @@ public class OpenccJavaFxController {
 
         cbConvertFilename.setSelected(AppPreferences.getConvertFilename());
         cbConvertFilename.selectedProperty().addListener((obs, oldVal, newVal) -> AppPreferences.saveConvertFilename(newVal));
-        cbSaveTarget.getItems().addAll(SAVE_TARGET_LIST);
-        cbSaveTarget.getSelectionModel().select(1);
         // Hover status display
         applyStatusHover();
         initEditorFontControls();
@@ -292,6 +307,41 @@ public class OpenccJavaFxController {
         }
     }
 
+    private static final List<SaveTargetItem> SAVE_TARGET_LIST = Arrays.asList(
+            new SaveTargetItem("destination"),
+            new SaveTargetItem("source")
+    );
+
+    private void initSaveTargetCombo() {
+        cbSaveTarget.getItems().setAll(SAVE_TARGET_LIST);
+        cbSaveTarget.setCellFactory(listView -> createSaveTargetItemCell());
+        cbSaveTarget.setButtonCell(createSaveTargetItemCell());
+        cbSaveTarget.getSelectionModel().selectFirst();
+    }
+
+    private ListCell<SaveTargetItem> createSaveTargetItemCell() {
+        return new ListCell<SaveTargetItem>() {
+            @Override
+            protected void updateItem(SaveTargetItem item, boolean empty) {
+                super.updateItem(item, empty);
+
+                textProperty().unbind();
+
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    textProperty().bind(item.labelProperty());
+                }
+            }
+        };
+    }
+
+    private void refreshSaveTargetLabels() {
+        for (SaveTargetItem item : SAVE_TARGET_LIST) {
+            item.refreshLabel();
+        }
+    }
+
     private void applyLineNumber(CodeArea area, boolean enabled) {
         if (enabled) {
             area.setParagraphGraphicFactory(LineNumberFactory.get(area));
@@ -316,14 +366,32 @@ public class OpenccJavaFxController {
         tabBatch.setText(I18n.get("tab.batch"));
         tabSettings.setText(I18n.get("tab.settings"));
 
-//        btnPaste.setText(I18n.get("button.paste"));
-//        btnCopy.setText(I18n.get("button.copy"));
+        lblSource.setText(I18n.get("label.source"));
+        lblDestination.setText(I18n.get("label.destination"));
 
         lblOpenFile.setText(I18n.get("button.openFile"));
         lblStart.setText(I18n.get("button.start"));
         lblExit.setText(I18n.get("button.exit"));
         lblOutputFolder.setText(I18n.get("label.outputFolder"));
         textFieldPath.setPromptText(I18n.get("textField.outputFolder.prompt"));
+
+        // Settings
+        lblSettings.setText(I18n.get("label.settings"));
+        lblEditorOptions.setText(I18n.get("label.editorOptions"));
+        cbLineNumber.setText(I18n.get("checkbox.showLineNumber"));
+        lblEditorFont.setText(I18n.get("label.editorFont"));
+        lblFontSize.setText(I18n.get("label.size"));
+        lblPdfOptions.setText(I18n.get("label.pdfOptions"));
+        cbAddPageHeader.setText(I18n.get("checkbox.pageHeader"));
+        cbCompactPdfText.setText(I18n.get("checkbox.compactText"));
+        cbAutoReflow.setText(I18n.get("checkbox.autoReflowText"));
+        lblBatchOptions.setText(I18n.get("label.batchOptions"));
+        cbConvertFilename.setText(I18n.get("checkbox.convertFilename"));
+        lblTheme.setText(I18n.get("label.theme"));
+        rbThemeSystem.setText(I18n.get("radio.theme.system"));
+        rbThemeLight.setText(I18n.get("radio.theme.light"));
+        rbThemeDark.setText(I18n.get("radio.theme.dark"));
+        lblLanguage.setText(I18n.get("label.language"));
     }
 
     private void updateRuntimeStatus() {
@@ -1178,38 +1246,44 @@ public class OpenccJavaFxController {
         lblStatus.setText(I18n.get("status.clearPreview"));
     }
 
+    @FXML
     public void onBtnSaveAsClicked() {
-        String target = cbSaveTarget.getValue();
-        if (target == null) {
-            lblStatus.setText("Please select a save target.");
+        SaveTargetItem selected = cbSaveTarget.getValue();
+
+        if (selected == null) {
+            lblStatus.setText(I18n.get("status.save.target.notSelected"));
             return;
         }
 
-        // 根據 comboBox 決定用邊個 TextArea
+        String key = selected.getKey();
+
         String content;
         String suggestedName;
-        switch (target) {
-            case "Source":
+
+        switch (key) {
+            case "source":
                 content = textAreaSource.getText();
                 suggestedName = "Source.txt";
                 break;
-            case "Destination":
+
+            case "destination":
                 content = textAreaDestination.getText();
                 suggestedName = "Destination.txt";
                 break;
+
             default:
-                lblStatus.setText("Unknown save target.");
+                lblStatus.setText(I18n.get("status.save.unknownTarget"));
                 return;
         }
 
         if (content == null || content.isEmpty()) {
-            lblStatus.setText(target + " content is empty.");
+            lblStatus.setText(I18n.format("status.save.empty", selected.labelProperty().get()));
             return;
         }
 
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Save Text File");
-        fileChooser.setInitialDirectory(new File(".")); // current dir
+        fileChooser.setTitle(I18n.get("dialog.save.title"));
+        fileChooser.setInitialDirectory(new File("."));
         fileChooser.setInitialFileName(suggestedName);
 
         fileChooser.getExtensionFilters().addAll(
@@ -1223,11 +1297,20 @@ public class OpenccJavaFxController {
 
         if (selectedFile != null) {
             try {
-                // Java 8 friendly 寫法
                 Files.write(selectedFile.toPath(), content.getBytes(StandardCharsets.UTF_8));
-                lblStatus.setText(String.format("%s saved to: %s", target, selectedFile));
+
+                lblStatus.setText(
+                        I18n.format("status.save.success",
+                                selected.labelProperty().get(),
+                                selectedFile.getAbsolutePath())
+                );
+
             } catch (Exception e) {
-                lblStatus.setText(String.format("Error saving %s: %s", target, selectedFile));
+                lblStatus.setText(
+                        I18n.format("status.save.error",
+                                selected.labelProperty().get(),
+                                selectedFile.getAbsolutePath())
+                );
             }
         }
     }
