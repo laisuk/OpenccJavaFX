@@ -112,6 +112,8 @@ public class OpenccJavaFxController {
     @FXML
     private Label lblSourceCharCount;
     @FXML
+    private Label lblOutputFolder;
+    @FXML
     private Label lblStatus;
     @FXML
     private Label lblFilename;
@@ -320,6 +322,8 @@ public class OpenccJavaFxController {
         lblOpenFile.setText(I18n.get("button.openFile"));
         lblStart.setText(I18n.get("button.start"));
         lblExit.setText(I18n.get("button.exit"));
+        lblOutputFolder.setText(I18n.get("label.outputFolder"));
+        textFieldPath.setPromptText(I18n.get("textField.outputFolder.prompt"));
     }
 
     private void updateRuntimeStatus() {
@@ -487,13 +491,13 @@ public class OpenccJavaFxController {
     protected void onBtnPasteClick() {
         String inputText = getClipboardTextFx();
         if ((inputText == null) || inputText.isEmpty()) {
-            lblStatus.setText("Clipboard is empty or could not retrieve contents.");
+            lblStatus.setText(I18n.get("status.paste.empty"));
         } else {
             textAreaSource.replaceText(inputText);
             openFileName = "";
             updateSourceInfo(OpenCC.zhoCheck(inputText));
             lblFilename.setText("");
-            lblStatus.setText("Clipboard contents pasted to source area.");
+            lblStatus.setText(I18n.get("status.paste"));
         }
     }
 
@@ -508,11 +512,19 @@ public class OpenccJavaFxController {
 
     @FXML
     protected void onBtnCopyClicked() {
+        String text = textAreaDestination.getText();
+        // null-safe + trim check
+        if (text == null || text.trim().isEmpty()) {
+            lblStatus.setText(I18n.get("status.copy.empty"));
+            return;
+        }
+
         Clipboard clipboard = Clipboard.getSystemClipboard();
         ClipboardContent content = new ClipboardContent();
-        content.putString(textAreaDestination.getText());
+        content.putString(text);
         clipboard.setContent(content);
-        lblStatus.setText("Destination contents copied to clipboard.");
+
+        lblStatus.setText(I18n.get("status.copy"));
     }
 
     // Helper method to get file extension
@@ -862,7 +874,7 @@ public class OpenccJavaFxController {
      */
     private void startLoadFileTask(File file) {
         // Show progress bar immediately (UI thread)
-        showProgressBarIndeterminate(String.format("Loading file ( %s ) ...", getFileExtension(file.toString())));
+        showProgressBarIndeterminate(I18n.format("status.loadFile", getFileExtension(file.toString())));
 
         Task<String> task = new Task<String>() {
 
@@ -895,7 +907,8 @@ public class OpenccJavaFxController {
                         finalText = PdfReflowHelper.reflowCjkParagraphs(raw, addHeader, compact);
                     }
 
-                    statusAfter = String.format("PDF loaded %s: %s", autoReflow ? "(Auto-Reflow)" : "", file);
+//                    statusAfter = String.format("PDF loaded %s: %s", autoReflow ? "(Auto-Reflow)" : "", file);
+                    statusAfter = I18n.format("status.loadFile.pdf", autoReflow ? I18n.get("status.autoReflow") : "", file);
                     return finalText;
                 }
 
@@ -912,7 +925,7 @@ public class OpenccJavaFxController {
                             true    // normalizeNewlines
                     );
 
-                    statusAfter = String.format("DOCX loaded: %s", file);
+                    statusAfter = I18n.format("status.loadFile.docx", file);
                     return text;
                 }
 
@@ -925,7 +938,7 @@ public class OpenccJavaFxController {
                     // Otherwise, replace with your actual helper.
                     String text = OpenDocumentHelper.extractOdtAllText(file);
 
-                    statusAfter = String.format("ODT loaded: %s", file);
+                    statusAfter = I18n.format("status.loadFile.odt", file);
                     return text;
                 }
 
@@ -938,7 +951,7 @@ public class OpenccJavaFxController {
                             true,
                             true);
 
-                    statusAfter = String.format("Epub loaded: %s", file);
+                    statusAfter = I18n.format("status.loadFile.epub", file);
                     return text;
                 }
 
@@ -965,7 +978,7 @@ public class OpenccJavaFxController {
                     content = content.substring(1);
                 }
 
-                statusAfter = String.format("Text file loaded: %s", file);
+                statusAfter = I18n.format("status.loadFile.txt", file);
                 return content;
             }
 
@@ -1162,7 +1175,7 @@ public class OpenccJavaFxController {
     public void onBtnClearPreviewClicked() {
         textAreaPreview.clear();
         textAreaPreview.getUndoManager().forgetHistory();
-        lblStatus.setText("Preview cleared.");
+        lblStatus.setText(I18n.get("status.clearPreview"));
     }
 
     public void onBtnSaveAsClicked() {
@@ -1332,7 +1345,7 @@ public class OpenccJavaFxController {
     public void onBthRefreshClicked() {
         String sourceText = textAreaSource.getText();
         if (sourceText == null || sourceText.trim().isEmpty()) {
-            lblStatus.setText("Source text is empty, nothing to reflow.");
+            lblStatus.setText(I18n.get("status.reflow.empty"));
             return;
         }
 
@@ -1349,7 +1362,7 @@ public class OpenccJavaFxController {
         // 更新 Source info（字數 / 語種等）
         updateSourceInfo(OpenCC.zhoCheck(reflowed));
 
-        lblStatus.setText("Source text has been reflowed.");
+        lblStatus.setText(I18n.get("status.reflow"));
     }
 
     public void onCbManualClicked() {
@@ -1363,13 +1376,13 @@ public class OpenccJavaFxController {
         lblFilename.setText("");
         lblSourceCode.setText("");
         lblSourceCharCount.setText("");
-        lblStatus.setText("Source content has been cleared.");
+        lblStatus.setText(I18n.get("status.clearSource"));
     }
 
     public void onBthClearDestinationClicked() {
         textAreaDestination.clear();
         textAreaDestination.getUndoManager().forgetHistory();
         lblDestinationCode.setText("");
-        lblStatus.setText("Destination content has been cleared.");
+        lblStatus.setText(I18n.get("status.clearDestination"));
     }
 } // class DemoFxController

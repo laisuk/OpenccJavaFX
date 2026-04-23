@@ -50,7 +50,7 @@ tasks.withType<JavaExec> {
 }
 
 javafx {
-    version = "21.0.10"
+    version = "21.0.11"
     modules("javafx.controls", "javafx.fxml")
 }
 
@@ -69,7 +69,7 @@ dependencies {
 
     //PDFBox
     implementation("org.apache.pdfbox:pdfbox:3.0.7")
-    implementation("commons-logging:commons-logging:1.3.5")
+//    implementation("commons-logging:commons-logging:1.3.5")
 
     // JSoup
     implementation("org.jsoup:jsoup:1.22.1")
