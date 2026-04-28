@@ -1,11 +1,14 @@
 package openccjavacli;
 
 class ConsoleProgressBar {
+    private static final char[] BLOCKS = {' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█'};
+    private static final char[] SPINNER = {'|', '/', '-', '\\'};
+
     private final int width;
-    private int lastPercent = -1;
+    private String lastRendered = "";
 
     ConsoleProgressBar(int width) {
-        this.width = width;
+        this.width = Math.max(10, width);
     }
 
     void update(int current, int total) {
@@ -13,30 +16,41 @@ class ConsoleProgressBar {
             return;
         }
 
-        int percent = current * 100 / total;
-        if (percent == lastPercent) {
-            return; // avoid noisy updates
-        }
-        lastPercent = percent;
+        int normalizedCurrent = Math.max(0, Math.min(current, total));
+        double progress = (double) normalizedCurrent / total;
+        int percent = (int) Math.round(progress * 100.0);
 
-        int filled = percent * width / 100;
-        StringBuilder sb = new StringBuilder();
-        sb.append('\r'); // carriage return: overwrite same line
-        sb.append("[");
+        String rendered = renderLine(normalizedCurrent, total, progress, percent);
+        if (rendered.equals(lastRendered)) {
+            return;
+        }
+        lastRendered = rendered;
+
+        System.err.print('\r' + rendered);
+        if (normalizedCurrent >= total) {
+            System.err.println();
+        }
+    }
+
+    private String renderLine(int current, int total, double progress, int percent) {
+        int filledUnits = (int) Math.floor(progress * width * 8);
+        int fullBlocks = filledUnits / 8;
+        int partialBlock = filledUnits % 8;
+
+        StringBuilder bar = new StringBuilder(width + 2);
+        bar.append('[');
         for (int i = 0; i < width; i++) {
-            sb.append(i < filled ? '=' : ' ');
+            if (i < fullBlocks) {
+                bar.append(BLOCKS[8]);
+            } else if (i == fullBlocks && partialBlock > 0) {
+                bar.append(BLOCKS[partialBlock]);
+            } else {
+                bar.append(BLOCKS[0]);
+            }
         }
-        sb.append("] ");
-        if (percent < 100) {
-            sb.append(String.format("%3d%%", percent));
-        } else {
-            sb.append("100%");
-        }
+        bar.append(']');
 
-        System.err.print(sb);
-
-        if (percent == 100) {
-            System.err.println(); // move to next line at the end
-        }
+        char spinner = current >= total ? '✔' : SPINNER[current % SPINNER.length];
+        return String.format("%s %3d%% (%d/%d) %c", bar, percent, current, total, spinner);
     }
 }
