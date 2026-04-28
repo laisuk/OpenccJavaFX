@@ -6,6 +6,7 @@ class ConsoleProgressBar {
 
     private final int width;
     private String lastRendered = "";
+    private int spinIndex = 0;
 
     ConsoleProgressBar(int width) {
         this.width = Math.max(10, width);
@@ -18,27 +19,36 @@ class ConsoleProgressBar {
 
         int normalizedCurrent = Math.max(0, Math.min(current, total));
         double progress = (double) normalizedCurrent / total;
-        int percent = (int) Math.round(progress * 100.0);
+
+        // smoother percentage (no jitter near 100%)
+        int percent = (int) (progress * 100.0);
 
         String rendered = renderLine(normalizedCurrent, total, progress, percent);
+
+        // avoid unnecessary redraw (flicker reduction)
         if (rendered.equals(lastRendered)) {
             return;
         }
         lastRendered = rendered;
 
+        // carriage return overwrite
         System.err.print('\r' + rendered);
+
         if (normalizedCurrent >= total) {
             System.err.println();
         }
     }
 
     private String renderLine(int current, int total, double progress, int percent) {
-        int filledUnits = (int) Math.floor(progress * width * 8);
+        // safe clamp
+        int filledUnits = Math.min(width * 8, (int) (progress * width * 8));
+
         int fullBlocks = filledUnits / 8;
         int partialBlock = filledUnits % 8;
 
         StringBuilder bar = new StringBuilder(width + 2);
         bar.append('[');
+
         for (int i = 0; i < width; i++) {
             if (i < fullBlocks) {
                 bar.append(BLOCKS[8]);
@@ -48,9 +58,14 @@ class ConsoleProgressBar {
                 bar.append(BLOCKS[0]);
             }
         }
+
         bar.append(']');
 
-        char spinner = current >= total ? '✔' : SPINNER[current % SPINNER.length];
-        return String.format("%s %3d%% (%d/%d) %c", bar, percent, current, total, spinner);
+        // decoupled spinner (stable animation)
+        spinIndex = (spinIndex + 1) % SPINNER.length;
+        char spinner = current >= total ? '✔' : SPINNER[spinIndex];
+
+        // trailing spaces to clear leftovers (Windows safe)
+        return String.format("%s %3d%% (%d/%d) %c   ", bar, percent, current, total, spinner);
     }
 }
