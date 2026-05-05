@@ -1,6 +1,7 @@
 package org.example.openccjavafx;
 
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -11,6 +12,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -391,6 +393,9 @@ public class OpenccJavaFxController {
     private final Label lblStart = new Label();
     private final Label lblExit = new Label();
 
+    private static final Color ACCENT = Color.web("#3b82f6");
+    private static final Color MUTED = Color.GRAY;
+
     private void initUiButtons() {
         btnOpenFile.setGraphic(buildIconText(AppIconGlyph.OPEN_FILE, "button.openFile", 18, lblOpenFile));
         btnOpenFile.setText(null);
@@ -414,9 +419,10 @@ public class OpenccJavaFxController {
         btnPreviewSource.setGraphic(new SymbolIcon(AppIconGlyph.PREVIEW, 20));
         btnSelectPath.setGraphic(new SymbolIcon(AppIconGlyph.FOLDER_OPEN, 20));
         btnClearPreview.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
-        tabMain.setGraphic(new SymbolIcon(AppIconGlyph.SYNC, 18));
-        tabBatch.setGraphic(new SymbolIcon(AppIconGlyph.MOVE_TO_FOLDER, 20));
-        tabSettings.setGraphic(new SymbolIcon(AppIconGlyph.SETTINGS, 18));
+
+        initTabIcon(tabMain, AppIconGlyph.SYNC, 18);
+        initTabIcon(tabBatch, AppIconGlyph.MOVE_TO_FOLDER, 20);
+        initTabIcon(tabSettings, AppIconGlyph.SETTINGS, 18);
     }
 
     private HBox buildIconText(AppIconGlyph glyph, String textKey, double size, Label textRef) {
@@ -429,6 +435,26 @@ public class OpenccJavaFxController {
         box.getStyleClass().add("button-content");
 
         return box;
+    }
+
+    private void initTabIcon(Tab tab, AppIconGlyph glyph, double size) {
+        SymbolIcon icon = new SymbolIcon(glyph, size);
+        tab.setGraphic(icon);
+
+        icon.textFillProperty().bind(
+                Bindings.when(tab.selectedProperty())
+                        .then(ACCENT)
+                        .otherwise(MUTED)
+        );
+
+        tab.selectedProperty().addListener((obs, o, selected) -> {
+            icon.setScaleX(selected ? 1.1 : 1.0);
+            icon.setScaleY(selected ? 1.1 : 1.0);
+        });
+
+        boolean selected = tab.isSelected();
+        icon.setScaleX(selected ? 1.1 : 1.0);
+        icon.setScaleY(selected ? 1.1 : 1.0);
     }
 
     @FXML

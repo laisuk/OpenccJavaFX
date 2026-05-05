@@ -11,6 +11,7 @@ public class SymbolIcon extends Label {
 
     private final ObjectProperty<AppIconGlyph> icon = new SimpleObjectProperty<>();
     private final DoubleProperty iconSize = new SimpleDoubleProperty(DEFAULT_SIZE);
+    private final ObjectProperty<javafx.scene.paint.Paint> iconColor = new SimpleObjectProperty<>();
 
     public SymbolIcon() {
         initialize();
@@ -67,5 +68,16 @@ public class SymbolIcon extends Label {
 
     public DoubleProperty iconSizeProperty() {
         return iconSize;
+    }
+    public javafx.scene.paint.Paint getIconColor() {
+        return iconColor.get();
+    }
+
+    public void setIconColor(javafx.scene.paint.Paint value) {
+        iconColor.set(value);
+    }
+
+    public ObjectProperty<javafx.scene.paint.Paint> iconColorProperty() {
+        return iconColor;
     }
 }
