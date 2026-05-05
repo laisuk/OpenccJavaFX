@@ -13,6 +13,7 @@ import javafx.scene.control.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -395,6 +396,7 @@ public class OpenccJavaFxController {
 
     private static final Color ACCENT = Color.web("#3b82f6");
     private static final Color MUTED = Color.GRAY;
+    private static final Color DANGER = Color.web("#ef4444");
 
     private void initUiButtons() {
         btnOpenFile.setGraphic(buildIconText(AppIconGlyph.OPEN_FILE, "button.openFile", 18, lblOpenFile));
@@ -403,7 +405,10 @@ public class OpenccJavaFxController {
         btnStart.setGraphic(buildIconText(AppIconGlyph.PLAY, "button.start", 20, lblStart));
         btnStart.setText(null);
 
-        btnExit.setGraphic(buildIconText(AppIconGlyph.POWER, "button.exit", 18, lblExit));
+        HBox box = buildIconText(AppIconGlyph.POWER, "button.exit", 18, lblExit);
+        box.getStyleClass().add("danger");
+        btnExit.setGraphic(box);
+//        btnExit.setGraphic(buildIconText(AppIconGlyph.POWER, "button.exit", 18, lblExit));
         btnExit.setText(null);
 
         // icon-only buttons unchanged
@@ -455,6 +460,12 @@ public class OpenccJavaFxController {
         boolean selected = tab.isSelected();
         icon.setScaleX(selected ? 1.1 : 1.0);
         icon.setScaleY(selected ? 1.1 : 1.0);
+    }
+
+    private void initButtonIcon(Button btn, AppIconGlyph glyph, double size, Paint color) {
+        SymbolIcon icon = new SymbolIcon(glyph, size);
+        icon.setTextFill(color);
+        btn.setGraphic(icon);
     }
 
     @FXML

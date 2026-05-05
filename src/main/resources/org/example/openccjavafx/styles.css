@@ -108,6 +108,10 @@
     -fx-alignment: center;
 }
 
+.button-secondary .button-content.danger .app-icon {
+    -fx-text-fill: #ef4444;
+}
+
 .button-secondary .button-text {
     -fx-text-fill: -fx-text-base-color;
 }
