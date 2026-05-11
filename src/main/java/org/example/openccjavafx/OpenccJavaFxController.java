@@ -396,7 +396,7 @@ public class OpenccJavaFxController {
 
     private static final Color ACCENT = Color.web("#3b82f6");
     private static final Color MUTED = Color.GRAY;
-    private static final Color DANGER = Color.web("#ef4444");
+//    private static final Color DANGER = Color.web("#ef4444");
 
     private void initUiButtons() {
         btnOpenFile.setGraphic(buildIconText(AppIconGlyph.OPEN_FILE, "button.openFile", 18, lblOpenFile));

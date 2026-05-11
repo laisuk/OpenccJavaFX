@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "org.example"
-version = "1.2.1"
+version = "1.2.3"
 
 tasks.wrapper {
     // Either download the binary-only version of Gradle (BIN) or
@@ -168,6 +168,7 @@ val appImageRoot: Provider<Directory> = layout.buildDirectory.dir(
 
 // Put dicts into the actual app-image for each OS
 tasks.register<Copy>("copyDicts") {
+    description = "Put dicts into the actual app-image for each OS"
     dependsOn("jpackageImage")
     from("dicts")
     into(appImageRoot.map { it.dir("dicts") })
@@ -183,6 +184,7 @@ tasks.named("copyDicts") {
 
 // Zip the correct app-image path (bundle on macOS, folder elsewhere)
 tasks.register<Zip>("zipAppImage") {
+    description = "Zip the correct app-image path (bundle on macOS, folder elsewhere)"
     dependsOn("jpackageImage", "copyDicts")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
     archiveFileName.set("OpenccJavaFX-portable.zip")
