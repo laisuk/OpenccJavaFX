@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "org.example"
-version = "1.2.3"
+version = "1.3.0"
 
 tasks.wrapper {
     // Either download the binary-only version of Gradle (BIN) or

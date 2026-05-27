@@ -7,6 +7,14 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.3.0] - Unreleased
+
+### Changed
+
+- Update and optimize dictionary data to reduce ambiguity.
+
+---
+
 ## [1.2.2] - 2026-04-26
 
 ### Changed
