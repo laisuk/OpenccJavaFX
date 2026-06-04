@@ -23,6 +23,8 @@ at [Release](https://github.com/laisuk/OpenccJavaFX/releases) section.
 ## Features
 
 - **Chinese Conversion**: Convert between simplified and traditional Chinese text.
+- **Regional Variant Phrases**: Taiwan and Hong Kong forward variant conversion applies phrase-level exceptions before
+  character-level variants.
 - **Single/Batch Conversion**: Perform Chinese text conversion in single or batch mode.
 - Designed to convert most **text based file types** and **Office documents** (`.docx`, `.xlsx`, `.pptx`, `.odt`)
 

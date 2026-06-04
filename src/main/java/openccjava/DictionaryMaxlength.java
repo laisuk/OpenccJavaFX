@@ -160,6 +160,10 @@ public class DictionaryMaxlength {
      */
     public DictEntry tw_variants;
     /**
+     * Taiwan variant phrase mappings.
+     */
+    public DictEntry tw_variants_phrases;
+    /**
      * Taiwan variant reverse mappings.
      */
     public DictEntry tw_variants_rev;
@@ -173,6 +177,10 @@ public class DictionaryMaxlength {
      * Hong Kong variant mappings.
      */
     public DictEntry hk_variants;
+    /**
+     * Hong Kong variant phrase mappings.
+     */
+    public DictEntry hk_variants_phrases;
     /**
      * Hong Kong variant reverse mappings.
      */
@@ -274,6 +282,17 @@ public class DictionaryMaxlength {
     }
 
     /**
+     * Loads all OpenCC dictionary files from the default {@code "dicts"} directory,
+     * then applies custom dictionary specs to selected slots.
+     *
+     * @param customSpecs custom dictionary patches; {@code null} is treated as empty
+     * @return a fully populated and patched {@link DictionaryMaxlength} instance
+     */
+    public static DictionaryMaxlength fromDicts(List<CustomDictSpec> customSpecs) {
+        return fromDicts("dicts", customSpecs);
+    }
+
+    /**
      * Loads all OpenCC dictionary files from the specified base directory.
      * <p>
      * For each required dictionary:
@@ -348,6 +367,114 @@ public class DictionaryMaxlength {
         return r;
     }
 
+    /**
+     * Loads all OpenCC dictionary files from the specified base directory, then
+     * applies custom dictionary specs to selected slots.
+     *
+     * @param basePath    dictionary directory
+     * @param customSpecs custom dictionary patches; {@code null} is treated as empty
+     * @return a fully populated and patched {@link DictionaryMaxlength} instance
+     */
+    public static DictionaryMaxlength fromDicts(String basePath, List<CustomDictSpec> customSpecs) {
+        DictionaryMaxlength r = fromDicts(basePath);
+        applyCustomDictSpecs(r, customSpecs);
+        return r;
+    }
+
+    private static void applyCustomDictSpecs(DictionaryMaxlength dict, List<CustomDictSpec> specs) {
+        if (specs == null) return;
+        for (CustomDictSpec spec : specs) {
+            applyCustomDictSpec(dict, spec);
+        }
+    }
+
+    private static void applyCustomDictSpec(DictionaryMaxlength dict, CustomDictSpec spec) {
+        Objects.requireNonNull(dict, "dict");
+        Objects.requireNonNull(spec, "spec");
+
+        String key = SLOT_KEYS.get(spec.slot);
+        if (key == null) {
+            throw new IllegalArgumentException("Unsupported DictSlot: " + spec.slot);
+        }
+
+        DictEntry current = getEntry(dict, key);
+        Map<String, String> merged = new LinkedHashMap<>();
+        if (spec.mode == CustomDictMode.Append && current != null && current.dict != null) {
+            merged.putAll(current.dict);
+        }
+
+        try {
+            for (Path path : spec.paths) {
+                merged.putAll(loadDictionaryMaxlength(path).dict);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Error loading custom dict for slot: " + spec.slot, ex);
+        }
+        merged.putAll(spec.pairs);
+
+        getAssign().get(key).accept(dict, new DictEntry(merged, computeMaxLength(merged), computeMinLength(merged)));
+    }
+
+    /**
+     * Returns a copied dictionary with custom in-memory dictionary specs applied.
+     *
+     * @param specs custom dictionary specs; {@code null} is treated as empty
+     * @return copied and patched dictionary
+     */
+    public DictionaryMaxlength withCustomDicts(List<CustomDictSpec> specs) {
+        DictionaryMaxlength copy = this.copy();
+        applyCustomDictSpecs(copy, specs);
+        return copy;
+    }
+
+    /**
+     * Returns a copied dictionary with custom dictionary file specs applied.
+     *
+     * @param specs custom dictionary specs; {@code null} is treated as empty
+     * @return copied and patched dictionary
+     */
+    public DictionaryMaxlength withCustomDictFiles(List<CustomDictSpec> specs) {
+        DictionaryMaxlength copy = this.copy();
+        applyCustomDictSpecs(copy, specs);
+        return copy;
+    }
+
+    private DictionaryMaxlength copy() {
+        DictionaryMaxlength r = new DictionaryMaxlength();
+
+        r.st_characters = copyEntry(this.st_characters);
+        r.st_phrases = copyEntry(this.st_phrases);
+        r.st_punctuations = copyEntry(this.st_punctuations);
+
+        r.ts_characters = copyEntry(this.ts_characters);
+        r.ts_phrases = copyEntry(this.ts_phrases);
+        r.ts_punctuations = copyEntry(this.ts_punctuations);
+
+        r.tw_phrases = copyEntry(this.tw_phrases);
+        r.tw_phrases_rev = copyEntry(this.tw_phrases_rev);
+        r.tw_variants = copyEntry(this.tw_variants);
+        r.tw_variants_phrases = copyEntry(this.tw_variants_phrases);
+        r.tw_variants_rev = copyEntry(this.tw_variants_rev);
+        r.tw_variants_rev_phrases = copyEntry(this.tw_variants_rev_phrases);
+
+        r.hk_variants = copyEntry(this.hk_variants);
+        r.hk_variants_phrases = copyEntry(this.hk_variants_phrases);
+        r.hk_variants_rev = copyEntry(this.hk_variants_rev);
+        r.hk_variants_rev_phrases = copyEntry(this.hk_variants_rev_phrases);
+
+        r.jps_characters = copyEntry(this.jps_characters);
+        r.jps_phrases = copyEntry(this.jps_phrases);
+        r.jp_variants = copyEntry(this.jp_variants);
+        r.jp_variants_rev = copyEntry(this.jp_variants_rev);
+
+        return r;
+    }
+
+    private static DictEntry copyEntry(DictEntry entry) {
+        if (entry == null) return null;
+        return new DictEntry(entry.dict, entry.maxLength, entry.minLength);
+    }
+
     // --- No-reflection field assignment table (Java 8 compatible) ---
 
     /**
@@ -360,6 +487,7 @@ public class DictionaryMaxlength {
      * </p>
      */
     private static final Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> ASSIGN;
+    private static final Map<DictSlot, String> SLOT_KEYS;
 
     static {
         Map<String, BiConsumer<DictionaryMaxlength, DictEntry>> m = new LinkedHashMap<>();
@@ -373,9 +501,11 @@ public class DictionaryMaxlength {
         m.put("tw_phrases", (o, e) -> o.tw_phrases = e);
         m.put("tw_phrases_rev", (o, e) -> o.tw_phrases_rev = e);
         m.put("tw_variants", (o, e) -> o.tw_variants = e);
+        m.put("tw_variants_phrases", (o, e) -> o.tw_variants_phrases = e);
         m.put("tw_variants_rev", (o, e) -> o.tw_variants_rev = e);
         m.put("tw_variants_rev_phrases", (o, e) -> o.tw_variants_rev_phrases = e);
         m.put("hk_variants", (o, e) -> o.hk_variants = e);
+        m.put("hk_variants_phrases", (o, e) -> o.hk_variants_phrases = e);
         m.put("hk_variants_rev", (o, e) -> o.hk_variants_rev = e);
         m.put("hk_variants_rev_phrases", (o, e) -> o.hk_variants_rev_phrases = e);
         m.put("jps_characters", (o, e) -> o.jps_characters = e);
@@ -384,6 +514,29 @@ public class DictionaryMaxlength {
         m.put("jp_variants_rev", (o, e) -> o.jp_variants_rev = e);
 
         ASSIGN = Collections.unmodifiableMap(m);
+
+        Map<DictSlot, String> s = new EnumMap<>(DictSlot.class);
+        s.put(DictSlot.STCharacters, "st_characters");
+        s.put(DictSlot.STPhrases, "st_phrases");
+        s.put(DictSlot.STPunctuations, "st_punctuations");
+        s.put(DictSlot.TSCharacters, "ts_characters");
+        s.put(DictSlot.TSPhrases, "ts_phrases");
+        s.put(DictSlot.TSPunctuations, "ts_punctuations");
+        s.put(DictSlot.TWPhrases, "tw_phrases");
+        s.put(DictSlot.TWPhrasesRev, "tw_phrases_rev");
+        s.put(DictSlot.TWVariants, "tw_variants");
+        s.put(DictSlot.TWVariantsPhrases, "tw_variants_phrases");
+        s.put(DictSlot.TWVariantsRev, "tw_variants_rev");
+        s.put(DictSlot.TWVariantsRevPhrases, "tw_variants_rev_phrases");
+        s.put(DictSlot.HKVariants, "hk_variants");
+        s.put(DictSlot.HKVariantsPhrases, "hk_variants_phrases");
+        s.put(DictSlot.HKVariantsRev, "hk_variants_rev");
+        s.put(DictSlot.HKVariantsRevPhrases, "hk_variants_rev_phrases");
+        s.put(DictSlot.JPSCharacters, "jps_characters");
+        s.put(DictSlot.JPSPhrases, "jps_phrases");
+        s.put(DictSlot.JPVariants, "jp_variants");
+        s.put(DictSlot.JPVariantsRev, "jp_variants_rev");
+        SLOT_KEYS = Collections.unmodifiableMap(s);
     }
 
     /**
@@ -431,9 +584,11 @@ public class DictionaryMaxlength {
             m.put("tw_phrases", "TWPhrases.txt");
             m.put("tw_phrases_rev", "TWPhrasesRev.txt");
             m.put("tw_variants", "TWVariants.txt");
+            m.put("tw_variants_phrases", "TWVariantsPhrases.txt");
             m.put("tw_variants_rev", "TWVariantsRev.txt");
             m.put("tw_variants_rev_phrases", "TWVariantsRevPhrases.txt");
             m.put("hk_variants", "HKVariants.txt");
+            m.put("hk_variants_phrases", "HKVariantsPhrases.txt");
             m.put("hk_variants_rev", "HKVariantsRev.txt");
             m.put("hk_variants_rev_phrases", "HKVariantsRevPhrases.txt");
             m.put("jps_characters", "JPShinjitaiCharacters.txt");
@@ -443,6 +598,52 @@ public class DictionaryMaxlength {
             files = Collections.unmodifiableMap(m);
         }
         return files;
+    }
+
+    private static DictEntry getEntry(DictionaryMaxlength dict, String key) {
+        if ("st_characters".equals(key)) return dict.st_characters;
+        if ("st_phrases".equals(key)) return dict.st_phrases;
+        if ("st_punctuations".equals(key)) return dict.st_punctuations;
+        if ("ts_characters".equals(key)) return dict.ts_characters;
+        if ("ts_phrases".equals(key)) return dict.ts_phrases;
+        if ("ts_punctuations".equals(key)) return dict.ts_punctuations;
+        if ("tw_phrases".equals(key)) return dict.tw_phrases;
+        if ("tw_phrases_rev".equals(key)) return dict.tw_phrases_rev;
+        if ("tw_variants".equals(key)) return dict.tw_variants;
+        if ("tw_variants_phrases".equals(key)) return dict.tw_variants_phrases;
+        if ("tw_variants_rev".equals(key)) return dict.tw_variants_rev;
+        if ("tw_variants_rev_phrases".equals(key)) return dict.tw_variants_rev_phrases;
+        if ("hk_variants".equals(key)) return dict.hk_variants;
+        if ("hk_variants_phrases".equals(key)) return dict.hk_variants_phrases;
+        if ("hk_variants_rev".equals(key)) return dict.hk_variants_rev;
+        if ("hk_variants_rev_phrases".equals(key)) return dict.hk_variants_rev_phrases;
+        if ("jps_characters".equals(key)) return dict.jps_characters;
+        if ("jps_phrases".equals(key)) return dict.jps_phrases;
+        if ("jp_variants".equals(key)) return dict.jp_variants;
+        if ("jp_variants_rev".equals(key)) return dict.jp_variants_rev;
+        throw new IllegalArgumentException("Unsupported dictionary key: " + key);
+    }
+
+    private static int computeMaxLength(Map<String, String> dict) {
+        int max = 0;
+        if (dict == null) return max;
+        for (String key : dict.keySet()) {
+            if (key != null && key.length() > max) {
+                max = key.length();
+            }
+        }
+        return max;
+    }
+
+    private static int computeMinLength(Map<String, String> dict) {
+        if (dict == null || dict.isEmpty()) return 0;
+        int min = Integer.MAX_VALUE;
+        for (String key : dict.keySet()) {
+            if (key != null && key.length() < min) {
+                min = key.length();
+            }
+        }
+        return min == Integer.MAX_VALUE ? 0 : min;
     }
 
     /**
@@ -580,12 +781,85 @@ public class DictionaryMaxlength {
      * @throws RuntimeException if writing the file fails
      */
     public void serializeToJson(String outputPath) {
-        ObjectMapper mapper = new ObjectMapper();
-        try (Writer writer = new OutputStreamWriter(Files.newOutputStream(Paths.get(outputPath)), StandardCharsets.UTF_8)) {
-            mapper.writerWithDefaultPrettyPrinter().writeValue(writer, this);
+        try {
+            serializeToJson(Paths.get(outputPath), true, true);
         } catch (IOException e) {
             throw new RuntimeException("Failed to write JSON to: " + outputPath, e);
         }
+    }
+
+    /**
+     * Serializes this dictionary to JSON with stable field order and optional
+     * sorted dictionary keys.
+     *
+     * @param outputPath output file path
+     * @param pretty     whether to write indented JSON
+     * @param sortKeys   whether dictionary map keys should be sorted
+     * @throws IOException if writing fails
+     */
+    public void serializeToJson(Path outputPath, boolean pretty, boolean sortKeys) throws IOException {
+        try (Writer writer = new OutputStreamWriter(Files.newOutputStream(outputPath), StandardCharsets.UTF_8)) {
+            ObjectMapper mapper = new ObjectMapper();
+            Object value = toSerializableMap(sortKeys);
+            if (pretty) {
+                mapper.writerWithDefaultPrettyPrinter().writeValue(writer, value);
+            } else {
+                mapper.writeValue(writer, value);
+            }
+        }
+    }
+
+    /**
+     * Serializes this dictionary to JSON with stable field order and optional
+     * sorted dictionary keys.
+     *
+     * @param outputPath output file path
+     * @param pretty     whether to write indented JSON
+     * @param sortKeys   whether dictionary map keys should be sorted
+     * @throws IOException if writing fails
+     */
+    public void serializeToJson(String outputPath, boolean pretty, boolean sortKeys) throws IOException {
+        serializeToJson(Paths.get(outputPath), pretty, sortKeys);
+    }
+
+    /**
+     * Serializes this dictionary to a JSON string using the same stable field
+     * ordering as file serialization.
+     *
+     * @param pretty   whether to write indented JSON
+     * @param sortKeys whether dictionary map keys should be sorted
+     * @return serialized JSON
+     * @throws IOException if serialization fails
+     */
+    public String serializeToJsonString(boolean pretty, boolean sortKeys) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        Object value = toSerializableMap(sortKeys);
+        if (pretty) {
+            return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value);
+        }
+        return mapper.writeValueAsString(value);
+    }
+
+    private Map<String, Object> toSerializableMap(boolean sortKeys) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (String key : getFiles().keySet()) {
+            out.put(key, toSerializableEntry(getEntry(this, key), sortKeys));
+        }
+        return out;
+    }
+
+    private static Object[] toSerializableEntry(DictEntry entry, boolean sortKeys) {
+        if (entry == null) return null;
+
+        Map<String, String> dict = new LinkedHashMap<>();
+        if (entry.dict != null) {
+            Map<String, String> source = sortKeys
+                    ? new TreeMap<>(entry.dict)
+                    : entry.dict;
+            dict.putAll(source);
+        }
+
+        return new Object[]{dict, entry.maxLength, entry.minLength};
     }
 }
 

@@ -15,6 +15,7 @@ module org.example.openccjavafx {
     requires java.prefs;
 
     opens org.example.openccjavafx to javafx.fxml;
+    opens openccjavacli to info.picocli;
     exports org.example.openccjavafx;
     exports openccjava;
     exports pdfboxhelper;

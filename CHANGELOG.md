@@ -12,6 +12,15 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 ### Changed
 
 - Update and optimize dictionary data to reduce ambiguity.
+- Updated the mirrored `openccjava` package with forward Taiwan/Hong Kong regional variant phrase slots:
+    - Added `DictSlot.TWVariantsPhrases` and `DictSlot.HKVariantsPhrases`.
+    - Loads and serializes `tw_variants_phrases` / `hk_variants_phrases` from `TWVariantsPhrases.txt` /
+      `HKVariantsPhrases.txt`.
+    - Applies forward regional phrase dictionaries before character variants for TW/HK conversions.
+    - Renamed internal union cache keys from `TwVariantsOnly` / `HkVariantsOnly` to `TwVariantsPair` /
+      `HkVariantsPair`.
+- Updated dictionary JSON serialization and `dictgen` to use stable field order, optional sorted keys, and the complete
+  dictionary slot list including `TWVariantsPhrases.txt` and `HKVariantsPhrases.txt`.
 
 ---
 
@@ -49,8 +58,10 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 ## [1.1.1] - 2025-11-25
 
 ### Changed
+
 - Refactored `OfficeHelper` to include a core `byte[]`-based `convert()` API for in-memory document processing.
-- Updated conversion result handling: introduced unified abstract `Result` base class with concrete `FileResult` and `MemoryResult` subtypes.
+- Updated conversion result handling: introduced unified abstract `Result` base class with concrete `FileResult` and
+  `MemoryResult` subtypes.
 - Ensured backward compatibility: legacy `Result` return type remains valid and unchanged for existing users.
 
 ---
