@@ -60,8 +60,8 @@ dependencies {
     implementation("org.fxmisc.richtext:richtextfx:0.11.7")
 
     // JSON serialization/deserialization
-    implementation(platform("com.fasterxml.jackson:jackson-bom:2.21.2"))
-    implementation("com.fasterxml.jackson.core:jackson-databind")
+//    implementation(platform("com.fasterxml.jackson:jackson-bom:2.21.2"))
+//    implementation("com.fasterxml.jackson.core:jackson-databind")
 
     // Core CLI parser
     implementation("info.picocli:picocli:4.7.7")

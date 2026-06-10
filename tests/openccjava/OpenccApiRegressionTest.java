@@ -89,26 +89,45 @@ class OpenccApiRegressionTest {
         pairs.put("b", "2");
         pairs.put("a", "1");
         dictionary.st_characters = new DictionaryMaxlength.DictEntry(pairs, 1, 1);
+        dictionary.tw_variants = new DictionaryMaxlength.DictEntry(
+                Collections.singletonMap("內", "內"),
+                1,
+                1
+        );
         dictionary.tw_variants_phrases = new DictionaryMaxlength.DictEntry(
                 Collections.singletonMap("喫茶小舖", "喫茶小舖"),
                 4,
                 4
+        );
+        dictionary.tw_variants_rev = new DictionaryMaxlength.DictEntry(
+                Collections.singletonMap("內", "內"),
+                1,
+                1
+        );
+        dictionary.hk_variants = new DictionaryMaxlength.DictEntry(
+                Collections.singletonMap("裏", "裡"),
+                1,
+                1
         );
         dictionary.hk_variants_phrases = new DictionaryMaxlength.DictEntry(
                 Collections.singletonMap("無線新聞台", "無綫新聞台"),
                 5,
                 5
         );
+        dictionary.hk_variants_rev = new DictionaryMaxlength.DictEntry(
+                Collections.singletonMap("裡", "裏"),
+                1,
+                1
+        );
 
         String json = dictionary.serializeToJsonString(false, true);
 
-        assertTrue(json.indexOf("\"st_characters\"") < json.indexOf("\"st_phrases\""));
         assertTrue(json.indexOf("\"tw_variants\"") < json.indexOf("\"tw_variants_phrases\""));
         assertTrue(json.indexOf("\"tw_variants_phrases\"") < json.indexOf("\"tw_variants_rev\""));
         assertTrue(json.indexOf("\"hk_variants\"") < json.indexOf("\"hk_variants_phrases\""));
         assertTrue(json.indexOf("\"hk_variants_phrases\"") < json.indexOf("\"hk_variants_rev\""));
         assertTrue(json.indexOf("\"a\"") < json.indexOf("\"b\""));
-        assertTrue(json.contains("\"st_phrases\":null"));
+        assertFalse(json.contains("\"st_phrases\""));
 
         DictionaryMaxlength roundTripped = DictionaryMaxlength.fromJson(
                 new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))
@@ -144,8 +163,11 @@ class OpenccApiRegressionTest {
 
     @Test
     void forwardRegionalVariantsApplyPhrasesBeforeCharacters() {
-        OpenCC taiwan = new OpenCC("t2tw", Paths.get("dicts"));
-        OpenCC hongKong = new OpenCC("t2hk", Paths.get("dicts"));
+        DictionaryMaxlength dict =
+                DictionaryMaxlength.fromDicts("dicts");
+
+        OpenCC taiwan = new OpenCC(OpenccConfig.T2TW, dict);
+        OpenCC hongKong = new OpenCC(OpenccConfig.T2HK, dict);
 
         assertEquals("喫茶小舖", taiwan.convert("喫茶小舖"));
         assertEquals("喫茶小舖", hongKong.convert("喫茶小舖"));

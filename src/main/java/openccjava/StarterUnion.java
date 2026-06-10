@@ -11,8 +11,8 @@ import java.util.*;
  * a full lookup.
  * </p>
  *
- * <p>
- * Internally, two {@link BitSet}s are maintained:
+ * <p>Internally, two {@link BitSet}s are maintained:</p>
+ *
  * <ul>
  *   <li>{@code bmpMask} – for all starters in the Basic Multilingual Plane
  *       (U+0000 to U+FFFF)</li>
@@ -51,11 +51,11 @@ public final class StarterUnion {
      *
      * <ul>
      *   <li><b>{@code bmpLenMask}</b> – fixed-size array indexed by BMP code point
-     *       value (U+0000..U+FFFF). Each entry is a 64-bit bitmask where bit {@code L}
+     *       value (U+0000 to U+FFFF). Each entry is a 64-bit bitmask where bit {@code L}
      *       is set if there exists a dictionary key of length {@code L} starting with
      *       that code point.</li>
      *   <li><b>{@code astralLenMask}</b> – sparse map for astral plane code points
-     *       (U+10000..U+10FFFF). Each entry maps a code point to its 64-bit length mask,
+     *       (U+10000 to U+10FFFF). Each entry maps a code point to its 64-bit length mask,
      *       using the same encoding as {@code bmpLenMask}.</li>
      * </ul>
      *
@@ -197,8 +197,8 @@ public final class StarterUnion {
 
     /**
      * Returns the number of UTF-16 code units required to represent the given starter.
-     * <p>
-     * This is used when advancing through a {@link CharSequence} during conversion.
+     *
+     * <p>This is used when advancing through a {@link CharSequence} during conversion.</p>
      * <ul>
      *   <li>For BMP characters, the return value is {@code 1} (a single {@code char}).</li>
      *   <li>For non-BMP characters (astral planes), the return value is {@code 2}
@@ -238,4 +238,3 @@ public final class StarterUnion {
         return c1;
     }
 }
-

@@ -3,6 +3,7 @@ package openccjava;
 import openccjava.DictionaryMaxlength.DictEntry;
 
 import java.io.InputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,7 +72,6 @@ public class OpenCC {
      */
     private final DictionaryMaxlength dictionary;
 
-
     /**
      * Stores the last error message encountered, if any.
      */
@@ -80,7 +80,7 @@ public class OpenCC {
     /**
      * Default conversion configuration for OpenCC
      */
-    private static final OpenccConfig DEFAULT_CONFIG = OpenccConfig.defaultConfig();
+    private static final OpenccConfig DEFAULT_CONFIG = OpenccConfig.S2T;
 
     /**
      * Backing field for default config
@@ -125,7 +125,7 @@ public class OpenCC {
      *
      * <p>If all attempts fail, a {@link RuntimeException} is thrown.</p>
      *
-     * <p><b>Usage example:</b></p>
+     * <b>Usage Example:</b>
      * <pre>{@code
      * DictionaryMaxlength dict = OpenCC.DictionaryHolder.get();
      * }</pre>
@@ -163,11 +163,11 @@ public class OpenCC {
             try {
                 Path jsonPath = Paths.get("dicts", "dictionary_maxlength.json");
                 if (Files.exists(jsonPath)) {
-                    return DictionaryMaxlength.fromJson(jsonPath.toString());
+                    return DictionaryMaxlength.fromJsonNoDeps(jsonPath);
                 }
                 try (InputStream in = DictionaryMaxlength.class.getResourceAsStream(
                         "/dicts/dictionary_maxlength.json")) {
-                    if (in != null) return DictionaryMaxlength.fromJson(in);
+                    if (in != null) return DictionaryMaxlength.fromJsonNoDeps(in);
                     return DictionaryMaxlength.fromDicts();
                 }
             } catch (Exception e) {
@@ -212,6 +212,97 @@ public class OpenCC {
      */
     public static OpenCC fromConfig(OpenccConfig configId) {
         return new OpenCC(configId);
+    }
+
+    /**
+     * Creates an {@link OpenCC} instance with the default configuration
+     * ({@code s2t}) and custom dictionary files.
+     *
+     * <p>This method loads a caller-owned {@link DictionaryMaxlength} through
+     * {@link DictionaryMaxlength#fromDicts(java.util.List)}. It does not use or
+     * modify {@link DictionaryHolder}. If {@code specs} is {@code null} or
+     * empty, the returned converter uses a separately loaded dictionary without
+     * custom patches.</p>
+     *
+     * <p>Custom dictionary files are parsed with the same parser used for
+     * built-in OpenCC text dictionaries. After construction, the converter is
+     * immutable for normal conversion use and does not hot-reload custom files.</p>
+     *
+     * @param specs custom dictionary specs to apply; may be {@code null} or empty
+     * @return a new converter using a caller-owned dictionary
+     * @throws RuntimeException     if an official or custom dictionary file cannot be loaded
+     * @throws NullPointerException if {@code specs} contains a {@code null} spec
+     */
+    public static OpenCC fromDicts(List<CustomDictSpec> specs) {
+        return fromDicts(DEFAULT_CONFIG, specs);
+    }
+
+    /**
+     * Creates an {@link OpenCC} instance with a typed configuration and custom
+     * dictionary files.
+     *
+     * <p>This method loads a caller-owned {@link DictionaryMaxlength} through
+     * {@link DictionaryMaxlength#fromDicts(java.util.List)}. It does not use or
+     * modify {@link DictionaryHolder}. If {@code specs} is {@code null} or
+     * empty, the returned converter uses a separately loaded dictionary without
+     * custom patches.</p>
+     *
+     * <p>If {@code config} is {@code null}, the default configuration
+     * ({@code s2t}) is used. Custom dictionary files are parsed with the same
+     * parser used for built-in OpenCC text dictionaries. After construction,
+     * the converter is immutable for normal conversion use and does not
+     * hot-reload custom files.</p>
+     *
+     * @param config the configuration ID, or {@code null} to use the default
+     * @param specs  custom dictionary specs to apply; may be {@code null} or empty
+     * @return a new converter using a caller-owned dictionary
+     * @throws RuntimeException     if an official or custom dictionary file cannot be loaded
+     * @throws NullPointerException if {@code specs} contains a {@code null} spec
+     */
+    public static OpenCC fromDicts(
+            OpenccConfig config,
+            List<CustomDictSpec> specs
+    ) {
+        DictionaryMaxlength dict =
+                DictionaryMaxlength.fromDicts(specs);
+
+        return new OpenCC(config, dict);
+    }
+
+    /**
+     * Creates an {@link OpenCC} instance from a custom official dictionary
+     * directory and custom dictionary files.
+     *
+     * <p>This method loads a caller-owned {@link DictionaryMaxlength} through
+     * {@link DictionaryMaxlength#fromDicts(String, java.util.List)}. It does
+     * not use or modify {@link DictionaryHolder}. If {@code specs} is
+     * {@code null} or empty, the returned converter uses a separately loaded
+     * dictionary from {@code basePath} without custom patches.</p>
+     *
+     * <p>If {@code config} is {@code null}, the default configuration
+     * ({@code s2t}) is used. Custom dictionary files are parsed with the same
+     * parser used for built-in OpenCC text dictionaries. After construction,
+     * the converter is immutable for normal conversion use and does not
+     * hot-reload custom files.</p>
+     *
+     * @param config   the configuration ID, or {@code null} to use the default
+     * @param basePath the path to the directory containing official dictionary
+     *                 {@code .txt} files; must not be {@code null}
+     * @param specs    custom dictionary specs to apply; may be {@code null} or empty
+     * @return a new converter using a caller-owned dictionary
+     * @throws RuntimeException     if an official or custom dictionary file cannot be loaded
+     * @throws NullPointerException if {@code basePath} is {@code null} or
+     *                              {@code specs} contains a {@code null} spec
+     */
+    public static OpenCC fromDicts(
+            OpenccConfig config,
+            String basePath,
+            List<CustomDictSpec> specs
+    ) {
+        DictionaryMaxlength dict =
+                DictionaryMaxlength.fromDicts(basePath, specs);
+
+        return new OpenCC(config, dict);
     }
 
     // ---------- Instance constructors + API ----------
@@ -265,10 +356,8 @@ public class OpenCC {
      * <p><b>Important:</b> Because the dictionary is a shared singleton,
      * any modification to its contents (for example, adding or removing entries)
      * will affect <em>all</em> {@code OpenCC} instances within the same JVM.</p>
-     *
-     * <p>If all dictionary loading attempts fail, a {@link RuntimeException}
-     * is thrown before the instance can be observed. Inspect the exception and
-     * its cause for the underlying failure reason.</p>
+     * <p>
+     * is thrown before the instance can be created.
      *
      * @param config the configuration key (for example {@code "s2t"},
      *               {@code "S2TWP"}, {@code "tw2sp"}); may be {@code null}
@@ -299,6 +388,47 @@ public class OpenCC {
     }
 
     /**
+     * Constructs an {@code OpenCC} instance using the default configuration
+     * ({@code s2t}) and a caller-supplied dictionary.
+     *
+     * <p>The supplied {@link DictionaryMaxlength} is used directly. This
+     * constructor does not use or modify {@link DictionaryHolder}. It is
+     * intended for dictionaries built with custom files or loaded by the caller.</p>
+     *
+     * <p>After construction, normal conversion is immutable and fast. To change
+     * custom dictionary contents, build a new {@link DictionaryMaxlength} and
+     * create a new {@code OpenCC} instance.</p>
+     *
+     * @param dictionary the dictionary to use; must not be {@code null}
+     * @throws NullPointerException if {@code dictionary} is {@code null}
+     */
+    public OpenCC(DictionaryMaxlength dictionary) {
+        this(DEFAULT_CONFIG, dictionary);
+    }
+
+    /**
+     * Constructs an {@code OpenCC} instance using a typed configuration and a
+     * caller-supplied dictionary.
+     *
+     * <p>The supplied {@link DictionaryMaxlength} is used directly. This
+     * constructor does not use or modify {@link DictionaryHolder}. It is
+     * intended for dictionaries built with custom files or loaded by the caller.</p>
+     *
+     * <p>If {@code config} is {@code null}, the default configuration
+     * ({@code s2t}) is used. After construction, normal conversion is immutable
+     * and fast. To change custom dictionary contents, build a new
+     * {@link DictionaryMaxlength} and create a new {@code OpenCC} instance.</p>
+     *
+     * @param config     the configuration ID, or {@code null} to use the default
+     * @param dictionary the dictionary to use; must not be {@code null}
+     * @throws NullPointerException if {@code dictionary} is {@code null}
+     */
+    public OpenCC(OpenccConfig config, DictionaryMaxlength dictionary) {
+        this.dictionary = Objects.requireNonNull(dictionary, "dictionary");
+        setConfig(config);
+    }
+
+    /**
      * Constructs an OpenCC instance using plain text dictionaries from the given directory.
      * <p>
      * <strong>Deprecated:</strong> This constructor will be removed in the next major version.
@@ -319,18 +449,6 @@ public class OpenCC {
         }
 
         setConfig(config);
-    }
-
-    /**
-     * Retrieves the {@link DictRefs} for the given configuration and punctuation mode,
-     * including attached {@link StarterUnion}s.
-     *
-     * @param cfg         the conversion configuration
-     * @param punctuation whether punctuation conversion is enabled
-     * @return the prepared {@link DictRefs} for this configuration
-     */
-    private DictRefs getDictRefsUnionForConfigId(OpenccConfig cfg, boolean punctuation) {
-        return ConversionPlanCache.getPlan(dictionary, cfg, punctuation);
     }
 
     /**
@@ -586,6 +704,12 @@ public class OpenCC {
             case TW2SP:
                 result = tw2sp(input, punctuation);
                 break;
+            case S2HKP:
+                result = s2hkp(input, punctuation);
+                break;
+            case HK2SP:
+                result = hk2sp(input, punctuation);
+                break;
             case S2HK:
                 result = s2hk(input, punctuation);
                 break;
@@ -631,6 +755,18 @@ public class OpenCC {
     }
 
     /**
+     * Retrieves the {@link DictRefs} for the given configuration and punctuation mode,
+     * including attached {@link StarterUnion}s.
+     *
+     * @param cfg         the conversion configuration
+     * @param punctuation whether punctuation conversion is enabled
+     * @return the prepared {@link DictRefs} for this configuration
+     */
+    private DictRefs getDictRefsUnionForConfigId(OpenccConfig cfg, boolean punctuation) {
+        return ConversionPlanCache.forDictionary(dictionary).getPlan(cfg, punctuation);
+    }
+
+    /**
      * Applies dictionary-based replacements to the input text using segment-based processing.
      *
      * <p>If the text contains multiple segments (e.g., based on punctuation/delimiters),
@@ -642,12 +778,45 @@ public class OpenCC {
      * @return the converted text
      */
     public String segmentReplace(String text, List<DictEntry> dicts, int maxLength) {
-        return applySegmentReplaceInternal(
-                text,
-                10_000,
-                100,
-                segment -> convertSegment(segment, dicts, maxLength)
-        );
+        if (text == null || text.isEmpty()) return text;
+
+        List<int[]> ranges = getSplitRanges(text, true);
+        int numSegments = ranges.size();
+        int textLength = text.length();
+
+        // Fast path: entire text is one uninterrupted segment
+        if (numSegments == 1 &&
+                ranges.get(0)[0] == 0 &&
+                ranges.get(0)[1] == textLength) {
+            return convertSegment(text, dicts, maxLength);
+        }
+
+        // Use parallel stream if input is large or highly segmented
+        boolean useParallel = textLength > 10_000 || numSegments > 100;
+        int sbCapacity = textLength + (textLength >> 4);
+        StringBuilder sb = new StringBuilder(sbCapacity);
+
+        if (useParallel) {
+            String[] segments = new String[numSegments];
+
+            IntStream.range(0, numSegments).parallel().forEach(i -> {
+                int[] range = ranges.get(i);
+                String segment = text.substring(range[0], range[1]);
+                segments[i] = convertSegment(segment, dicts, maxLength);
+            });
+
+            // Join all converted segments
+            for (String seg : segments) {
+                sb.append(seg);
+            }
+        } else {
+            // Fallback: sequential processing
+            for (int[] range : ranges) {
+                String segment = text.substring(range[0], range[1]);
+                sb.append(convertSegment(segment, dicts, maxLength));
+            }
+        }
+        return sb.toString();
     }
 
     /**
@@ -752,61 +921,13 @@ public class OpenCC {
         return result;
     }
 
-    @FunctionalInterface
-    private interface SegmentConverter {
-        String apply(String segment);
-    }
-
-    private String applySegmentReplaceInternal(String text,
-                                               int parallelTextThreshold,
-                                               int parallelSegmentThreshold,
-                                               SegmentConverter converter) {
-        if (text == null || text.isEmpty()) return text;
-
-        List<int[]> ranges = getSplitRanges(text, true);
-        int numSegments = ranges.size();
-        int textLength = text.length();
-
-        if (numSegments == 1 &&
-                ranges.get(0)[0] == 0 &&
-                ranges.get(0)[1] == textLength) {
-            return converter.apply(text);
-        }
-
-        boolean useParallel = textLength > parallelTextThreshold || numSegments > parallelSegmentThreshold;
-        int sbCapacity = textLength + (textLength >> 4);
-        StringBuilder sb = new StringBuilder(sbCapacity);
-
-        if (useParallel) {
-            String[] segments = new String[numSegments];
-
-            IntStream.range(0, numSegments).parallel().forEach(i -> {
-                int[] range = ranges.get(i);
-                String segment = text.substring(range[0], range[1]);
-                segments[i] = converter.apply(segment);
-            });
-
-            for (String segment : segments) {
-                sb.append(segment);
-            }
-        } else {
-            for (int[] range : ranges) {
-                String segment = text.substring(range[0], range[1]);
-                sb.append(converter.apply(segment));
-            }
-        }
-        return sb.toString();
-    }
-
     /**
      * Performs dictionary-based segment replacement using a starter union and
-     * phrase/single partitioning.
+     * cached phrase/single partitioning.
      *
      * <p>This method accelerates conversion by:</p>
      * <ul>
-     *   <li>Partitioning the provided dictionaries into phrase dictionaries
-     *       (length ≥ 3) and single-character dictionaries (length &lt; 3)
-     *       via cached partitions stored in {@link DictRefs}.</li>
+     *   <li>Reusing the per-round partition cached in {@link DictRefs.DictPartition}</li>
      *   <li>Splitting the input text into independent ranges using
      *       {@link #getSplitRanges(String, boolean)}.</li>
      *   <li>Passing each segment to {@code convertSegmentWithUnion}, which uses
@@ -815,37 +936,31 @@ public class OpenCC {
      *
      * <p>Execution mode:</p>
      * <ul>
-     *   <li><b>Parallel</b> – if the input text exceeds 10,000 characters or
-     *       there are more than 100 split segments, segments are processed
+     *   <li><b>Parallel</b> - if the input text exceeds 100,000 characters or
+     *       there are more than 1,000 split segments, segments are processed
      *       in parallel using {@link IntStream#parallel()}.</li>
-     *   <li><b>Sequential</b> – otherwise, segments are processed in order
+     *   <li><b>Sequential</b> - otherwise, segments are processed in order
      *       in a single thread.</li>
      * </ul>
      *
      * <p>If the text is {@code null} or empty, it is returned unchanged.</p>
      *
-     * @param text      the input text
-     * @param part      the dictionaries partition to use for conversion
-     * @param maxLength the maximum phrase length
-     * @param union     the starter union for fast starter checks
+     * @param text the input text
+     * @param part the cached partition metadata for the round
      * @return the converted text
      */
-    // Internal: faster converter for a single segment using pre-partitioned dicts
-    private String segmentReplaceWithUnion(String text,
-                                           DictRefs.DictPartition part,
-                                           int maxLength,
-                                           StarterUnion union) {
+    public String segmentReplaceWithUnion(String text, DictRefs.DictPartition part) {
         if (text == null || text.isEmpty()) return text;
+        if (part.phraseDicts.isEmpty() && part.singleDicts.isEmpty()) return text;
 
         int textLen = text.length();
-
         List<int[]> ranges = getSplitRanges(text, true);
         int numSegments = ranges.size();
 
         if (numSegments == 1 &&
                 ranges.get(0)[0] == 0 &&
                 ranges.get(0)[1] == textLen) {
-            return convertSegmentWithUnion(text, part, maxLength, union);
+            return convertSegmentWithUnion(text, part);
         }
 
         boolean useParallel = textLen > 100_000 || numSegments > 1_000;
@@ -858,51 +973,74 @@ public class OpenCC {
             IntStream.range(0, numSegments).parallel().forEach(i -> {
                 int[] range = ranges.get(i);
                 String seg = text.substring(range[0], range[1]);
-                segments[i] = convertSegmentWithUnion(seg, part, maxLength, union);
+                segments[i] = convertSegmentWithUnion(seg, part);
             });
 
             for (String seg : segments) sb.append(seg);
         } else {
             for (int[] range : ranges) {
                 String segment = text.substring(range[0], range[1]);
-                sb.append(convertSegmentWithUnion(segment, part, maxLength, union));
+                sb.append(convertSegmentWithUnion(segment, part));
             }
         }
         return sb.toString();
     }
 
+    // Internal: faster converter for a single segment using pre-partitioned dicts
+
     /**
-     * Converts a single text segment using a cached dictionary partition and an optional
-     * {@link StarterUnion}.
+     * Converts a single text segment using pre-partitioned dictionaries and an optional {@link StarterUnion}.
      *
-     * @param input       the text segment to convert
-     * @param part        cached phrase/single dictionary partition for the round
-     * @param roundMaxLen per-round maximum phrase length limit
-     * @param union       optional starter union for fast starter rejection and length filtering
+     * <h3>Overview</h3>
+     * This method implements the OpenCC-style greedy, phrase-first replacement algorithm with several
+     * optimizations to minimize unnecessary lookups. It processes the input string left to right, emitting
+     * replacements or original code points as appropriate.
+     *
+     * <h3>Algorithm</h3>
+     * <ol>
+     *   <li><b>Starter pre-check:</b>
+     *       If a {@link StarterUnion} is provided and the current code point is not present in its starter
+     *       mask, the code point is copied directly without performing any dictionary lookups.</li>
+     *   <li><b>Phrase-first search (greedy):</b>
+     *       <ul>
+     *         <li>Candidate lengths are bounded by both {@code phraseMaxLen}/{@code phraseMinLen}
+     *             from {@link DictRefs.DictPartition} and the per-starter {@code lenMask} from {@code StarterUnion}.</li>
+     *         <li>Lengths are tried longest-to-shortest to ensure deterministic greedy matching.</li>
+     *         <li>Each dictionary entry is filtered by its {@code minLength}/{@code maxLength} to skip
+     *             impossible candidates early.</li>
+     *         <li>On the first hit, the replacement is appended and the cursor advances by the matched length.</li>
+     *       </ul>
+     *   </li>
+     *   <li><b>Single-character fallback:</b>
+     *       If no phrase match is found, the algorithm attempts a lookup in {@code singleDicts} using exactly
+     *       the current code point (or surrogate pair). On hit, the replacement is appended and the cursor
+     *       advances by one code point.</li>
+     *   <li><b>No match:</b>
+     *       If neither phrase nor single dictionaries contain the key, the original code point is appended and
+     *       the cursor advances by one code point.</li>
+     * </ol>
+     *
+     * @param input the text segment to convert (non-null; empty string is returned immediately)
+     * @param part  partitioned dictionaries and cached round metadata
      * @return the converted string segment
      */
     private static String convertSegmentWithUnion(
             String input,
-            DictRefs.DictPartition part,
-            int roundMaxLen,
-            StarterUnion union
+            DictRefs.DictPartition part
     ) {
         final int n = input.length();
         if (n == 0) return input;
 
         final StringBuilder out = new StringBuilder(n + (n >> 4));
-
-        // Hoist these to avoid repeated virtual calls
+        final StarterUnion union = part.union;
         final boolean hasPhrases = !part.phraseDicts.isEmpty();
         final boolean hasSingles = !part.singleDicts.isEmpty();
 
         int i = 0;
         while (i < n) {
-            // --- Starter code point (safe: we're inside a single String segment) ---
             final int cp = input.codePointAt(i);
             final int starterLen = Character.charCount(cp);
 
-            // 1) Starter union pre-check
             if (union != null && !union.hasStarter(cp)) {
                 out.appendCodePoint(cp);
                 i += starterLen;
@@ -912,22 +1050,19 @@ public class OpenCC {
             String hit = null;
             int hitLen = 0;
 
-            // 2) Phrase search (respects phraseMinLen, per-entry min/max, and union lenMask)
             if (hasPhrases) {
                 final int remaining = n - i;
-                final int tryMax = Math.min(Math.min(part.phraseMaxLen, roundMaxLen), remaining);
-                if (tryMax >= 1) {
-                    final int tryMin = Math.max(1, Math.min(part.phraseMinLen, remaining));
+                if (remaining >= part.phraseMinLen) {
+                    final int tryMax = Math.min(Math.min(part.phraseMaxLen, part.roundMaxLen), remaining);
+                    final int tryMin = part.phraseMinLen;
                     if (tryMax >= tryMin) {
-                        final long lMask = (union != null) ? union.lenMask(cp) : ~0L; // no union ⇒ allow all
+                        final long lMask = (union != null) ? union.lenMask(cp) : ~0L;
                         if (lMask != 0L) {
                             outer:
                             for (int len = tryMax; len >= tryMin; len--) {
-                                // Skip impossible lengths per union mask (mask covers lengths 0..63)
                                 if (len < 64 && ((lMask >>> len) & 1L) == 0L) continue;
 
                                 final int j = i + len;
-                                // Guard (should be redundant due to tryMax/remaining, but cheap & safe)
                                 if (j > n) continue;
 
                                 final String sub = input.substring(i, j);
@@ -946,10 +1081,7 @@ public class OpenCC {
                 }
             }
 
-            // 3) Single-char (or surrogate pair) fallback
             if (hit == null && hasSingles) {
-                // i + starterLen <= n is guaranteed by how starterLen is formed,
-                // but keep a minimal guard for clarity.
                 final int j = i + starterLen;
                 if (j <= n) {
                     final String sub = input.substring(i, j);
@@ -964,7 +1096,6 @@ public class OpenCC {
                 }
             }
 
-            // 4) Emit
             if (hit != null) {
                 out.append(hit);
                 i += hitLen;
@@ -1026,7 +1157,13 @@ public class OpenCC {
     }
 
     /**
-     * Converts Simplified Chinese to Traditional Chinese (Taiwan with phrase and variant adjustments).
+     * Converts Simplified Chinese to Taiwan-style Traditional Chinese.
+     *
+     * <p>The conversion is applied in two rounds:</p>
+     * <ol>
+     *   <li>Simplified Chinese to Traditional Chinese.</li>
+     *   <li>Traditional Chinese to Taiwan phrase and variant normalization.</li>
+     * </ol>
      *
      * @param input       the text in Simplified Chinese
      * @param punctuation whether to also convert punctuation marks
@@ -1046,6 +1183,42 @@ public class OpenCC {
      */
     public String tw2sp(String input, boolean punctuation) {
         DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2SP, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+    }
+
+    /**
+     * Converts Simplified Chinese to Hong Kong Traditional Chinese with
+     * phrase-level Hong Kong normalization.
+     *
+     * <p>This applies Simplified-to-Traditional conversion first, then applies
+     * Hong Kong phrase, phrase-variant, and character-variant dictionaries.
+     * Optional punctuation conversion uses the same dictionary-based mechanism
+     * as {@link #s2twp(String, boolean)}.</p>
+     *
+     * @param input       the text in Simplified Chinese
+     * @param punctuation whether to also convert punctuation marks
+     * @return the converted text in phrase-normalized Hong Kong Traditional Chinese
+     */
+    public String s2hkp(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2HKP, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+    }
+
+    /**
+     * Converts Hong Kong Traditional Chinese to Simplified Chinese with
+     * phrase-level Hong Kong reverse normalization.
+     *
+     * <p>This applies Hong Kong phrase and variant reverse normalization first,
+     * then applies Traditional-to-Simplified conversion. Optional punctuation
+     * conversion uses the same dictionary-based mechanism as
+     * {@link #tw2sp(String, boolean)}.</p>
+     *
+     * @param input       the text in Hong Kong Traditional Chinese
+     * @param punctuation whether to also convert punctuation marks
+     * @return the converted text in Simplified Chinese
+     */
+    public String hk2sp(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2SP, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1190,9 +1363,9 @@ public class OpenCC {
     /**
      * Attempts to detect whether the input text is written in Traditional or Simplified Chinese.
      *
-     * <p>This method removes non-Chinese characters from up to the first 500 UTF-16 code units
-     * of the input, then analyzes the first 100 Unicode code points of the stripped text for
-     * mismatches between the input and its conversion to Simplified and Traditional Chinese.
+     * <p>This method removes non-Chinese characters from at most the first 500 UTF-16 code units
+     * of the input, then analyzes up to the first 100 Unicode code points for mismatches between
+     * the input and its conversion to Simplified and Traditional Chinese.
      *
      * <p>Return codes:
      * <ul>
@@ -1234,8 +1407,8 @@ public class OpenCC {
      * <p>Detection process:</p>
      * <ul>
      *   <li>Non-Chinese characters are stripped from the first portion of the text.</li>
-     *   <li>Analysis is limited to text drawn from the first 500 UTF-16 code units,
-     *       then capped at 100 Unicode code points after stripping.</li>
+     *   <li>Analysis is limited to text drawn from at most the first 500 UTF-16 code units,
+     *       capped at 100 Unicode code points after stripping.</li>
      *   <li>The substring is compared against its conversions to Simplified and
      *       Traditional Chinese.</li>
      * </ul>
@@ -1250,12 +1423,91 @@ public class OpenCC {
      * @param input the input text to check (maybe {@code null} or empty)
      * @return an integer code representing the detected Chinese variant
      * @see #zhoCheck(String)
-     * @deprecated since 1.1.0 Use {@link #zhoCheck(String)} instead.
-     * This method remains only for instance-based compatibility.
+     * @deprecated since 1.1.0 - {@code zhoCheck} is now a static method.
+     * Use {@link #zhoCheck(String)} instead.
      */
     @Deprecated
     public final int zhoCheckInstance(String input) {
         return OpenCC.zhoCheck(input);
+    }
+
+    /**
+     * Applies DeTofu display-compatible fallbacks to mapped rare CJK extension characters.
+     *
+     * <p>This is a convenience wrapper around {@link DeTofu#convert(String, DeTofu.Level)}.</p>
+     *
+     * <p>DeTofu is a display compatibility pass. It does not modify OpenCC conversion
+     * dictionaries, phrase matching, regional variant selection, script detection, or
+     * punctuation conversion.</p>
+     *
+     * <p>For converted text, apply DeTofu after {@code convert(...)}.</p>
+     *
+     * @param text  the input text; {@code null} is treated as empty text
+     * @param level the threshold-based DeTofu extension level
+     * @return text with mapped tofu-risk characters replaced and unmapped characters preserved
+     */
+    public String deTofu(String text, DeTofu.Level level) {
+        return DeTofu.convert(text, level);
+    }
+
+    /**
+     * Applies DeTofu display-compatible fallbacks using the built-in mappings plus a custom fallback file.
+     *
+     * <p>This is a convenience wrapper around {@link DeTofu#builtinMap(DeTofu.Level)},
+     * {@link DeTofu.Map#withCustomFile(String)}, and {@link DeTofu.Map#convert(String)}.</p>
+     *
+     * <p>Custom mappings are applied after the built-in table. If the same tofu-risk
+     * character exists in both sources, the custom file mapping takes precedence.</p>
+     *
+     * <p>The fallback file must be UTF-8 text with one mapping per line:</p>
+     *
+     * <pre>{@code
+     * tofu_char<TAB>fallback_char<TAB>extension
+     * }</pre>
+     *
+     * <p>The extension column accepts either {@code B}–{@code I} or
+     * {@code ExtB}–{@code ExtI}. Lines beginning with {@code #} and blank lines
+     * are ignored.</p>
+     *
+     * @param text  the input text; {@code null} is treated as empty text
+     * @param level the threshold-based DeTofu extension level
+     * @param path  path to a UTF-8 custom DeTofu fallback file
+     * @return text with mapped tofu-risk characters replaced and unmapped characters preserved
+     * @throws IOException          if the custom fallback file cannot be read
+     * @throws NullPointerException if {@code path} is {@code null}
+     */
+    public String deTofuWithCustomFile(String text, DeTofu.Level level, String path) throws IOException {
+        return DeTofu
+                .builtinMap(level)
+                .withCustomFile(path)
+                .convert(text);
+    }
+
+    /**
+     * Applies DeTofu display-compatible fallbacks using the built-in mappings plus
+     * custom in-memory fallback mappings.
+     *
+     * <p>Custom mappings are applied after the built-in table. If the same tofu-risk
+     * character exists in both sources, the custom mapping takes precedence.</p>
+     *
+     * <p>Keys are tofu-risk characters and values are their display-compatible
+     * fallback characters.</p>
+     *
+     * @param text  the input text; {@code null} is treated as empty text
+     * @param level the threshold-based DeTofu extension level
+     * @param pairs custom tofu-risk character mappings
+     * @return text with mapped tofu-risk characters replaced and unmapped characters preserved
+     * @throws NullPointerException if {@code pairs} is {@code null}
+     */
+    public String deTofuWithCustomPairs(
+            String text,
+            DeTofu.Level level,
+            java.util.Map<String, String> pairs
+    ) {
+        return DeTofu
+                .builtinMap(level)
+                .withCustomPairs(pairs)
+                .convert(text);
     }
 
     /**
@@ -1279,6 +1531,7 @@ public class OpenCC {
      * enabled (see {@link DictionaryMaxlength} and the conversion methods that
      * accept a punctuation option).
      */
+    @SuppressWarnings("unused")
     @Deprecated
     private String translatePunctuation(String input, Map<Character, Character> map) {
         StringBuilder sb = new StringBuilder(input.length());
@@ -1289,6 +1542,3 @@ public class OpenCC {
     }
 
 }
-
-
-

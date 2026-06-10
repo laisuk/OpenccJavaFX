@@ -43,6 +43,16 @@ public enum OpenccConfig {
     TW2SP,
 
     /**
+     * Simplified → Traditional (Hong Kong, with phrases).
+     */
+    S2HKP,
+
+    /**
+     * Traditional (Hong Kong, with phrases) → Simplified.
+     */
+    HK2SP,
+
+    /**
      * Simplified → Traditional (Hong Kong).
      */
     S2HK,
@@ -136,6 +146,7 @@ public enum OpenccConfig {
     private static Map<String, OpenccConfig> buildLookup() {
         Map<String, OpenccConfig> m = new HashMap<>();
         for (OpenccConfig c : values()) {
+            m.put(c.name().toLowerCase(Locale.ROOT), c);
             m.put(c.toCanonicalName(), c);
         }
         return Collections.unmodifiableMap(m);
@@ -212,5 +223,5 @@ public enum OpenccConfig {
     public static boolean isValidConfig(String value) {
         return tryParse(value) != null;
     }
-}
 
+}

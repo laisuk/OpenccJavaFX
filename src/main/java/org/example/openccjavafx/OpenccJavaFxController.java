@@ -844,13 +844,13 @@ public class OpenccJavaFxController {
     private OpenccConfig getCurrentConfigId() {
         if (rbS2t.isSelected()) {
             if (rbStd.isSelected()) return OpenccConfig.S2T;
-            if (rbHK.isSelected()) return OpenccConfig.S2HK;
+            if (rbHK.isSelected()) return cbZHTW.isSelected() ? OpenccConfig.S2HKP : OpenccConfig.S2HK;
             return cbZHTW.isSelected() ? OpenccConfig.S2TWP : OpenccConfig.S2TW;
         }
 
         if (rbT2s.isSelected()) {
             if (rbStd.isSelected()) return OpenccConfig.T2S;
-            if (rbHK.isSelected()) return OpenccConfig.HK2S;
+            if (rbHK.isSelected()) return cbZHTW.isSelected() ? OpenccConfig.HK2SP : OpenccConfig.HK2S;
             return cbZHTW.isSelected() ? OpenccConfig.TW2SP : OpenccConfig.TW2S;
         }
 
@@ -1063,7 +1063,7 @@ public class OpenccJavaFxController {
 
     public void onRbStdClicked() {
         cbZHTW.setSelected(false);
-        cbZHTW.setDisable(true);
+        cbZHTW.setDisable(rbStd.isSelected());
     }
 
     public void onRbZhtwClicked() {
