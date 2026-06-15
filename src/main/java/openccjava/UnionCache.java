@@ -71,12 +71,12 @@ final class UnionCache {
             case Hk2SpR1HkRevTriple:
                 return getOrInit(slots.hk2sp_r1_hk_rev_triple,
                         () -> StarterUnion.build(Arrays.asList(d.hk_phrases_rev, d.hk_variants_rev_phrases, d.hk_variants_rev)));
-            case JpVariantsOnly:
-                return getOrInit(slots.jp_variants_only,
-                        () -> StarterUnion.build(Collections.singletonList(d.jp_variants)));
-            case JpRevTriple:
-                return getOrInit(slots.jp_rev_triple,
-                        () -> StarterUnion.build(Arrays.asList(d.jps_phrases, d.jps_characters, d.jp_variants_rev)));
+            case JpsCharactersRev:
+                return getOrInit(slots.jps_characters_rev,
+                        () -> StarterUnion.build(Collections.singletonList(d.jps_characters_rev)));
+            case JpsPair:
+                return getOrInit(slots.jps_pair,
+                        () -> StarterUnion.build(Arrays.asList(d.jps_phrases, d.jps_characters)));
             default:
                 throw new IllegalArgumentException("Unhandled UnionKey: " + key);
         }
@@ -109,7 +109,7 @@ final class UnionCache {
         final AtomicReference<StarterUnion> s2hkp_r2_hk_triple = new AtomicReference<>();
         final AtomicReference<StarterUnion> hk_rev_pair = new AtomicReference<>();
         final AtomicReference<StarterUnion> hk2sp_r1_hk_rev_triple = new AtomicReference<>();
-        final AtomicReference<StarterUnion> jp_variants_only = new AtomicReference<>();
-        final AtomicReference<StarterUnion> jp_rev_triple = new AtomicReference<>();
+        final AtomicReference<StarterUnion> jps_characters_rev = new AtomicReference<>();
+        final AtomicReference<StarterUnion> jps_pair = new AtomicReference<>();
     }
 }

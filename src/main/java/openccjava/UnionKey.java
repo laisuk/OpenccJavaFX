@@ -83,11 +83,11 @@ public enum UnionKey {
 
     // ===== Japan-specific unions =====
     /**
-     * Japanese variants only (character-level).
+     * Japanese Shinjitai-to-Traditional Kyujitai characters only.
      */
-    JpVariantsOnly,
+    JpsCharactersRev,
     /**
-     * Japanese reverse triple mapping.
+     * Japanese Shinjitai pair: JPS phrases + JPS characters.
      */
-    JpRevTriple
+    JpsPair
 }

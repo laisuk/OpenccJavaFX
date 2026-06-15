@@ -161,21 +161,17 @@ public class DictionaryMaxlength {
 
     // Japanese Shinjitai
     /**
-     * Japanese Shinjitai character mappings.
+     * Japanese Shinjitai-to-Traditional Kyujitai character mappings.
      */
     public DictEntry jps_characters;
     /**
-     * Japanese Shinjitai phrase mappings.
+     * Traditional Kyujitai-to-Japanese Shinjitai character mappings.
+     */
+    public DictEntry jps_characters_rev;
+    /**
+     * Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.
      */
     public DictEntry jps_phrases;
-    /**
-     * Japanese variant mappings.
-     */
-    public DictEntry jp_variants;
-    /**
-     * Japanese variant reverse mappings.
-     */
-    public DictEntry jp_variants_rev;
 
     /**
      * Returns a human-readable summary showing how many dictionaries are loaded.
@@ -189,7 +185,7 @@ public class DictionaryMaxlength {
                 tw_variants_rev, tw_variants_rev_phrases,
                 hk_phrases, hk_phrases_rev, hk_variants, hk_variants_phrases,
                 hk_variants_rev, hk_variants_rev_phrases,
-                jps_characters, jps_phrases, jp_variants, jp_variants_rev
+                jps_characters, jps_characters_rev, jps_phrases
         };
 
         int count = 0;
@@ -461,9 +457,8 @@ public class DictionaryMaxlength {
         if ("hk_variants_rev_phrases".equals(key)) return dict.hk_variants_rev_phrases;
 
         if ("jps_characters".equals(key)) return dict.jps_characters;
+        if ("jps_characters_rev".equals(key)) return dict.jps_characters_rev;
         if ("jps_phrases".equals(key)) return dict.jps_phrases;
-        if ("jp_variants".equals(key)) return dict.jp_variants;
-        if ("jp_variants_rev".equals(key)) return dict.jp_variants_rev;
 
         throw new IllegalArgumentException("Unknown dictionary key: " + key);
     }
@@ -615,9 +610,8 @@ public class DictionaryMaxlength {
         r.hk_variants_rev_phrases = copyEntry(this.hk_variants_rev_phrases);
 
         r.jps_characters = copyEntry(this.jps_characters);
+        r.jps_characters_rev = copyEntry(this.jps_characters_rev);
         r.jps_phrases = copyEntry(this.jps_phrases);
-        r.jp_variants = copyEntry(this.jp_variants);
-        r.jp_variants_rev = copyEntry(this.jp_variants_rev);
 
         return r;
     }
@@ -678,9 +672,8 @@ public class DictionaryMaxlength {
         m.put("hk_variants_rev", (o, e) -> o.hk_variants_rev = e);
         m.put("hk_variants_rev_phrases", (o, e) -> o.hk_variants_rev_phrases = e);
         m.put("jps_characters", (o, e) -> o.jps_characters = e);
+        m.put("jps_characters_rev", (o, e) -> o.jps_characters_rev = e);
         m.put("jps_phrases", (o, e) -> o.jps_phrases = e);
-        m.put("jp_variants", (o, e) -> o.jp_variants = e);
-        m.put("jp_variants_rev", (o, e) -> o.jp_variants_rev = e);
         ASSIGN = Collections.unmodifiableMap(m);
 
         Map<String, String> f = new LinkedHashMap<>();
@@ -703,9 +696,8 @@ public class DictionaryMaxlength {
         f.put("hk_variants_rev", "HKVariantsRev.txt");
         f.put("hk_variants_rev_phrases", "HKVariantsRevPhrases.txt");
         f.put("jps_characters", "JPShinjitaiCharacters.txt");
+        f.put("jps_characters_rev", "JPShinjitaiCharactersRev.txt");
         f.put("jps_phrases", "JPShinjitaiPhrases.txt");
-        f.put("jp_variants", "JPVariants.txt");
-        f.put("jp_variants_rev", "JPVariantsRev.txt");
         FILES = Collections.unmodifiableMap(f);
 
         Map<DictSlot, String> s = new EnumMap<>(DictSlot.class);
@@ -728,9 +720,8 @@ public class DictionaryMaxlength {
         s.put(DictSlot.HKVariantsRev, "hk_variants_rev");
         s.put(DictSlot.HKVariantsRevPhrases, "hk_variants_rev_phrases");
         s.put(DictSlot.JPSCharacters, "jps_characters");
+        s.put(DictSlot.JPSCharactersRev, "jps_characters_rev");
         s.put(DictSlot.JPSPhrases, "jps_phrases");
-        s.put(DictSlot.JPVariants, "jp_variants");
-        s.put(DictSlot.JPVariantsRev, "jp_variants_rev");
         SLOT_KEYS = Collections.unmodifiableMap(s);
     }
 
@@ -888,6 +879,8 @@ public class DictionaryMaxlength {
         }
     }
 
+    // --- Zero-dependency JSON loading ---
+
     /**
      * Loads a {@code DictionaryMaxlength} from a JSON file.
      *
@@ -927,8 +920,6 @@ public class DictionaryMaxlength {
     public static DictionaryMaxlength fromJson(InputStream in) throws IOException {
         return fromJsonNoDeps(in);
     }
-
-    // --- Zero-dependency JSON loading ---
 
     /**
      * Loads a {@code DictionaryMaxlength} from a JSON file without using external libraries.
@@ -1235,9 +1226,8 @@ public class DictionaryMaxlength {
         firstField = writeField(w, "hk_variants_rev", hk_variants_rev, firstField, ind1, ind2, nl, sortKeys);
         firstField = writeField(w, "hk_variants_rev_phrases", hk_variants_rev_phrases, firstField, ind1, ind2, nl, sortKeys);
         firstField = writeField(w, "jps_characters", jps_characters, firstField, ind1, ind2, nl, sortKeys);
-        firstField = writeField(w, "jps_phrases", jps_phrases, firstField, ind1, ind2, nl, sortKeys);
-        firstField = writeField(w, "jp_variants", jp_variants, firstField, ind1, ind2, nl, sortKeys);
-        writeField(w, "jp_variants_rev", jp_variants_rev, firstField, ind1, ind2, nl, sortKeys);
+        firstField = writeField(w, "jps_characters_rev", jps_characters_rev, firstField, ind1, ind2, nl, sortKeys);
+        writeField(w, "jps_phrases", jps_phrases, firstField, ind1, ind2, nl, sortKeys);
         w.write(nl);
         w.write("}");
         w.write(nl);

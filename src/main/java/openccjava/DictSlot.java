@@ -105,24 +105,20 @@ public enum DictSlot {
     HKVariantsRevPhrases,
 
     /**
-     * Traditional Japanese Kyujitai to Shinjitai character dictionary
+     * Japanese Shinjitai-to-Traditional Kyujitai character dictionary
      * ({@code JPShinjitaiCharacters.txt}).
      */
     JPSCharacters,
 
     /**
-     * Traditional Japanese Kyujitai to Shinjitai phrase dictionary
+     * Traditional Kyujitai-to-Japanese Shinjitai character dictionary
+     * ({@code JPShinjitaiCharactersRev.txt}).
+     */
+    JPSCharactersRev,
+
+    /**
+     * Japanese Shinjitai-to-Traditional Kyujitai phrase dictionary
      * ({@code JPShinjitaiPhrases.txt}).
      */
-    JPSPhrases,
-
-    /**
-     * Traditional-to-Japanese variant dictionary ({@code JPVariants.txt}).
-     */
-    JPVariants,
-
-    /**
-     * Japanese variant reverse dictionary ({@code JPVariantsRev.txt}).
-     */
-    JPVariantsRev
+    JPSPhrases
 }

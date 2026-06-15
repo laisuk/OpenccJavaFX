@@ -267,13 +267,13 @@ public final class ConversionPlanCache {
                 break;
             }
             case T2JP: {
-                r1 = Collections.singletonList(d.jp_variants);
-                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.JpVariantsOnly));
+                r1 = Collections.singletonList(d.jps_characters_rev);
+                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.JpsCharactersRev));
                 break;
             }
             case JP2T: {
-                r1 = Arrays.asList(d.jps_phrases, d.jps_characters, d.jp_variants_rev);
-                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.JpRevTriple));
+                r1 = Arrays.asList(d.jps_phrases, d.jps_characters);
+                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.JpsPair));
                 break;
             }
             default:

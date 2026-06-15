@@ -39,6 +39,7 @@ public class DictgenCommand implements Runnable {
             Path cwd = Paths.get("").toAbsolutePath().normalize();
             Path localDicts = cwd.resolve("dicts").normalize();
 
+            // Securely check for ../dicts
             boolean hasParentDicts = false;
             Path parentDicts = cwd.resolveSibling("dicts").normalize();
             if (parentDicts.getParent() != null &&
@@ -51,6 +52,7 @@ public class DictgenCommand implements Runnable {
             if (Files.isDirectory(localDicts)) {
                 System.out.println(GREEN + "Using local 'dicts/' at: " + localDicts + RESET);
             } else if (!hasParentDicts) {
+                // Neither exists — prompt to download into current directory
                 System.out.print(BLUE +
                         "Local 'dicts/' not found (also not in '../dicts'). " +
                         "Download from GitHub? (y/N): " + RESET);
@@ -77,9 +79,12 @@ public class DictgenCommand implements Runnable {
             String outputFile = (output != null) ? output : defaultOutput;
             Path outputPath = Paths.get(outputFile).toAbsolutePath();
 
+            // Uses triple-level fallback: ./dicts → ../dicts → built-ins
             DictionaryMaxlength dicts = DictionaryMaxlength.fromDicts();
 
             if ("json".equals(format)) {
+                // Pretty by default; --compact removes indentation/newlines.
+                // Plain dictgen remains sorted to preserve previous default output.
                 boolean sortKeys = sort || !compact;
                 dicts.serializeToJson(outputPath, !compact, sortKeys);
                 System.out.println(BLUE + "Dictionary saved in JSON format at: " + outputPath + RESET);
@@ -93,12 +98,11 @@ public class DictgenCommand implements Runnable {
 
     private void downloadDictsFromGithub(Path dictDir) throws IOException {
         String[] dictFiles = {
-                "STCharacters.txt", "STPhrases.txt", "STPunctuations.txt",
-                "TSCharacters.txt", "TSPhrases.txt", "TSPunctuations.txt",
-                "TWPhrases.txt", "TWPhrasesRev.txt",
-                "TWVariants.txt", "TWVariantsPhrases.txt", "TWVariantsRev.txt", "TWVariantsRevPhrases.txt",
+                "STCharacters.txt", "STPhrases.txt", "TSCharacters.txt", "TSPhrases.txt",
+                "TWPhrases.txt", "TWPhrasesRev.txt", "TWVariants.txt", "TWVariantsPhrases.txt",
+                "TWVariantsRev.txt", "TWVariantsRevPhrases.txt",
                 "HKVariants.txt", "HKVariantsPhrases.txt", "HKVariantsRev.txt", "HKVariantsRevPhrases.txt",
-                "JPShinjitaiCharacters.txt", "JPShinjitaiPhrases.txt", "JPVariants.txt", "JPVariantsRev.txt"
+                "JPShinjitaiCharacters.txt", "JPShinjitaiCharactersRev.txt", "JPShinjitaiPhrases.txt"
         };
 
         String baseUrl = "https://raw.githubusercontent.com/laisuk/OpenccJava/master/dicts/";
@@ -112,10 +116,11 @@ public class DictgenCommand implements Runnable {
             System.out.print(BLUE + "Downloading: " + fileName + "... " + RESET);
 
             try {
+                // Use URI to parse and construct the URL string
                 URI uri = new URI(fileUrl);
-                URL url = uri.toURL();
+                URL url = uri.toURL(); // Convert URI to URL
 
-                try (InputStream in = url.openStream()) {
+                try (InputStream in = url.openStream()) { // Now openStream on the URL
                     Files.copy(in, outputPath, StandardCopyOption.REPLACE_EXISTING);
                     System.out.println("done");
                 }
