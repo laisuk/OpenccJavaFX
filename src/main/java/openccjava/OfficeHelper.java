@@ -40,10 +40,10 @@ import java.util.zip.ZipOutputStream;
  */
 public class OfficeHelper {
     /**
-     * List of supported file extensions for Office and EPUB documents.
+     * Unmodifiable list of supported file extensions for Office and EPUB documents.
      */
-    public static final List<String> OFFICE_FORMATS = Arrays.asList(
-            "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
+    public static final List<String> OFFICE_FORMATS = Collections.unmodifiableList(
+            Arrays.asList("docx", "xlsx", "pptx", "odt", "ods", "odp", "epub")
     );
 
     /**
@@ -150,11 +150,12 @@ public class OfficeHelper {
          * Creates a new result instance.
          *
          * @param success whether the conversion succeeded
-         * @param message descriptive message explaining the result
+         * @param message descriptive message explaining the result; must not be {@code null}
+         * @throws NullPointerException if {@code message} is {@code null}
          */
         protected Result(boolean success, String message) {
             this.success = success;
-            this.message = message;
+            this.message = Objects.requireNonNull(message, "message must not be null");
         }
     }
 
@@ -166,7 +167,8 @@ public class OfficeHelper {
          * Creates a {@code FileResult}.
          *
          * @param success true if the conversion succeeded, false otherwise
-         * @param message the result message or error description
+         * @param message the result message or error description; must not be {@code null}
+         * @throws NullPointerException if {@code message} is {@code null}
          */
         public FileResult(boolean success, String message) {
             super(success, message);
@@ -186,12 +188,13 @@ public class OfficeHelper {
          * Creates a {@code MemoryResult}.
          *
          * @param success true if the conversion succeeded, false otherwise
-         * @param message the result message or error description
-         * @param data    converted document bytes (never modified by this class)
+         * @param message the result message or error description; must not be {@code null}
+         * @param data    converted document bytes; defensively copied, or {@code null}
+         * @throws NullPointerException if {@code message} is {@code null}
          */
         public MemoryResult(boolean success, String message, byte[] data) {
             super(success, message);
-            this.data = data;
+            this.data = data == null ? null : data.clone();
         }
     }
 
@@ -471,19 +474,15 @@ public class OfficeHelper {
 
             if (Files.isDirectory(sourcePath)) {
                 try (Stream<Path> paths = Files.walk(sourcePath)) {
-                    paths
-                            .filter(path -> !Files.isDirectory(path))
-                            .forEach(path -> {
-                                Path relativePath = sourcePath.relativize(path);
-                                try {
-                                    ZipEntry zipEntry = new ZipEntry(relativePath.toString().replace('\\', '/'));
-                                    zos.putNextEntry(zipEntry);
-                                    Files.copy(path, zos);
-                                    zos.closeEntry();
-                                } catch (IOException e) {
-                                    LOGGER.log(Level.WARNING, "Error zipping file " + path, e);
-                                }
-                            });
+                    Iterator<Path> iterator = paths.filter(path -> !Files.isDirectory(path)).iterator();
+                    while (iterator.hasNext()) {
+                        Path path = iterator.next();
+                        Path relativePath = sourcePath.relativize(path);
+                        ZipEntry zipEntry = new ZipEntry(relativePath.toString().replace('\\', '/'));
+                        zos.putNextEntry(zipEntry);
+                        Files.copy(path, zos);
+                        zos.closeEntry();
+                    }
                 }
             } else if (Files.isRegularFile(sourcePath)) {
                 ZipEntry zipEntry = new ZipEntry(sourcePath.getFileName().toString());

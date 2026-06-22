@@ -92,15 +92,24 @@ public final class PdfBoxHelper {
     }
 
     /**
-     * Ensures the document is not encrypted. PDFBox requires additional
-     * decryption handling for encrypted PDFs, which this helper does not
-     * implement. For now, we fail fast with a clear error.
+     * Ensures that text extraction is permitted for the PDF.
      *
-     * @throws IOException if the document is encrypted
+     * <p>PDFs may be marked as encrypted or protected while still allowing
+     * viewing and text extraction. This method checks the document's
+     * extraction permissions and only rejects PDFs that explicitly
+     * prohibit extraction for accessibility tools.
+     *
+     * @param doc loaded PDF document
+     * @throws IOException if text extraction is not permitted
      */
-    private static void ensureNotEncrypted(PDDocument doc) throws IOException {
-        if (doc.isEncrypted()) {
-            throw new IOException("Encrypted PDFs are not supported by PdfBoxHelper.");
+    private static void ensureTextExtractionAllowed(PDDocument doc) throws IOException {
+        if (!doc.isEncrypted()) {
+            return;
+        }
+
+        if (!doc.getCurrentAccessPermission().canExtractForAccessibility()) {
+            throw new IOException(
+                    "PDF is protected and does not permit text extraction.");
         }
     }
 
@@ -191,7 +200,7 @@ public final class PdfBoxHelper {
         Objects.requireNonNull(file, "file must not be null");
 
         try (PDDocument doc = Loader.loadPDF(file)) {
-            ensureNotEncrypted(doc);
+            ensureTextExtractionAllowed(doc);
             return extractTextPerPageSinglePass(doc);
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Failed to extract text per page from PDF: " + file, e);
@@ -214,7 +223,7 @@ public final class PdfBoxHelper {
                                               boolean withHeader,
                                               BiConsumer<Integer, Integer> progressCallback) throws IOException {
         try (PDDocument doc = Loader.loadPDF(file)) {
-            ensureNotEncrypted(doc);
+            ensureTextExtractionAllowed(doc);
 
             // Fast path: no headers, no progress → original "whole document" extraction
             if (!withHeader && progressCallback == null) {
@@ -369,7 +378,7 @@ public final class PdfBoxHelper {
         Objects.requireNonNull(pdfBytes, "pdfBytes must not be null");
 
         try (PDDocument doc = Loader.loadPDF(pdfBytes)) {
-            ensureNotEncrypted(doc);
+            ensureTextExtractionAllowed(doc);
 
             PDFTextStripper stripper = createStripper();
             String text = stripper.getText(doc);
