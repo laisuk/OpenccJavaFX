@@ -317,6 +317,16 @@ public final class PdfReflowHelper {
             //     do NOT flush even if this line starts dialog.
             //     (comma-ending means the sentence is not finished)
             if (currentIsDialogStart) {
+                if (PunctSets.endsWithDialogCloser(stripped)) {
+                    if (!bufferText.isEmpty()) {
+                        segments.add(bufferText);
+                        buffer.setLength(0);
+                    }
+
+                    segments.add(stripped);
+                    dialogState.reset();
+                    continue;
+                }
 
                 boolean shouldFlushPrev = !bufferText.isEmpty();
 
