@@ -301,15 +301,6 @@ public final class PdfReflowHelper {
                 }
             }
 
-            // ------ Buffer first line ------
-            if (buffer.length() == 0) {
-                // Start new paragraph
-                buffer.append(stripped);
-                dialogState.reset();
-                dialogState.update(stripped);
-                continue;
-            }
-
             // Check dialog start
             boolean currentIsDialogStart = PunctSets.isDialogStarter(stripped);
 
@@ -357,6 +348,15 @@ public final class PdfReflowHelper {
                 }
 
                 // Start (or continue) the dialog paragraph
+                buffer.append(stripped);
+                dialogState.reset();
+                dialogState.update(stripped);
+                continue;
+            }
+
+            // ------ Buffer first line ------
+            if (buffer.length() == 0) {
+                // Start new paragraph
                 buffer.append(stripped);
                 dialogState.reset();
                 dialogState.update(stripped);
