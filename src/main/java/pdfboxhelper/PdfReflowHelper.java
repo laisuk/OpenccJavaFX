@@ -288,6 +288,9 @@ public final class PdfReflowHelper {
             boolean hasLast = PunctSets.tryGetLastNonWhitespace(stripped, lastIdxRef);
             boolean strippedEndsWithDialogCloser =
                     hasLast && PunctSets.isDialogCloser(lastIdxRef.ch);
+            boolean strippedHasUnclosedBracket = PunctSets.hasUnclosedBracket(stripped);
+            boolean strippedEndsWithStrongSentenceEnd =
+                    hasLast && PunctSets.isStrongSentenceEnd(lastIdxRef.ch);
 
             // Check dialog start
             boolean currentIsDialogStart = PunctSets.isDialogStarter(stripped);
@@ -339,12 +342,23 @@ public final class PdfReflowHelper {
                     && !strippedEndsWithDialogCloser
                     && !dialogState.isUnclosed()
                     && (!hasUnclosedBracket || buffer.length() > 120)
-                    && hasLast
-                    && PunctSets.isStrongSentenceEnd(lastIdxRef.ch)) {
+                    && strippedEndsWithStrongSentenceEnd) {
                 buffer.append(stripped);
                 segments.add(buffer.toString());
                 buffer.setLength(0);
                 dialogState.reset();
+                continue;
+            }
+
+            // Complete standalone sentence line.
+            // If there is no active buffer and this line is already complete,
+            // emit it directly instead of waiting for the next line.
+            if (buffer.length() == 0
+                    && !strippedEndsWithDialogCloser
+                    && !strippedHasUnclosedBracket
+                    && strippedEndsWithStrongSentenceEnd) {
+                segments.add(stripped);
+//                dialogState.reset();
                 continue;
             }
 
@@ -363,14 +377,14 @@ public final class PdfReflowHelper {
                         PunctSets.tryGetPrevNonWhitespace(stripped, lastIdxRef.index, prevRef) &&
                                 PunctSets.isClauseOrEndPunct(prevRef.value);
 
-                boolean lineHasBracketIssue = PunctSets.hasUnclosedBracket(stripped);
+//                boolean lineHasBracketIssue = PunctSets.hasUnclosedBracket(stripped);
 
                 buffer.append(stripped);
                 dialogState.update(stripped);
 
                 if (!dialogState.isUnclosed()
                         && punctBeforeCloserIsStrong
-                        && (!hasUnclosedBracket || lineHasBracketIssue || buffer.length() > 120)) {
+                        && (!hasUnclosedBracket || strippedHasUnclosedBracket || buffer.length() > 120)) {
                     segments.add(buffer.toString());
                     buffer.setLength(0);
                     dialogState.reset();
