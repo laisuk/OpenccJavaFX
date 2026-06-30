@@ -4,6 +4,8 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static openccjava.Utils.readUtf8;
+
 /**
  * Utility methods for replacing selected rare CJK extension characters with
  * display-compatible fallback characters.
@@ -199,21 +201,6 @@ public final class DeTofu {
         } catch (IOException e) {
             return Collections.emptyList();
         }
-    }
-
-    private static String readUtf8(InputStream stream) throws IOException {
-        StringBuilder builder = new StringBuilder();
-
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            char[] buffer = new char[4096];
-            int read;
-            while ((read = reader.read(buffer)) != -1) {
-                builder.append(buffer, 0, read);
-            }
-        }
-
-        return builder.toString();
     }
 
     private static List<Entry> parseEntries(String text) {

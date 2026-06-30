@@ -5,6 +5,7 @@ import openccjava.OfficeHelper;
 import picocli.CommandLine.*;
 
 import java.io.File;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,6 +32,14 @@ public class OfficeCommand implements Runnable {
 
     @Option(names = {"-k", "--keep-font"}, defaultValue = "false", negatable = true, description = "Preserve font-family info (default: false)")
     private boolean keepFont;
+
+    @Option(
+            names = {"-D", "--custom-dict"},
+            paramLabel = "<slot:mode:path>",
+            split = ",",
+            description = "Apply custom dictionary file. Format: slot:append|override:path. Can be repeated or comma-separated."
+    )
+    private List<String> customDictSpecs;
 
     private static final Logger LOGGER = Logger.getLogger(OfficeCommand.class.getName());
 
@@ -71,7 +80,8 @@ public class OfficeCommand implements Runnable {
         }
 
         try {
-            OpenCC opencc = new OpenCC(config);
+//            OpenCC opencc = new OpenCC(config);
+            OpenCC opencc = CliUtils.createOpenCC(config, customDictSpecs);
             OfficeHelper.FileResult result = OfficeHelper.convert(input, output, officeFormat, opencc, punct, keepFont);
 
             if (result.success) {

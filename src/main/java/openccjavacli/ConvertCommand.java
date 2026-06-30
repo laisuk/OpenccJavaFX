@@ -7,6 +7,7 @@ import picocli.CommandLine.*;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Objects;
 import java.util.logging.*;
 
@@ -44,6 +45,14 @@ public class ConvertCommand implements Runnable {
     )
     private File detofuFile;
 
+    @Option(
+            names = {"-D", "--custom-dict"},
+            paramLabel = "<slot:mode:path>",
+            split = ",",
+            description = "Apply custom dictionary file. Format: slot:append|override:path. Can be repeated or comma-separated."
+    )
+    private List<String> customDictSpecs;
+
     @Option(names = {"--in-enc"}, paramLabel = "<encoding>", defaultValue = "UTF-8", description = "Input encoding")
     private String inEncoding;
 
@@ -72,7 +81,8 @@ public class ConvertCommand implements Runnable {
                 System.exit(1);
             }
 
-            OpenCC opencc = new OpenCC(config);
+//            OpenCC opencc = new OpenCC(config);
+            OpenCC opencc = CliUtils.createOpenCC(config, customDictSpecs);
             String inputText;
 
             if (input != null) {

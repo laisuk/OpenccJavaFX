@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.*;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -27,6 +28,14 @@ public class DictgenCommand implements Runnable {
 
     @Option(names = {"-s", "--sort"}, description = "Sort JSON dictionary keys for deterministic output")
     private boolean sort;
+
+    @Option(
+            names = {"-D", "--custom-dict"},
+            paramLabel = "<slot:mode:path>",
+            split = ",",
+            description = "Apply custom dictionary file. Format: slot:append|override:path. Can be repeated or comma-separated."
+    )
+    private List<String> customDictSpecs;
 
     private static final Logger LOGGER = Logger.getLogger(DictgenCommand.class.getName());
     private static final String GREEN = "\033[1;32m";
@@ -81,6 +90,7 @@ public class DictgenCommand implements Runnable {
 
             // Uses triple-level fallback: ./dicts → ../dicts → built-ins
             DictionaryMaxlength dicts = DictionaryMaxlength.fromDicts();
+            dicts = CliUtils.applyCustomDictionary(dicts, customDictSpecs);
 
             if ("json".equals(format)) {
                 // Pretty by default; --compact removes indentation/newlines.

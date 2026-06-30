@@ -8,6 +8,7 @@ import picocli.CommandLine.*;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -90,6 +91,14 @@ public class PdfCommand implements Runnable {
     )
     private boolean extract;
 
+    @Option(
+            names = {"-D", "--custom-dict"},
+            paramLabel = "<slot:mode:path>",
+            split = ",",
+            description = "Apply custom dictionary file. Format: slot:append|override:path. Can be repeated or comma-separated."
+    )
+    private List<String> customDictSpecs;
+
     private static final Logger LOGGER = Logger.getLogger(PdfCommand.class.getName());
 
     @Override
@@ -145,7 +154,8 @@ public class PdfCommand implements Runnable {
                 System.err.println("🔁 Writing PDF extracted text...");
                 Files.write(output.toPath(), processed.getBytes(StandardCharsets.UTF_8));
             } else {
-                OpenCC opencc = new OpenCC(config);
+//                OpenCC opencc = new OpenCC(config);
+                OpenCC opencc = CliUtils.createOpenCC(config, customDictSpecs);
                 // OpenCC conversion
                 System.err.println("🔁 Converting with OpenccJava...");
                 String converted = opencc.convert(processed, punct);
@@ -157,7 +167,7 @@ public class PdfCommand implements Runnable {
             System.err.println("📄 Input : " + input.getAbsolutePath());
             System.err.println("📁 Output: " + output.getAbsolutePath());
             System.err.println("⚙️  Config: " + (extract ? "Extract only" : config +
-                    (punct ? " (punct on)" : " (punct off)")) +
+                                                                            (punct ? " (punct on)" : " (punct off)")) +
                     (addHeader ? ", header" : "") +
                     (reflow ? ", reflow" : "") +
                     (compact ? ", compact" : ""));
