@@ -110,6 +110,49 @@ public class PunctSets {
         return false;
     }
 
+    /**
+     * Returns true if the string ends with an ellipsis,
+     * ignoring trailing whitespace.
+     * <p>
+     * Recognized forms are:
+     * <ul>
+     *   <li>{@code …}</li>
+     *   <li>{@code ……}</li>
+     *   <li>{@code ...}</li>
+     *   <li>{@code ..}</li>
+     * </ul>
+     *
+     * @param s string to inspect
+     * @return {@code true} when the last non-whitespace characters form
+     *         a supported ellipsis
+     */
+    public static boolean endsWithEllipsis(String s) {
+        if (s == null || s.isEmpty())
+            return false;
+
+        int last = -1;
+
+        // Find last non-whitespace character.
+        for (int i = s.length() - 1; i >= 0; i--) {
+            char ch = s.charAt(i);
+            if (Character.isWhitespace(ch))
+                continue;
+
+            last = i;
+
+            if (ch == '…')
+                return true;
+
+            break;
+        }
+
+        if (last <= 0)
+            return false;
+
+        return s.charAt(last) == '.'
+                && s.charAt(last - 1) == '.';
+    }
+
     // ---------------------------------------------------------------------
     // Bracket punctuations (open → close)
     // ---------------------------------------------------------------------

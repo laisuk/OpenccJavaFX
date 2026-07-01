@@ -286,11 +286,14 @@ public final class PdfReflowHelper {
 
             // Precompute last non-whitespace once for this line
             boolean hasLast = PunctSets.tryGetLastNonWhitespace(stripped, lastIdxRef);
-            boolean strippedEndsWithDialogCloser =
-                    hasLast && PunctSets.isDialogCloser(lastIdxRef.ch);
+            boolean strippedEndsWithDialogCloser =PunctSets.endsWithDialogCloser(stripped);
             boolean strippedHasUnclosedBracket = PunctSets.hasUnclosedBracket(stripped);
+            boolean strippedHasUnclosedDialogQuote = PunctSets.hasUnclosedDialogQuote(stripped);
             boolean strippedEndsWithStrongSentenceEnd =
                     hasLast && PunctSets.isStrongSentenceEnd(lastIdxRef.ch);
+            boolean strippedIsCompleteStandalone = strippedEndsWithStrongSentenceEnd
+                    || PunctSets.endsWithColonLike(stripped)
+                    || PunctSets.endsWithEllipsis(stripped);
 
             // Check dialog start
             boolean currentIsDialogStart = PunctSets.isDialogStarter(stripped);
@@ -298,7 +301,9 @@ public final class PdfReflowHelper {
             // 9a) Dialog start
             if (currentIsDialogStart) {
                 // 9a-0) Complete single-line dialog.
-                if (strippedEndsWithDialogCloser) {
+                if (strippedEndsWithDialogCloser
+                        && !strippedHasUnclosedBracket
+                        && !strippedHasUnclosedDialogQuote) {
                     if (!bufferText.isEmpty()) {
                         segments.add(bufferText);
                         buffer.setLength(0);
@@ -342,7 +347,7 @@ public final class PdfReflowHelper {
                     && !strippedEndsWithDialogCloser
                     && !dialogState.isUnclosed()
                     && (!hasUnclosedBracket || buffer.length() > 120)
-                    && strippedEndsWithStrongSentenceEnd) {
+                    && strippedIsCompleteStandalone) {
                 buffer.append(stripped);
                 segments.add(buffer.toString());
                 buffer.setLength(0);
@@ -356,9 +361,10 @@ public final class PdfReflowHelper {
             if (buffer.length() == 0
                     && !strippedEndsWithDialogCloser
                     && !strippedHasUnclosedBracket
-                    && strippedEndsWithStrongSentenceEnd) {
+                    && !strippedHasUnclosedDialogQuote
+                    && strippedIsCompleteStandalone) {
                 segments.add(stripped);
-//                dialogState.reset();
+                dialogState.reset();
                 continue;
             }
 
