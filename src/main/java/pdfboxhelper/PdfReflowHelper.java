@@ -347,6 +347,7 @@ public final class PdfReflowHelper {
                     && !strippedEndsWithDialogCloser
                     && !dialogState.isUnclosed()
                     && (!hasUnclosedBracket || buffer.length() > 120)
+                    && !strippedHasUnclosedDialogQuote
                     && strippedIsCompleteStandalone) {
                 buffer.append(stripped);
                 segments.add(buffer.toString());
@@ -364,7 +365,7 @@ public final class PdfReflowHelper {
                     && !strippedHasUnclosedDialogQuote
                     && strippedIsCompleteStandalone) {
                 segments.add(stripped);
-                dialogState.reset();
+//                dialogState.reset();
                 continue;
             }
 
