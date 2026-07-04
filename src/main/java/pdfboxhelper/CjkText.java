@@ -584,14 +584,14 @@ public class CjkText {
         int len = s.length() - start;
 
         if (len < 2
-                || !isAsciiOrFullWidthDigit(s.charAt(start))) {
+                || !isSimpleListNumber(s.charAt(start))) {
             return PunctSets.hasUnclosedBracket(s, start, s.length());
         }
 
         if (s.charAt(start + 1) == ')' || s.charAt(start + 1) == '）') {
             start += 2;
         } else if (len >= 3
-                && isAsciiOrFullWidthDigit(s.charAt(start + 1))
+                && isSimpleListNumber(s.charAt(start + 1))
                 && (s.charAt(start + 2) == ')' || s.charAt(start + 2) == '）')) {
             start += 3;
         }
