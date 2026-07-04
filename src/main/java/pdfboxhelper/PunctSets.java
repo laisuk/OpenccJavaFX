@@ -124,7 +124,7 @@ public class PunctSets {
      *
      * @param s string to inspect
      * @return {@code true} when the last non-whitespace characters form
-     *         a supported ellipsis
+     * a supported ellipsis
      */
     public static boolean endsWithEllipsis(String s) {
         if (s == null || s.isEmpty())
@@ -241,7 +241,9 @@ public class PunctSets {
         return BRACKET_CLOSE_BY_OPEN[open] == close;
     }
 
-    /** C# TryGetMatchingCloser(open, out close) */
+    /**
+     * C# TryGetMatchingCloser(open, out close)
+     */
     public static char tryGetMatchingCloser(char open) {
         // Return 0 when unknown.
         return BRACKET_CLOSE_BY_OPEN[open];
@@ -289,9 +291,32 @@ public class PunctSets {
                 && isDialogCloser(lastRef.value);
     }
 
+    /**
+     * Detects unmatched or mismatched brackets in a string.
+     *
+     * @param s string to inspect
+     * @return {@code true} when a bracket is unclosed, stray, or mismatched
+     */
     public static boolean hasUnclosedBracket(String s) {
-        if (s == null || s.isEmpty())
+        if (s == null || s.isEmpty()) {
             return false;
+        }
+
+        return hasUnclosedBracket(s, 0, s.length());
+    }
+
+    /**
+     * Detects unmatched or mismatched brackets in {@code s[start, end)}.
+     *
+     * @param s     string to inspect
+     * @param start inclusive start index
+     * @param end   exclusive end index
+     * @return {@code true} when a bracket is unclosed, stray, or mismatched
+     */
+    static boolean hasUnclosedBracket(String s, int start, int end) {
+        if (s == null || start >= end) {
+            return false;
+        }
 
         boolean seenBracket = false;
 
@@ -299,7 +324,7 @@ public class PunctSets {
         char[] stack = null;
         int top = 0;
 
-        for (int i = 0, n = s.length(); i < n; i++) {
+        for (int i = start; i < end; i++) {
             char ch = s.charAt(i);
 
             if (isBracketOpener(ch)) {
@@ -317,23 +342,26 @@ public class PunctSets {
                 continue;
             }
 
-            if (!isBracketCloser(ch))
+            if (!isBracketCloser(ch)) {
                 continue;
+            }
 
             seenBracket = true;
 
-            // stray closer
-            if (top == 0)
+            // Stray closer.
+            if (top == 0) {
                 return true;
+            }
 
             char open = stack[--top];
 
-            // mismatch
-            if (!isMatchingBracket(open, ch))
+            // Mismatched pair.
+            if (!isMatchingBracket(open, ch)) {
                 return true;
+            }
         }
 
-        // Unclosed opener(s) only matters if we saw any bracket at all
+        // Unclosed opener(s) only matter if we saw any bracket at all.
         return seenBracket && top != 0;
     }
 

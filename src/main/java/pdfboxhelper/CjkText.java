@@ -157,22 +157,40 @@ public class CjkText {
      * Designed for heading / structure heuristics.
      */
     public static boolean isMostlyCjk(String s) {
-        if (s == null || s.isEmpty())
+        if (s == null || s.isEmpty()) {
             return false;
+        }
+
+        return isMostlyCjk(s, 0, s.length());
+    }
+
+    /**
+     * Returns true if {@code s[start, end)} is mostly CJK.
+     * <p>
+     * Whitespace and digits (ASCII + full-width) are ignored. CJK characters
+     * and ASCII letters are counted, while punctuation is treated as neutral.
+     * </p>
+     */
+    private static boolean isMostlyCjk(String s, int start, int end) {
+        if (start >= end) {
+            return false;
+        }
 
         int cjk = 0;
         int ascii = 0;
 
-        for (int i = 0; i < s.length(); i++) {
+        for (int i = start; i < end; i++) {
             char ch = s.charAt(i);
 
             // Neutral whitespace
-            if (Character.isWhitespace(ch))
+            if (Character.isWhitespace(ch)) {
                 continue;
+            }
 
             // Neutral digits (ASCII + FULLWIDTH)
-            if (isDigitAsciiOrFullWidth(ch))
+            if (isAsciiOrFullWidthDigit(ch)) {
                 continue;
+            }
 
             if (isCjk(ch)) {
                 cjk++;
@@ -196,7 +214,7 @@ public class CjkText {
         return false;
     }
 
-    private static boolean isDigitAsciiOrFullWidth(char ch) {
+    private static boolean isAsciiOrFullWidthDigit(char ch) {
         // ASCII digits '0'–'9'
         if (ch >= '0' && ch <= '9')
             return true;
@@ -375,7 +393,7 @@ public class CjkText {
             return false;
 
         // 2) Must be mostly CJK
-        if (!isMostlyCjkRange(s, innerStart, innerEnd))
+        if (!isMostlyCjk(s, innerStart, innerEnd))
             return false;
 
         // ASCII bracket pairs are suspicious → require at least one CJK inside
@@ -384,41 +402,6 @@ public class CjkText {
 
         // 3) Ensure this bracket type is balanced inside the trimmed text
         return isBracketTypeBalanced(s, start, end, open);
-    }
-
-    /**
-     * Range wrapper to reuse your existing isMostlyCjk(String) without changing it.
-     */
-    private static boolean isMostlyCjkRange(String s, int start, int end) {
-        if (start >= end) {
-            return false;
-        }
-
-        int cjk = 0;
-        int ascii = 0;
-
-        for (int i = start; i < end; i++) {
-            char ch = s.charAt(i);
-
-            if (Character.isWhitespace(ch)) {
-                continue;
-            }
-
-            if (isDigitAsciiOrFullWidth(ch)) {
-                continue;
-            }
-
-            if (isCjk(ch)) {
-                cjk++;
-                continue;
-            }
-
-            if (ch <= 0x7F && Character.isLetter(ch)) {
-                ascii++;
-            }
-        }
-
-        return cjk > 0 && cjk >= ascii;
     }
 
 // ------ Bracket Boundary end ------
@@ -487,4 +470,116 @@ public class CjkText {
         return i;
     }
 
+    /**
+     * Determines whether a line begins with a simple list marker.
+     * <p>
+     * Leading whitespace is ignored. Supported list markers include:
+     * </p>
+     * <ul>
+     *     <li>{@code - }</li>
+     *     <li>{@code (1)}, {@code (12)}</li>
+     *     <li>{@code （1）}, {@code （12）}</li>
+     *     <li>{@code 1)}, {@code 1）}, {@code 1、}, {@code 1.}</li>
+     *     <li>{@code 12)}, {@code 12）}, {@code 12、}, {@code 12.}</li>
+     * </ul>
+     * <p>
+     * Both ASCII and full-width digits are recognized.
+     * </p>
+     *
+     * @param s line to inspect
+     * @return {@code true} if the line begins with a supported simple list marker;
+     * otherwise {@code false}
+     */
+    public static boolean beginsWithSimpleListStarter(String s) {
+        int start = trimStartIndex(s);
+        int len = s.length() - start;
+
+        if (len >= 2 && s.charAt(start) == '-' && s.charAt(start + 1) == ' ') {
+            return true;
+        }
+
+        // (1) / (12)
+        if (len >= 3 && s.charAt(start) == '(' && isAsciiOrFullWidthDigit(s.charAt(start + 1))) {
+            if (s.charAt(start + 2) == ')') return true;
+
+            if (len >= 4 && isAsciiOrFullWidthDigit(s.charAt(start + 2)) && s.charAt(start + 3) == ')') {
+                return true;
+            }
+        }
+
+        // （1） / （12）
+        if (len >= 3 && s.charAt(start) == '（' && isAsciiOrFullWidthDigit(s.charAt(start + 1))) {
+            if (s.charAt(start + 2) == '）') return true;
+
+            if (len >= 4 && isAsciiOrFullWidthDigit(s.charAt(start + 2)) && s.charAt(start + 3) == '）') {
+                return true;
+            }
+        }
+
+        // 1) / 1） / 1、 / 1.
+        if (len < 2 || !isAsciiOrFullWidthDigit(s.charAt(start))) {
+            return false;
+        }
+
+        switch (s.charAt(start + 1)) {
+            case ')':
+            case '）':
+            case '、':
+                return true;
+            case '.':
+                return len >= 3 && (s.charAt(start + 2) == ' ' || isCjk(s.charAt(start + 2)));
+            default:
+                break;
+        }
+
+        // 12) / 12） / 12、 / 12.
+        if (len < 3 || !isAsciiOrFullWidthDigit(s.charAt(start + 1))) {
+            return false;
+        }
+
+        switch (s.charAt(start + 2)) {
+            case ')':
+            case '）':
+            case '、':
+                return true;
+            case '.':
+                return len >= 4 && (s.charAt(start + 3) == ' ' || isCjk(s.charAt(start + 3)));
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Detects unmatched or mismatched brackets in a simple list item.
+     * <p>
+     * If the line begins with a supported list marker (for example,
+     * {@code 1)} or {@code （2）}), the marker is ignored before checking
+     * bracket balance. This prevents the list marker itself from being
+     * interpreted as an unmatched closing bracket.
+     * </p>
+     *
+     * @param s line to inspect
+     * @return {@code true} if the list item's content contains an unclosed,
+     * stray, or mismatched bracket; otherwise {@code false}
+     */
+    public static boolean simpleListHasUnclosedBracket(String s) {
+        int start = trimStartIndex(s);
+
+        int len = s.length() - start;
+
+        if (len < 2
+                || !isAsciiOrFullWidthDigit(s.charAt(start))) {
+            return PunctSets.hasUnclosedBracket(s, start, s.length());
+        }
+
+        if (s.charAt(start + 1) == ')' || s.charAt(start + 1) == '）') {
+            start += 2;
+        } else if (len >= 3
+                && isAsciiOrFullWidthDigit(s.charAt(start + 1))
+                && (s.charAt(start + 2) == ')' || s.charAt(start + 2) == '）')) {
+            start += 3;
+        }
+
+        return PunctSets.hasUnclosedBracket(s, start, s.length());
+    }
 }

@@ -286,46 +286,71 @@ public final class PdfReflowHelper {
 
             // Precompute last non-whitespace once for this line
             boolean hasLast = PunctSets.tryGetLastNonWhitespace(stripped, lastIdxRef);
-            boolean strippedEndsWithDialogCloser =PunctSets.endsWithDialogCloser(stripped);
-            boolean strippedHasUnclosedBracket = PunctSets.hasUnclosedBracket(stripped);
+            boolean currentIsDialogStart = PunctSets.isDialogStarter(stripped);
+            boolean currentIsListStart = CjkText.beginsWithSimpleListStarter(stripped);
+
+            boolean strippedEndsWithDialogCloser =
+                    hasLast && PunctSets.isDialogCloser(lastIdxRef.ch);
+
+            boolean strippedHasUnclosedBracket = currentIsListStart
+                    ? CjkText.simpleListHasUnclosedBracket(stripped)
+                    : PunctSets.hasUnclosedBracket(stripped);
+
             boolean strippedHasUnclosedDialogQuote = PunctSets.hasUnclosedDialogQuote(stripped);
+
             boolean strippedEndsWithStrongSentenceEnd =
                     hasLast && PunctSets.isStrongSentenceEnd(lastIdxRef.ch);
+
             boolean strippedIsCompleteStandalone = strippedEndsWithStrongSentenceEnd
                     || PunctSets.endsWithColonLike(stripped)
                     || PunctSets.endsWithEllipsis(stripped);
 
             // Check dialog start
-            boolean currentIsDialogStart = PunctSets.isDialogStarter(stripped);
-
-            // 9a) Dialog start
-            if (currentIsDialogStart) {
+            // DIALOG/LIST: treat dialog openers and simple list starters as paragraph-boundary candidates.
+            if (currentIsDialogStart || currentIsListStart) {
                 // 9a-0) Complete single-line dialog.
-                if (strippedEndsWithDialogCloser
-                        && !strippedHasUnclosedBracket
-                        && !strippedHasUnclosedDialogQuote) {
-                    if (!bufferText.isEmpty()) {
-                        segments.add(bufferText);
-                        buffer.setLength(0);
-                    }
+                if (emitStandaloneBoundaryLine(
+                        currentIsDialogStart
+                                && strippedEndsWithDialogCloser
+                                && !strippedHasUnclosedBracket
+                                && !strippedHasUnclosedDialogQuote,
+                        bufferText,
+                        stripped,
+                        buffer,
+                        segments,
+                        dialogState)) {
+                    continue;
+                }
 
-                    segments.add(stripped);
-                    dialogState.reset();
+                // 9a-1) Complete single-line simple list.
+                // Flush previous buffer first, then emit this simple list as its own paragraph.
+                if (emitStandaloneBoundaryLine(
+                        currentIsListStart
+                                && strippedIsCompleteStandalone
+                                && !strippedHasUnclosedBracket
+                                && !strippedHasUnclosedDialogQuote,
+                        bufferText,
+                        stripped,
+                        buffer,
+                        segments,
+                        dialogState)) {
                     continue;
                 }
 
                 boolean shouldFlushPrev = !bufferText.isEmpty();
 
                 if (shouldFlushPrev) {
-                    if (dialogState.isUnclosed() || hasUnclosedBracket) {
-                        shouldFlushPrev = false;
-                    } else if (!PunctSets.tryGetLastNonWhitespace(bufferText, lastRef)) {
-                        shouldFlushPrev = false;
-                    } else {
-                        char last = lastRef.value;
-
-                        if (PunctSets.isCommaLike(last) || CjkText.isCjk(last)) {
+                    if (!(currentIsListStart && CjkText.beginsWithSimpleListStarter(bufferText))) {
+                        if (dialogState.isUnclosed() || hasUnclosedBracket) {
                             shouldFlushPrev = false;
+                        } else if (!PunctSets.tryGetLastNonWhitespace(bufferText, lastRef)) {
+                            shouldFlushPrev = false;
+                        } else {
+                            char last = lastRef.value;
+
+                            if (PunctSets.isCommaLike(last) || CjkText.isCjk(last)) {
+                                shouldFlushPrev = false;
+                            }
                         }
                     }
                 }
@@ -336,7 +361,11 @@ public final class PdfReflowHelper {
                 }
 
                 buffer.append(stripped);
-                dialogState.reset();
+
+                if (currentIsDialogStart) {
+                    dialogState.reset();
+                }
+
                 dialogState.update(stripped);
                 continue;
             }
@@ -496,6 +525,28 @@ public final class PdfReflowHelper {
     @SuppressWarnings("unused")
     public static String reflowCjkParagraphs(String text, boolean addPdfPageHeader) {
         return reflowCjkParagraphs(text, addPdfPageHeader, false);
+    }
+
+    private static boolean emitStandaloneBoundaryLine(
+            boolean condition,
+            String bufferText,
+            String stripped,
+            StringBuilder buffer,
+            List<String> segments,
+            DialogState dialogState
+    ) {
+        if (!condition) {
+            return false;
+        }
+
+        if (!bufferText.isEmpty()) {
+            segments.add(bufferText);
+            buffer.setLength(0);
+        }
+
+        segments.add(stripped);
+        dialogState.reset();
+        return true;
     }
 
     // ======================================================================
@@ -698,7 +749,10 @@ public final class PdfReflowHelper {
     }
 
     private static String trimStartSpacesAndFullWidth(String s) {
-        if (s == null || s.isEmpty()) return s;
+        if (s == null || s.isEmpty()) {
+            return s;
+        }
+
         int start = 0;
         while (start < s.length()) {
             char ch = s.charAt(start);
@@ -708,7 +762,8 @@ public final class PdfReflowHelper {
                 break;
             }
         }
-        return s.substring(start);
+
+        return start == 0 ? s : s.substring(start);
     }
 
     private static int indexOfAnyMetadataSeparator(String line) {
