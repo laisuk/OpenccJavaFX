@@ -477,13 +477,15 @@ public class CjkText {
      * </p>
      * <ul>
      *     <li>{@code - }</li>
-     *     <li>{@code (1)}, {@code (12)}</li>
-     *     <li>{@code （1）}, {@code （12）}</li>
+     *     <li>{@code (1)}, {@code (12)}, {@code (一)}, {@code (十一)}</li>
+     *     <li>{@code （1）}, {@code （12）}, {@code （一）}, {@code （十一）}</li>
      *     <li>{@code 1)}, {@code 1）}, {@code 1、}, {@code 1.}</li>
      *     <li>{@code 12)}, {@code 12）}, {@code 12、}, {@code 12.}</li>
+     *     <li>{@code 一、}, {@code 十、}, {@code 十一、}, {@code 十一）}, {@code 十一.}</li>
      * </ul>
      * <p>
-     * Both ASCII and full-width digits are recognized.
+     * ASCII digits, full-width digits, and simple Chinese numerals
+     * {@code 一二三四五六七八九十} are recognized.
      * </p>
      *
      * @param s line to inspect
@@ -498,26 +500,26 @@ public class CjkText {
             return true;
         }
 
-        // (1) / (12)
-        if (len >= 3 && s.charAt(start) == '(' && isAsciiOrFullWidthDigit(s.charAt(start + 1))) {
+        // (1) / (12) / (一) / (十一)
+        if (len >= 3 && s.charAt(start) == '(' && isSimpleListNumber(s.charAt(start + 1))) {
             if (s.charAt(start + 2) == ')') return true;
 
-            if (len >= 4 && isAsciiOrFullWidthDigit(s.charAt(start + 2)) && s.charAt(start + 3) == ')') {
+            if (len >= 4 && isSimpleListNumber(s.charAt(start + 2)) && s.charAt(start + 3) == ')') {
                 return true;
             }
         }
 
-        // （1） / （12）
-        if (len >= 3 && s.charAt(start) == '（' && isAsciiOrFullWidthDigit(s.charAt(start + 1))) {
+        // （1） / （12） / （一） / （十一）
+        if (len >= 3 && s.charAt(start) == '（' && isSimpleListNumber(s.charAt(start + 1))) {
             if (s.charAt(start + 2) == '）') return true;
 
-            if (len >= 4 && isAsciiOrFullWidthDigit(s.charAt(start + 2)) && s.charAt(start + 3) == '）') {
+            if (len >= 4 && isSimpleListNumber(s.charAt(start + 2)) && s.charAt(start + 3) == '）') {
                 return true;
             }
         }
 
-        // 1) / 1） / 1、 / 1.
-        if (len < 2 || !isAsciiOrFullWidthDigit(s.charAt(start))) {
+        // 1) / 1） / 1、 / 1. / 一、 / 十一、
+        if (len < 2 || !isSimpleListNumber(s.charAt(start))) {
             return false;
         }
 
@@ -532,8 +534,8 @@ public class CjkText {
                 break;
         }
 
-        // 12) / 12） / 12、 / 12.
-        if (len < 3 || !isAsciiOrFullWidthDigit(s.charAt(start + 1))) {
+        // 12) / 12） / 12、 / 12. / 十一） / 十一、
+        if (len < 3 || !isSimpleListNumber(s.charAt(start + 1))) {
             return false;
         }
 
@@ -547,6 +549,20 @@ public class CjkText {
             default:
                 return false;
         }
+    }
+
+    /**
+     * Returns {@code true} if {@code ch} can be used as a simple list number.
+     * <p>
+     * This intentionally supports only conservative one-character numbering:
+     * ASCII digits, full-width digits, and common Chinese numerals one to ten.
+     * </p>
+     */
+    private static boolean isSimpleListNumber(char ch) {
+        return (ch >= '0' && ch <= '9')
+                || (ch >= '０' && ch <= '９')
+                || ch == '一' || ch == '二' || ch == '三' || ch == '四' || ch == '五'
+                || ch == '六' || ch == '七' || ch == '八' || ch == '九' || ch == '十';
     }
 
     /**
