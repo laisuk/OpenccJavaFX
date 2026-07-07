@@ -496,8 +496,25 @@ public class CjkText {
         int start = trimStartIndex(s);
         int len = s.length() - start;
 
-        if (len >= 2 && s.charAt(start) == '-' && s.charAt(start + 1) == ' ') {
-            return true;
+        if (len >= 2) {
+            switch (s.charAt(start)) {
+                case '-':
+                case '*':
+                case '＊': // Fullwidth *
+                case '•':
+                case '‧': // U+2027 HYPHENATION POINT, often produced by PDF/OCR as a bullet
+                case '▪':
+                case '◦':
+                case '○':
+                case '●':
+                case '※':
+                    if (Character.isWhitespace(s.charAt(start + 1))) {
+                        return true;
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
 
         // (1) / (12) / (一) / (十一)
