@@ -129,8 +129,9 @@ public final class ConversionPlanCache {
      *   <li><b>S2T / T2S</b> – Simplified ↔ Traditional with optional punctuation dictionaries</li>
      *   <li><b>S2Tw / Tw2S / S2Twp / Tw2Sp</b> – Conversions involving Taiwan-specific
      *       phrase and variant dictionaries</li>
-     *   <li><b>S2Hk / S2Hkp / Hk2S / Hk2Sp / T2Hk / Hk2T</b> – Conversions involving Hong Kong variants</li>
+     *   <li><b>S2Hk / S2Hkp / Hk2S / Hk2Sp</b> – Simplified ↔ Hong Kong conversions</li>
      *   <li><b>T2Tw / T2Twp / Tw2T / Tw2Tp</b> – Traditional ↔ Taiwan conversions</li>
+     *   <li><b>T2Hk / T2Hkp / Hk2T / Hk2Tp</b> – Traditional ↔ Hong Kong conversions</li>
      *   <li><b>T2Jp / Jp2T</b> – Traditional ↔ Japanese conversions</li>
      * </ul>
      *
@@ -138,7 +139,8 @@ public final class ConversionPlanCache {
      * For each case, the following rules apply:
      * </p>
      * <ul>
-     *   <li>{@code r1}, {@code r2} – the per-round dictionary lists</li>
+     *   <li>{@code r1}, {@code r2} – the per-round dictionary lists; regional phrase
+     *       and variant dictionaries that belong to one conversion stage share a round</li>
      *   <li>{@link DictRefs} – created with the first round and extended with
      *       {@link DictRefs#withRound2(List, StarterUnion)} as needed</li>
      *   <li>{@link StarterUnion} – retrieved from this cache's {@link UnionCache}</li>
@@ -189,14 +191,14 @@ public final class ConversionPlanCache {
                 if (punctuation) r1.add(d.st_punctuations);
                 r2 = Arrays.asList(d.tw_phrases, d.tw_variants_phrases, d.tw_variants);
                 refs = new DictRefs(r1, unionCache.unionFor(punctuation ? UnionKey.S2T_PUNCT : UnionKey.S2T))
-                        .withRound2(r2, unionCache.unionFor(UnionKey.S2TwpR2TwTriple));
+                        .withRound2(r2, unionCache.unionFor(UnionKey.TwTriple));
                 break;
             }
             case TW2SP: {
                 r1 = Arrays.asList(d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev);
                 r2 = new ArrayList<>(Arrays.asList(d.ts_phrases, d.ts_characters));
                 if (punctuation) r2.add(d.ts_punctuations);
-                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.Tw2SpR1TwRevTriple))
+                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.TwRevTriple))
                         .withRound2(r2, unionCache.unionFor(punctuation ? UnionKey.T2S_PUNCT : UnionKey.T2S));
                 break;
             }
@@ -205,14 +207,14 @@ public final class ConversionPlanCache {
                 if (punctuation) r1.add(d.st_punctuations);
                 r2 = Arrays.asList(d.hk_phrases, d.hk_variants_phrases, d.hk_variants);
                 refs = new DictRefs(r1, unionCache.unionFor(punctuation ? UnionKey.S2T_PUNCT : UnionKey.S2T))
-                        .withRound2(r2, unionCache.unionFor(UnionKey.S2HkpR2HkTriple));
+                        .withRound2(r2, unionCache.unionFor(UnionKey.HkTriple));
                 break;
             }
             case HK2SP: {
                 r1 = Arrays.asList(d.hk_phrases_rev, d.hk_variants_rev_phrases, d.hk_variants_rev);
                 r2 = new ArrayList<>(Arrays.asList(d.ts_phrases, d.ts_characters));
                 if (punctuation) r2.add(d.ts_punctuations);
-                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.Hk2SpR1HkRevTriple))
+                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.HkRevTriple))
                         .withRound2(r2, unionCache.unionFor(punctuation ? UnionKey.T2S_PUNCT : UnionKey.T2S));
                 break;
             }
@@ -238,10 +240,8 @@ public final class ConversionPlanCache {
                 break;
             }
             case T2TWP: {
-                r1 = Collections.singletonList(d.tw_phrases);
-                r2 = Arrays.asList(d.tw_variants_phrases, d.tw_variants);
-                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.TwPhrasesOnly))
-                        .withRound2(r2, unionCache.unionFor(UnionKey.TwVariantsPair));
+                r1 = Arrays.asList(d.tw_phrases, d.tw_variants_phrases, d.tw_variants);
+                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.TwTriple));
                 break;
             }
             case TW2T: {
@@ -250,10 +250,8 @@ public final class ConversionPlanCache {
                 break;
             }
             case TW2TP: {
-                r1 = Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev);
-                r2 = Collections.singletonList(d.tw_phrases_rev);
-                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.TwRevPair))
-                        .withRound2(r2, unionCache.unionFor(UnionKey.TwPhrasesRevOnly));
+                r1 = Arrays.asList(d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev);
+                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.TwRevTriple));
                 break;
             }
             case T2HK: {
@@ -261,9 +259,19 @@ public final class ConversionPlanCache {
                 refs = new DictRefs(r1, unionCache.unionFor(UnionKey.HkVariantsPair));
                 break;
             }
+            case T2HKP: {
+                r1 = Arrays.asList(d.hk_phrases, d.hk_variants_phrases, d.hk_variants);
+                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.HkTriple));
+                break;
+            }
             case HK2T: {
                 r1 = Arrays.asList(d.hk_variants_rev_phrases, d.hk_variants_rev);
                 refs = new DictRefs(r1, unionCache.unionFor(UnionKey.HkRevPair));
+                break;
+            }
+            case HK2TP: {
+                r1 = Arrays.asList(d.hk_phrases_rev, d.hk_variants_rev_phrases, d.hk_variants_rev);
+                refs = new DictRefs(r1, unionCache.unionFor(UnionKey.HkRevTriple));
                 break;
             }
             case T2JP: {

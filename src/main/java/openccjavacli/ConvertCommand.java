@@ -25,7 +25,13 @@ public class ConvertCommand implements Runnable {
     @Option(names = {"-o", "--output"}, paramLabel = "<file>", description = "Output file")
     private File output;
 
-    @Option(names = {"-c", "--config"}, paramLabel = "<conversion>", description = "Conversion configuration", required = true)
+    @Option(
+            names = {"-c", "--config"},
+            paramLabel = "<conversion>",
+            required = true,
+            completionCandidates = CliUtils.ConfigCandidates.class,
+            description = "Conversion configuration. Supported: ${COMPLETION-CANDIDATES}"
+    )
     private String config;
 
     @Option(names = {"-p", "--punct"}, description = "Punctuation conversion (default: false)")

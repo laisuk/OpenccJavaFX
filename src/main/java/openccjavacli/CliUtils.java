@@ -8,10 +8,11 @@ import java.util.*;
 /**
  * Shared helpers for building OpenCC converters from command-line options.
  *
- * <p>This class keeps option parsing that is common to several CLI commands in
- * one package-private place. In particular, it translates {@code --custom-dict}
- * values from the CLI format {@code slot:append|override:path} into
- * {@link CustomDictSpec} instances.</p>
+ * <p>This class keeps option infrastructure shared by several CLI commands in
+ * one place. It supplies canonical conversion-config candidates and translates
+ * {@code --custom-dict} values from the CLI format
+ * {@code slot:append|override:path} into {@link CustomDictSpec}
+ * instances.</p>
  *
  * <p>The helpers are intentionally package-private because they are part of the
  * CLI implementation rather than the public OpenCC Java API.</p>
@@ -21,6 +22,19 @@ public final class CliUtils {
      * Utility class; not instantiable.
      */
     private CliUtils() {
+    }
+
+
+    /**
+     * Supplies canonical OpenCC configuration names for CLI option completion
+     * and generated help text.
+     */
+    @SuppressWarnings("NullableProblems")
+    static final class ConfigCandidates implements Iterable<String> {
+        @Override
+        public Iterator<String> iterator() {
+            return OpenCC.getSupportedConfigs().iterator();
+        }
     }
 
     /**

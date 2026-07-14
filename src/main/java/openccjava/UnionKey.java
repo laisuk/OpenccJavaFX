@@ -35,31 +35,23 @@ public enum UnionKey {
 
     // ===== Taiwan-specific unions =====
     /**
-     * Taiwan phrases only (excludes variants).
+     * Taiwan phrase and variant triple:
+     * Taiwan phrases plus phrase-level and character-level variants.
      */
-    TwPhrasesOnly,
+    TwTriple,
     /**
      * Taiwan variant phrases followed by character-level variants.
      */
     TwVariantsPair,
     /**
-     * S2TWP round-2 Taiwan triple:
-     * tw_phrases + tw_variants_phrases + tw_variants.
-     */
-    S2TwpR2TwTriple,
-    /**
-     * Reverse mapping of Taiwan phrases only.
-     */
-    TwPhrasesRevOnly,
-    /**
      * Taiwan reverse phrase pairs.
      */
     TwRevPair,
     /**
-     * Taiwan to Simplified conversion, round 1, with
-     * Taiwan reverse triple fallback.
+     * Taiwan reverse phrase and variant triple: phrases followed by
+     * phrase-level and character-level variant mappings.
      */
-    Tw2SpR1TwRevTriple,
+    TwRevTriple,
 
     // ===== Hong Kong-specific unions =====
     /**
@@ -67,19 +59,19 @@ public enum UnionKey {
      */
     HkVariantsPair,
     /**
-     * S2HKP round-2 Hong Kong triple:
-     * hk_phrases + hk_variants_phrases + hk_variants.
+     * Hong Kong phrase and variant triple: phrases followed by
+     * phrase-level and character-level variant mappings.
      */
-    S2HkpR2HkTriple,
+    HkTriple,
     /**
      * Hong Kong reverse phrase pairs.
      */
     HkRevPair,
     /**
-     * HK2SP round-1 Hong Kong reverse triple:
-     * hk_phrases_rev + hk_variants_rev_phrases + hk_variants_rev.
+     * Hong Kong reverse phrase and variant triple: phrases followed by
+     * phrase-level and character-level variant mappings.
      */
-    Hk2SpR1HkRevTriple,
+    HkRevTriple,
 
     // ===== Japan-specific unions =====
     /**

@@ -781,8 +781,14 @@ public class OpenCC {
             case T2HK:
                 result = t2hk(input);
                 break;
+            case T2HKP:
+                result = t2hkp(input);
+                break;
             case HK2T:
                 result = hk2t(input);
+                break;
+            case HK2TP:
+                result = hk2tp(input);
                 break;
 
             case T2JP:
@@ -1307,7 +1313,8 @@ public class OpenCC {
     }
 
     /**
-     * Converts Traditional Chinese to Taiwan Traditional with phrases and variants.
+     * Converts Traditional Chinese to Taiwan Traditional by applying Taiwan phrase,
+     * phrase-variant, and character-variant dictionaries in one conversion round.
      *
      * @param input the Traditional Chinese input
      * @return the converted Taiwan Traditional Chinese with phrases and variants
@@ -1329,7 +1336,9 @@ public class OpenCC {
     }
 
     /**
-     * Converts Taiwan Traditional Chinese to base Traditional Chinese, including phrase reversal.
+     * Converts Taiwan Traditional Chinese to base Traditional Chinese by applying
+     * reverse Taiwan phrase, phrase-variant, and character-variant dictionaries in
+     * one conversion round.
      *
      * @param input the Taiwan Traditional input
      * @return the fully reverted Traditional Chinese text
@@ -1351,6 +1360,18 @@ public class OpenCC {
     }
 
     /**
+     * Converts Traditional Chinese to Hong Kong Traditional by applying Hong Kong
+     * phrase, phrase-variant, and character-variant dictionaries in one conversion round.
+     *
+     * @param input the Traditional Chinese input
+     * @return the converted Hong Kong Traditional Chinese with phrases and variants
+     */
+    public String t2hkp(String input) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2HKP, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+    }
+
+    /**
      * Converts Hong Kong Traditional Chinese to base Traditional Chinese.
      *
      * @param input the HK Traditional Chinese input
@@ -1358,6 +1379,19 @@ public class OpenCC {
      */
     public String hk2t(String input) {
         DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2T, false);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+    }
+
+    /**
+     * Converts Hong Kong Traditional Chinese to base Traditional Chinese by applying
+     * reverse Hong Kong phrase, phrase-variant, and character-variant dictionaries in
+     * one conversion round.
+     *
+     * @param input the Hong Kong Traditional Chinese input
+     * @return the converted base Traditional Chinese text
+     */
+    public String hk2tp(String input) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2TP, false);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 

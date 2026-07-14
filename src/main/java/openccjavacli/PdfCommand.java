@@ -57,7 +57,8 @@ public class PdfCommand implements Runnable {
     @Option(
             names = {"-c", "--config"},
             paramLabel = "<conversion>",
-            description = "OpenCC conversion configuration (e.g. s2t, t2s, s2tw, t2hk, t2jp, ...)"
+            completionCandidates = CliUtils.ConfigCandidates.class,
+            description = "Conversion configuration. Supported: ${COMPLETION-CANDIDATES}"
     )
     private String config;
 

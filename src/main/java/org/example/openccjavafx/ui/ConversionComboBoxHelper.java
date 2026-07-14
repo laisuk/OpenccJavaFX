@@ -21,6 +21,7 @@ public final class ConversionComboBoxHelper {
             new ConfigItem("t2tw", "config.manual.t2tw"),
             new ConfigItem("t2twp", "config.manual.t2twp"),
             new ConfigItem("t2hk", "config.manual.t2hk"),
+            new ConfigItem("t2hkp", "config.manual.t2hkp"),
             new ConfigItem("tw2s", "config.manual.tw2s"),
             new ConfigItem("tw2sp", "config.manual.tw2sp"),
             new ConfigItem("tw2t", "config.manual.tw2t"),
@@ -28,6 +29,7 @@ public final class ConversionComboBoxHelper {
             new ConfigItem("hk2s", "config.manual.hk2s"),
             new ConfigItem("hk2sp", "config.manual.hk2sp"),
             new ConfigItem("hk2t", "config.manual.hk2t"),
+            new ConfigItem("hk2tp", "config.manual.hk2tp"),
             new ConfigItem("t2jp", "config.manual.t2jp"),
             new ConfigItem("jp2t", "config.manual.jp2t")
     );

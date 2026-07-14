@@ -88,9 +88,19 @@ public enum OpenccConfig {
     T2HK,
 
     /**
+     * Traditional → Traditional (Hong Kong, with phrases).
+     */
+    T2HKP,
+
+    /**
      * Traditional (Hong Kong) → Traditional.
      */
     HK2T,
+
+    /**
+     * Traditional (Hong Kong, with phrases) → Traditional.
+     */
+    HK2TP,
 
     /**
      * Traditional → Japanese Shinjitai.

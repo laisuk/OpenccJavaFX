@@ -41,35 +41,29 @@ final class UnionCache {
             case T2S_PUNCT:
                 return getOrInit(slots.t2s_punct,
                         () -> StarterUnion.build(Arrays.asList(d.ts_phrases, d.ts_characters, d.ts_punctuations)));
-            case TwPhrasesOnly:
-                return getOrInit(slots.tw_phrases_only,
-                        () -> StarterUnion.build(Collections.singletonList(d.tw_phrases)));
+            case TwTriple:
+                return getOrInit(slots.tw_triple,
+                        () -> StarterUnion.build(Arrays.asList(d.tw_phrases, d.tw_variants_phrases, d.tw_variants)));
             case TwVariantsPair:
                 return getOrInit(slots.tw_variants_pair,
                         () -> StarterUnion.build(Arrays.asList(d.tw_variants_phrases, d.tw_variants)));
-            case S2TwpR2TwTriple:
-                return getOrInit(slots.s2twp_r2_tw_triple,
-                        () -> StarterUnion.build(Arrays.asList(d.tw_phrases, d.tw_variants_phrases, d.tw_variants)));
-            case TwPhrasesRevOnly:
-                return getOrInit(slots.tw_phrases_rev_only,
-                        () -> StarterUnion.build(Collections.singletonList(d.tw_phrases_rev)));
             case TwRevPair:
                 return getOrInit(slots.tw_rev_pair,
                         () -> StarterUnion.build(Arrays.asList(d.tw_variants_rev_phrases, d.tw_variants_rev)));
-            case Tw2SpR1TwRevTriple:
-                return getOrInit(slots.tw2sp_r1_tw_rev_triple,
+            case TwRevTriple:
+                return getOrInit(slots.tw_rev_triple,
                         () -> StarterUnion.build(Arrays.asList(d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev)));
             case HkVariantsPair:
                 return getOrInit(slots.hk_variants_pair,
                         () -> StarterUnion.build(Arrays.asList(d.hk_variants_phrases, d.hk_variants)));
-            case S2HkpR2HkTriple:
-                return getOrInit(slots.s2hkp_r2_hk_triple,
+            case HkTriple:
+                return getOrInit(slots.hk_triple,
                         () -> StarterUnion.build(Arrays.asList(d.hk_phrases, d.hk_variants_phrases, d.hk_variants)));
             case HkRevPair:
                 return getOrInit(slots.hk_rev_pair,
                         () -> StarterUnion.build(Arrays.asList(d.hk_variants_rev_phrases, d.hk_variants_rev)));
-            case Hk2SpR1HkRevTriple:
-                return getOrInit(slots.hk2sp_r1_hk_rev_triple,
+            case HkRevTriple:
+                return getOrInit(slots.hk_rev_triple,
                         () -> StarterUnion.build(Arrays.asList(d.hk_phrases_rev, d.hk_variants_rev_phrases, d.hk_variants_rev)));
             case JpsCharactersRev:
                 return getOrInit(slots.jps_characters_rev,
@@ -99,16 +93,14 @@ final class UnionCache {
         final AtomicReference<StarterUnion> s2t_punct = new AtomicReference<>();
         final AtomicReference<StarterUnion> t2s = new AtomicReference<>();
         final AtomicReference<StarterUnion> t2s_punct = new AtomicReference<>();
-        final AtomicReference<StarterUnion> tw_phrases_only = new AtomicReference<>();
+        final AtomicReference<StarterUnion> tw_triple = new AtomicReference<>();
         final AtomicReference<StarterUnion> tw_variants_pair = new AtomicReference<>();
-        final AtomicReference<StarterUnion> s2twp_r2_tw_triple = new AtomicReference<>();
-        final AtomicReference<StarterUnion> tw_phrases_rev_only = new AtomicReference<>();
         final AtomicReference<StarterUnion> tw_rev_pair = new AtomicReference<>();
-        final AtomicReference<StarterUnion> tw2sp_r1_tw_rev_triple = new AtomicReference<>();
+        final AtomicReference<StarterUnion> tw_rev_triple = new AtomicReference<>();
         final AtomicReference<StarterUnion> hk_variants_pair = new AtomicReference<>();
-        final AtomicReference<StarterUnion> s2hkp_r2_hk_triple = new AtomicReference<>();
+        final AtomicReference<StarterUnion> hk_triple = new AtomicReference<>();
         final AtomicReference<StarterUnion> hk_rev_pair = new AtomicReference<>();
-        final AtomicReference<StarterUnion> hk2sp_r1_hk_rev_triple = new AtomicReference<>();
+        final AtomicReference<StarterUnion> hk_rev_triple = new AtomicReference<>();
         final AtomicReference<StarterUnion> jps_characters_rev = new AtomicReference<>();
         final AtomicReference<StarterUnion> jps_pair = new AtomicReference<>();
     }
