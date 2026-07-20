@@ -84,7 +84,7 @@
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <RadioButton fx:id="rbHK" mnemonicParsing="false" onMouseClicked="#onRbStdClicked" styleClass="toggle-radio" text="Hong Kong（中港简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="2" GridPane.halignment="CENTER">
+            <RadioButton fx:id="rbHK" mnemonicParsing="false" styleClass="toggle-radio" text="Hong Kong（中港简繁）" toggleGroup="$GroupRegion" GridPane.columnIndex="2" GridPane.halignment="CENTER">
                 <font>
                     <Font size="14.0" />
                 </font>

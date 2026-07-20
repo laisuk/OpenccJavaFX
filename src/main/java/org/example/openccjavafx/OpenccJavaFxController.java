@@ -276,7 +276,7 @@ public class OpenccJavaFxController {
         rbZHTW.setText(I18n.get("variant.tw"));
         rbHK.setText(I18n.get("variant.hk"));
 
-        cbZHTW.setText(I18n.get("variant.twIdioms"));
+        cbZHTW.setText(I18n.get("variant.regionalTerms"));
         cbPunctuation.setText(I18n.get("option.punctuation"));
 
         tabMain.setText(I18n.get("tab.main"));
@@ -1067,7 +1067,7 @@ public class OpenccJavaFxController {
     }
 
     public void onRbZhtwClicked() {
-        cbZHTW.setSelected(true);
+//        cbZHTW.setSelected(true);
         cbZHTW.setDisable(false);
     }
 
