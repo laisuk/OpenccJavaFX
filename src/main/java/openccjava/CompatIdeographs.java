@@ -58,11 +58,11 @@ public final class CompatIdeographs {
     /**
      * Normalizes one Unicode scalar value using the built-in table.
      *
-     * @param scalar a string containing exactly one Unicode code point
+     * @param scalar a string containing exactly one Unicode scalar value
      * @return the normalized scalar, or the original scalar when unmapped
      * @throws NullPointerException     if {@code scalar} is {@code null}
      * @throws IllegalArgumentException if {@code scalar} does not contain
-     *                                  exactly one Unicode code point
+     *                                  exactly one Unicode scalar value
      */
     public static String normalizeScalar(String scalar) {
         return BUILTIN.normalizeScalar(scalar);
@@ -106,7 +106,7 @@ public final class CompatIdeographs {
      * }</pre>
      *
      * <p>Blank lines and lines beginning with {@code #} are ignored. Each
-     * mapping side must contain exactly one Unicode code point.</p>
+     * mapping side must contain exactly one Unicode scalar value.</p>
      *
      * @param text UTF-8 table text
      * @return a new mutable map containing the parsed mappings
@@ -147,8 +147,9 @@ public final class CompatIdeographs {
                 if (line.isEmpty() || line.startsWith("#"))
                     continue;
 
-                String[] parts = line.split("\t");
-                if (parts.length < 2) {
+                String[] parts = line.split("\t", -1);
+
+                if (parts.length != 2) {
                     if (strict)
                         throw malformed(lineNumber, line);
                     continue;
@@ -179,14 +180,19 @@ public final class CompatIdeographs {
     }
 
     private static Integer tryReadSingleCodePoint(String value) {
-        if (value == null || value.isEmpty())
+        if (value == null || value.isEmpty()) {
             return null;
+        }
 
         int first = value.codePointAt(0);
         int charCount = Character.charCount(first);
 
-        if (charCount != value.length())
+        // Unicode scalar values exclude isolated UTF-16 surrogates.
+        if (charCount != value.length()
+                || (first >= Character.MIN_SURROGATE
+                && first <= Character.MAX_SURROGATE)) {
             return null;
+        }
 
         return first;
     }
@@ -255,7 +261,7 @@ public final class CompatIdeographs {
         /**
          * Adds custom in-memory mappings and returns this map.
          *
-         * <p>Each key and value must contain exactly one Unicode code point.
+         * <p>Each key and value must contain exactly one Unicode scalar value.
          * Entries with {@code null}, empty, or multi-code-point keys or values
          * are ignored.</p>
          *
@@ -306,11 +312,11 @@ public final class CompatIdeographs {
         /**
          * Normalizes one Unicode scalar value using this map.
          *
-         * @param scalar a string containing exactly one Unicode code point
+         * @param scalar a string containing exactly one Unicode scalar value
          * @return the normalized scalar, or the original scalar when unmapped
          * @throws NullPointerException     if {@code scalar} is {@code null}
          * @throws IllegalArgumentException if {@code scalar} does not contain
-         *                                  exactly one Unicode code point
+         *                                  exactly one Unicode scalar value
          */
         public String normalizeScalar(String scalar) {
             if (scalar == null)
@@ -318,7 +324,7 @@ public final class CompatIdeographs {
 
             Integer source = tryReadSingleCodePoint(scalar);
             if (source == null)
-                throw new IllegalArgumentException("scalar must contain exactly one Unicode code point.");
+                throw new IllegalArgumentException("scalar must contain exactly one Unicode scalar value.");
 
             Integer replacement = map.get(source);
             return singleCodePointToString(replacement != null ? replacement : source);
