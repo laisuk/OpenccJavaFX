@@ -50,7 +50,7 @@ tasks.withType<JavaExec> {
 }
 
 javafx {
-    version = "21.0.11"
+    version = "21.0.12"
     modules("javafx.controls", "javafx.fxml")
 }
 
