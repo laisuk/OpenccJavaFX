@@ -284,4 +284,5 @@ jobs:
           files: release-assets/*
           generate_release_notes: true
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, '-beta') }}
+          make_latest: ${{ contains(github.ref_name, '-beta') && 'false' || 'true' }}
