@@ -12,7 +12,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            os_tag: linux
+            os_tag: linux-x64
             gradle_cmd: ./gradlew
 
           - os: ubuntu-24.04-arm

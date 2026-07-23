@@ -18,7 +18,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            os_tag: linux
+            os_tag: linux-x64
+            gradle_cmd: ./gradlew
+
+          - os: ubuntu-24.04-arm
+            os_tag: linux-arm64
             gradle_cmd: ./gradlew
 
           - os: windows-latest
@@ -214,8 +218,8 @@ jobs:
           cp "$deb_file" tmp/deb/
           cp "$rpm_file" tmp/rpm/
 
-          (cd tmp/deb && zip -r "../../release-assets/openccjavafx-${VERSION}-installer-linux-deb.zip" .)
-          (cd tmp/rpm && zip -r "../../release-assets/openccjavafx-${VERSION}-installer-linux-rpm.zip" .)
+          (cd tmp/deb && zip -r "../../release-assets/openccjavafx-${VERSION}-installer-${{ matrix.os_tag }}-deb.zip" .)
+          (cd tmp/rpm && zip -r "../../release-assets/openccjavafx-${VERSION}-installer-${{ matrix.os_tag }}-rpm.zip" .)
 
       - name: Stage macOS installers
         if: ${{ startsWith(matrix.os, 'macos') }}
