@@ -1258,3 +1258,98 @@
     -fx-background-color: #26292c;
     -fx-border-color: #3a3f44 transparent transparent transparent;
 }
+/* =========================================================
+   Dialog quote validation
+   ========================================================= */
+.dialog-quote-validation {
+    -fx-background-color: #ffffff;
+    -fx-padding: 0;
+}
+
+.dialog-quote-validation > .content {
+    -fx-padding: 16px 18px 8px 18px;
+}
+
+.dialog-quote-validation .dialog-quote-summary {
+    -fx-font-size: 14px;
+    -fx-text-fill: #27313d;
+    -fx-line-spacing: 2px;
+}
+
+.dialog-quote-validation .dialog-quote-issue-list {
+    -fx-background-color: #fffaf0;
+    -fx-control-inner-background: #fffaf0;
+    -fx-border-color: #e6c77a;
+    -fx-border-radius: 7px;
+    -fx-background-radius: 7px;
+    -fx-padding: 1px;
+}
+
+.dialog-quote-validation .dialog-quote-issue-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #eee1bf transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 0 6px;
+}
+
+.dialog-quote-validation .dialog-quote-issue-line {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #9a6700;
+}
+
+.dialog-quote-validation .dialog-quote-issue-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #30363d;
+}
+
+.dialog-quote-validation .dialog-quote-more {
+    -fx-font-size: 13px;
+    -fx-text-fill: #6b7280;
+    -fx-padding: 0 0 0 4px;
+}
+
+.dialog-quote-validation .button-bar {
+    -fx-padding: 8px 18px 14px 18px;
+}
+
+.dialog-quote-validation .dialog-quote-primary {
+    -fx-background-color: #2563eb;
+    -fx-border-color: #2563eb;
+    -fx-text-fill: white;
+}
+
+.dialog-quote-validation .dialog-quote-primary:hover {
+    -fx-background-color: #1d4ed8;
+    -fx-border-color: #1d4ed8;
+}
+
+.dialog-quote-validation.dark {
+    -fx-background-color: #26292c;
+}
+
+.dialog-quote-validation.dark .dialog-quote-summary {
+    -fx-text-fill: #f3f4f6;
+}
+
+.dialog-quote-validation.dark .dialog-quote-issue-list {
+    -fx-background-color: #302b20;
+    -fx-control-inner-background: #302b20;
+    -fx-border-color: #806b38;
+}
+
+.dialog-quote-validation.dark .dialog-quote-issue-cell {
+    -fx-border-color: transparent transparent #51472f transparent;
+}
+
+.dialog-quote-validation.dark .dialog-quote-issue-line {
+    -fx-text-fill: #f2c66d;
+}
+
+.dialog-quote-validation.dark .dialog-quote-issue-text {
+    -fx-text-fill: #f3f4f6;
+}
+
+.dialog-quote-validation.dark .dialog-quote-more {
+    -fx-text-fill: #b8c0cc;
+}

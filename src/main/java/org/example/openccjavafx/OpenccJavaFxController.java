@@ -27,10 +27,15 @@ import org.example.openccjavafx.config.AppPreferences;
 import org.example.openccjavafx.i18n.I18n;
 import org.example.openccjavafx.i18n.UiLanguage;
 import org.example.openccjavafx.theme.ThemeManager;
+import org.example.openccjavafx.text.CjkDialogQuoteHelper;
+import org.example.openccjavafx.text.DialogQuoteValidationResult;
 import org.example.openccjavafx.ui.ConversionComboBoxHelper;
+import org.example.openccjavafx.ui.DialogQuoteValidationDialog;
+import org.example.openccjavafx.ui.EditorNavigationHelper;
 import org.example.openccjavafx.ui.EditorFontHelper;
 import org.example.openccjavafx.ui.FindReplaceHelper;
 import org.example.openccjavafx.ui.GoToLineHelper;
+import org.example.openccjavafx.ui.ValidationDialogAction;
 import org.example.openccjavafx.ui.icon.AppIconGlyph;
 import org.example.openccjavafx.ui.icon.SymbolIcon;
 import org.fxmisc.richtext.CodeArea;
@@ -187,7 +192,13 @@ public class OpenccJavaFxController {
     @FXML
     private Button btnRefresh;
     @FXML
+    private Button btnFixDialogQuotes;
+    @FXML
+    private Button btnValidateSourceDialogQuotes;
+    @FXML
     private Button btnSaveAs;
+    @FXML
+    private Button btnValidateDestinationDialogQuotes;
     @FXML
     private Button btnStart;
     @FXML
@@ -321,6 +332,9 @@ public class OpenccJavaFxController {
         lblOpenFile.setText(I18n.get("button.openFile"));
         lblStart.setText(I18n.get("button.start"));
         lblExit.setText(I18n.get("button.exit"));
+        btnFixDialogQuotes.getTooltip().setText(I18n.get("hint.fixDialogQuotes"));
+        btnValidateSourceDialogQuotes.getTooltip().setText(I18n.get("hint.validateDialogQuotes"));
+        btnValidateDestinationDialogQuotes.getTooltip().setText(I18n.get("hint.validateDialogQuotes"));
         lblOutputFolder.setText(I18n.get("label.outputFolder"));
         textFieldPath.setPromptText(I18n.get("textField.outputFolder.prompt"));
 
@@ -355,10 +369,13 @@ public class OpenccJavaFxController {
         StatusHoverHelper.bind(cbPunctuation, lblStatus, I18n.get("hint.punctuation"));
         StatusHoverHelper.bind(btnOpenFile, lblStatus, I18n.get("hint.openFile"));
         StatusHoverHelper.bind(btnRefresh, lblStatus, I18n.get("hint.refreshPdf"));
+        StatusHoverHelper.bind(btnFixDialogQuotes, lblStatus, I18n.get("hint.fixDialogQuotes"));
+        StatusHoverHelper.bind(btnValidateSourceDialogQuotes, lblStatus, I18n.get("hint.validateDialogQuotes"));
         StatusHoverHelper.bind(btnClearSource, lblStatus, I18n.get("hint.clearSource"));
         StatusHoverHelper.bind(btnPaste, lblStatus, I18n.get("hint.paste"));
         StatusHoverHelper.bind(cbSaveTarget, lblStatus, I18n.get("hint.saveTarget"));
         StatusHoverHelper.bind(btnSaveAs, lblStatus, I18n.get("hint.saveAs"));
+        StatusHoverHelper.bind(btnValidateDestinationDialogQuotes, lblStatus, I18n.get("hint.validateDialogQuotes"));
         StatusHoverHelper.bind(btnClearDestination, lblStatus, I18n.get("hint.clearDestination"));
         StatusHoverHelper.bind(btnCopy, lblStatus, I18n.get("hint.copy"));
         StatusHoverHelper.bind(lblPdfOptions, lblStatus, I18n.get("hint.pdfOptions"));
@@ -445,11 +462,14 @@ public class OpenccJavaFxController {
 
         // icon-only buttons unchanged
         btnRefresh.setGraphic(new SymbolIcon(AppIconGlyph.REFRESH, 20));
+        btnFixDialogQuotes.setGraphic(new SymbolIcon(AppIconGlyph.COMMENT, 20));
+        btnValidateSourceDialogQuotes.setGraphic(new SymbolIcon(AppIconGlyph.CHECKBOX_COMPOSITE, 20));
         btnClearSource.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
         btnPaste.setGraphic(new SymbolIcon(AppIconGlyph.PASTE, 22));
         btnClearDestination.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
         btnCopy.setGraphic(new SymbolIcon(AppIconGlyph.COPY, 22));
         btnSaveAs.setGraphic(new SymbolIcon(AppIconGlyph.SAVE, 22));
+        btnValidateDestinationDialogQuotes.setGraphic(new SymbolIcon(AppIconGlyph.CHECKBOX_COMPOSITE, 20));
         btnAdd.setGraphic(new SymbolIcon(AppIconGlyph.ADD_TO, 20));
         btnRemove.setGraphic(new SymbolIcon(AppIconGlyph.REMOVE_FROM, 20));
         btnClearList.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
@@ -1443,6 +1463,60 @@ public class OpenccJavaFxController {
         lblStatus.setText(I18n.get("status.reflow"));
     }
 
+    @FXML
+    private void onFixDialogQuotes() {
+        String source = textAreaSource.getText();
+        if (source == null || source.isEmpty()) {
+            lblStatus.setText(I18n.get("status.dialogQuote.sourceEmpty"));
+            return;
+        }
+
+        String normalized = CjkDialogQuoteHelper.normalizeDialogQuotes(source, true);
+        if (source.equals(normalized)) {
+            lblStatus.setText(I18n.get("status.dialogQuote.noNormalizationNeeded"));
+            return;
+        }
+
+        textAreaSource.replaceText(normalized);
+        updateSourceInfo(OpenCC.zhoCheck(normalized));
+        lblStatus.setText(I18n.get("status.dialogQuote.normalized"));
+    }
+
+    @FXML
+    private void onValidateSourceDialogQuotes() {
+        validateDialogQuotes(textAreaSource);
+    }
+
+    @FXML
+    private void onValidateDestinationDialogQuotes() {
+        validateDialogQuotes(textAreaDestination);
+    }
+
+    private void validateDialogQuotes(CodeArea validatedEditor) {
+        DialogQuoteValidationResult result = CjkDialogQuoteHelper.validateDialogQuotes(
+                validatedEditor.getText());
+        ValidationDialogAction action = DialogQuoteValidationDialog.show(
+                lblStatus.getScene().getWindow(), result);
+
+        lblStatus.setText(result.isValid()
+                ? I18n.get("status.dialogQuote.validationPassed")
+                : I18n.format("status.dialogQuote.suspiciousLines",
+                        result.suspiciousLines().size()));
+
+        if (action != ValidationDialogAction.GO_TO_FIRST_ISSUE) {
+            return;
+        }
+
+        result.firstIssue().ifPresent(issue -> {
+            tabMain.getTabPane().getSelectionModel().select(tabMain);
+            hideFindReplace(false);
+            hideGoToLine(false);
+            setActiveEditor(validatedEditor);
+            Platform.runLater(() ->
+                    EditorNavigationHelper.goToLine(validatedEditor, issue.lineNumber(), true));
+        });
+    }
+
     public void onCbManualClicked() {
         rbManual.setSelected(true);
     }
@@ -1756,10 +1830,8 @@ public class OpenccJavaFxController {
 
         CodeArea editor = activeEditor;
         int paragraphIndex = result.paragraphIndex();
-        editor.moveTo(paragraphIndex, 0);
         Platform.runLater(() -> {
-            editor.showParagraphAtCenter(paragraphIndex);
-            editor.requestFollowCaret();
+            EditorNavigationHelper.goToLine(editor, paragraphIndex + 1, false);
             lineNumberField.getStyleClass().remove("find-invalid");
             goToLineStatusLabel.setText(
                     "Line " + (paragraphIndex + 1) + " of " + paragraphCount);

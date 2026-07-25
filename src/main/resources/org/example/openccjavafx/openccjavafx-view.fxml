@@ -13,6 +13,7 @@
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
@@ -157,6 +158,12 @@
                                                             <Font size="16.0" />
                                                         </font>
                                                     </Button>
+                                                    <Button fx:id="btnFixDialogQuotes" minWidth="30.0" mnemonicParsing="false" onAction="#onFixDialogQuotes" styleClass="button-secondary">
+                                                        <tooltip><Tooltip text="Fix Dialog Quotes" /></tooltip>
+                                                    </Button>
+                                                    <Button fx:id="btnValidateSourceDialogQuotes" minWidth="30.0" mnemonicParsing="false" onAction="#onValidateSourceDialogQuotes" styleClass="button-secondary">
+                                                        <tooltip><Tooltip text="Validate Dialog Quotes" /></tooltip>
+                                                    </Button>
                                                     <Region HBox.hgrow="ALWAYS" />
                                                     <Button fx:id="btnClearSource" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearSourceClicked" styleClass="button-secondary" />
                                                     <Button fx:id="btnPaste" minWidth="30.0" onMouseClicked="#onBtnPasteClick" prefHeight="0.0" styleClass="button-secondary">
@@ -208,6 +215,9 @@
                                                         <font>
                                                             <Font name="Segoe Fluent Icons" size="18.0" />
                                                         </font>
+                                                    </Button>
+                                                    <Button fx:id="btnValidateDestinationDialogQuotes" minWidth="30.0" mnemonicParsing="false" onAction="#onValidateDestinationDialogQuotes" styleClass="button-secondary">
+                                                        <tooltip><Tooltip text="Validate Dialog Quotes" /></tooltip>
                                                     </Button>
                                                     <Region HBox.hgrow="ALWAYS" />
                                                     <Button fx:id="btnClearDestination" minWidth="30.0" mnemonicParsing="false" onMouseClicked="#onBthClearDestinationClicked" styleClass="button-secondary" />

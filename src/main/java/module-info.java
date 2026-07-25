@@ -18,6 +18,7 @@ module org.example.openccjavafx {
     opens openccjavacli to info.picocli;
     exports org.example.openccjavafx;
     exports org.example.openccjavafx.ui;
+    exports org.example.openccjavafx.text;
     exports openccjava;
     exports pdfboxhelper;
     exports openxmlhelper;
