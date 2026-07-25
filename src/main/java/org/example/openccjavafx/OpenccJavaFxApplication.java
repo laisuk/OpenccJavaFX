@@ -23,7 +23,7 @@ public class OpenccJavaFxApplication extends Application {
         );
 
         Parent root = loader.load();
-        Scene scene = new Scene(root, 1000, 750);
+        Scene scene = new Scene(root, 1000, 800);
 
         scene.getStylesheets().add(
                 Objects.requireNonNull(

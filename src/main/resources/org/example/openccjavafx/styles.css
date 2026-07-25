@@ -56,7 +56,7 @@
 }
 
 .status-label {
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-text-fill: #5f6b7a;
 }
 
@@ -1184,4 +1184,77 @@
 .app-root.dark .find-close-button,
 .app-root.dark .find-status {
     -fx-text-fill: #b8c0cc;
+}
+/* =========================================================
+   Unified editor cards
+   ========================================================= */
+
+.app-root .editor-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 11px;
+    -fx-border-color: #d7dbe0;
+    -fx-border-radius: 11px;
+    -fx-border-width: 1px;
+    -fx-padding: 0;
+    -fx-spacing: 0;
+    -fx-effect: null;
+}
+
+.app-root .editor-card-editor {
+    -fx-background-color: transparent;
+    -fx-background-radius: 10px 10px 0 0;
+}
+
+/* The card owns the outer frame; the editor only supplies a restrained focus cue. */
+.app-root .editor-card .editor-surface {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 10px 10px 0 0;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-border-radius: 10px 10px 0 0;
+    -fx-effect: null;
+}
+
+.app-root .editor-card .editor-surface:focused {
+    -fx-border-color: transparent transparent #3b82f6 transparent;
+    -fx-border-width: 0 0 2px 0;
+    -fx-border-radius: 0;
+    -fx-effect: innershadow(gaussian, rgba(59, 130, 246, 0.12), 5, 0.1, 0, 0);
+}
+
+.app-root .editor-card-footer {
+    -fx-background-color: #fbfbfc;
+    -fx-background-radius: 0 0 10px 10px;
+    -fx-border-color: #e3e6ea transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 3px 8px 6px 8px;
+    -fx-spacing: 0;
+}
+
+.app-root .editor-card-info-row {
+    -fx-padding: 2px 0 1px 0;
+}
+
+.app-root .editor-card-action-row {
+    -fx-padding: 1px 0 0 0;
+}
+
+.app-root.dark .editor-card {
+    -fx-background-color: #202325;
+    -fx-border-color: #454b52;
+}
+
+.app-root.dark .editor-card-editor,
+.app-root.dark .editor-card .editor-surface {
+    -fx-background-color: #202325;
+}
+
+.app-root.dark .editor-card .editor-surface:focused {
+    -fx-border-color: transparent transparent #60a5fa transparent;
+    -fx-effect: innershadow(gaussian, rgba(59, 130, 246, 0.20), 6, 0.12, 0, 0);
+}
+
+.app-root.dark .editor-card-footer {
+    -fx-background-color: #26292c;
+    -fx-border-color: #3a3f44 transparent transparent transparent;
 }
