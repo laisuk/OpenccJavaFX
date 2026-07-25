@@ -2,7 +2,9 @@ package org.example.openccjavafx.ui;
 
 import org.fxmisc.richtext.CodeArea;
 
-/** Shared RichTextFX navigation for known-valid one-based logical lines. */
+/**
+ * Shared RichTextFX navigation for known-valid one-based logical lines.
+ */
 public final class EditorNavigationHelper {
     private EditorNavigationHelper() {
     }
