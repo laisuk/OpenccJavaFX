@@ -7,37 +7,16 @@ public final class GoToLineHelper {
     private GoToLineHelper() {
     }
 
-public static final class Result {
-        private final boolean valid;
-        private final int paragraphIndex;
-        private final String message;
-
-        public Result(boolean valid, int paragraphIndex, String message) {
-            this.valid = valid;
-            this.paragraphIndex = paragraphIndex;
-            this.message = message;
-        }
-
-        public boolean valid() {
-            return valid;
-        }
-
-        public int paragraphIndex() {
-            return paragraphIndex;
-        }
-
-        public String message() {
-            return message;
-        }
+    public record Result(boolean valid, int paragraphIndex, String message) {
 
         private static Result valid(int paragraphIndex) {
-            return new Result(true, paragraphIndex, null);
-        }
+                return new Result(true, paragraphIndex, null);
+            }
 
-        private static Result invalid(String message) {
-            return new Result(false, -1, message);
+            private static Result invalid(String message) {
+                return new Result(false, -1, message);
+            }
         }
-    }
 
     public static Result validate(String input, int paragraphCount) {
         String value = input == null ? "" : input.trim();

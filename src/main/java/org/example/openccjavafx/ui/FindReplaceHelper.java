@@ -13,103 +13,22 @@ public final class FindReplaceHelper {
 
     public enum Outcome {FOUND, WRAPPED, NO_MATCH, INVALID_PATTERN, INVALID_REPLACEMENT, NOT_COMPLETE_MATCH}
 
-public static final class FindResult {
-        private final Outcome outcome;
-        private final int start;
-        private final int end;
-        private final String error;
-
-        public FindResult(Outcome outcome, int start, int end, String error) {
-            this.outcome = outcome;
-            this.start = start;
-            this.end = end;
-            this.error = error;
-        }
-
-        public Outcome outcome() {
-            return outcome;
-        }
-
-        public int start() {
-            return start;
-        }
-
-        public int end() {
-            return end;
-        }
-
-        public String error() {
-            return error;
-        }
+    public record FindResult(Outcome outcome, int start, int end, String error) {
 
         public boolean found() {
             return outcome == Outcome.FOUND || outcome == Outcome.WRAPPED;
         }
     }
 
-    public static final class ReplaceResult {
-        private final Outcome outcome;
-        private final String text;
-        private final int count;
-        private final int selectionStart;
-        private final int selectionEnd;
-        private final String error;
-
-        public ReplaceResult(Outcome outcome, String text, int count,
-                             int selectionStart, int selectionEnd, String error) {
-            this.outcome = outcome;
-            this.text = text;
-            this.count = count;
-            this.selectionStart = selectionStart;
-            this.selectionEnd = selectionEnd;
-            this.error = error;
-        }
-
-        public Outcome outcome() {
-            return outcome;
-        }
-
-        public String text() {
-            return text;
-        }
-
-        public int count() {
-            return count;
-        }
-
-        public int selectionStart() {
-            return selectionStart;
-        }
-
-        public int selectionEnd() {
-            return selectionEnd;
-        }
-
-        public String error() {
-            return error;
-        }
+    public record ReplaceResult(Outcome outcome, String text, int count, int selectionStart, int selectionEnd,
+                                String error) {
 
         public boolean replaced() {
             return count > 0;
         }
     }
 
-    private static final class FindPattern {
-        private final Pattern pattern;
-        private final FindResult failure;
-
-        private FindPattern(Pattern pattern, FindResult failure) {
-            this.pattern = pattern;
-            this.failure = failure;
-        }
-
-        private Pattern pattern() {
-            return pattern;
-        }
-
-        private FindResult failure() {
-            return failure;
-        }
+    private record FindPattern(Pattern pattern, FindResult failure) {
     }
 
     public static FindResult findNext(String text, String findText, boolean matchCase,
@@ -176,7 +95,7 @@ public static final class FindResult {
             if (matcher.start() == start && matcher.end() == end) {
                 try {
                     String actualReplacement = regex ? replacement : Matcher.quoteReplacement(replacement);
-                    StringBuffer prefixAndReplacement = new StringBuffer();
+                    StringBuilder prefixAndReplacement = new StringBuilder();
                     matcher.appendReplacement(prefixAndReplacement, actualReplacement);
                     String expanded = prefixAndReplacement.substring(start);
                     String result = text.substring(0, start) + expanded + text.substring(end);
