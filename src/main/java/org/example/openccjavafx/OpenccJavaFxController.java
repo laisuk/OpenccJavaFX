@@ -29,6 +29,8 @@ import org.example.openccjavafx.i18n.UiLanguage;
 import org.example.openccjavafx.theme.ThemeManager;
 import org.example.openccjavafx.ui.ConversionComboBoxHelper;
 import org.example.openccjavafx.ui.EditorFontHelper;
+import org.example.openccjavafx.ui.FindReplaceHelper;
+import org.example.openccjavafx.ui.GoToLineHelper;
 import org.example.openccjavafx.ui.icon.AppIconGlyph;
 import org.example.openccjavafx.ui.icon.SymbolIcon;
 import org.fxmisc.richtext.CodeArea;
@@ -65,6 +67,35 @@ public class OpenccJavaFxController {
     @FXML
 //    private TextArea textAreaPreview;
     private CodeArea textAreaPreview;
+    @FXML
+    private Parent findReplacePanel;
+    @FXML
+    private TextField findField;
+    @FXML
+    private TextField replaceField;
+    @FXML
+    private Label replaceLabel;
+    @FXML
+    private Button replaceButton;
+    @FXML
+    private Button replaceAllButton;
+    @FXML
+    private CheckBox matchCaseCheckBox;
+    @FXML
+    private CheckBox regexCheckBox;
+    @FXML
+    private Label findStatusLabel;
+    @FXML
+    private Parent goToLinePanel;
+    @FXML
+    private TextField lineNumberField;
+    @FXML
+    private Label goToLineStatusLabel;
+    private CodeArea activeEditor;
+    private CodeArea lastMatchEditor;
+    private String lastSearchSignature;
+    private int lastMatchStart = -1;
+    private int lastMatchEnd = -1;
     @FXML
     private RadioButton rbS2t;
     @FXML
@@ -249,6 +280,7 @@ public class OpenccJavaFxController {
         applyStatusHover();
         initEditorFontControls();
         initUiButtons();
+        initEditorTools();
     }
 
     private void applyCurrentTheme() {
@@ -1430,5 +1462,340 @@ public class OpenccJavaFxController {
         textAreaDestination.getUndoManager().forgetHistory();
         lblDestinationCode.setText("");
         lblStatus.setText(I18n.get("status.clearDestination"));
+    }
+    private void initEditorTools() {
+        activeEditor = textAreaSource;
+        textAreaPreview.setEditable(false);
+
+        textAreaSource.focusedProperty().addListener((obs, oldValue, focused) -> {
+            if (focused) setActiveEditor(textAreaSource);
+        });
+        textAreaDestination.focusedProperty().addListener((obs, oldValue, focused) -> {
+            if (focused) setActiveEditor(textAreaDestination);
+        });
+        findField.textProperty().addListener((obs, oldValue, newValue) -> clearFindError());
+        regexCheckBox.selectedProperty().addListener((obs, oldValue, newValue) -> clearFindError());
+        matchCaseCheckBox.selectedProperty().addListener((obs, oldValue, newValue) -> clearFindError());
+        lineNumberField.textProperty().addListener((obs, oldValue, newValue) -> clearGoToLineError());
+
+        Platform.runLater(() -> {
+            Scene scene = textAreaSource.getScene();
+            if (scene != null) scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleEditorShortcut);
+        });
+        updateReplacementControls();
+    }
+
+    private void handleEditorShortcut(KeyEvent event) {
+        if (event.isShortcutDown() && event.getCode() == KeyCode.F) {
+            openFindReplace(false);
+            event.consume();
+        } else if (event.isShortcutDown() && event.getCode() == KeyCode.H) {
+            openFindReplace(true);
+            event.consume();
+        } else if (event.isShortcutDown() && event.getCode() == KeyCode.G) {
+            openGoToLine();
+            event.consume();
+        } else if (event.getCode() == KeyCode.ESCAPE && findReplacePanel.isVisible()) {
+            closeFindReplace();
+            event.consume();
+        } else if (event.getCode() == KeyCode.ESCAPE && goToLinePanel.isVisible()) {
+            closeGoToLine();
+            event.consume();
+        }
+    }
+
+    private void setActiveEditor(CodeArea editor) {
+        activeEditor = editor;
+        clearLastMatch();
+        updateReplacementControls();
+    }
+
+    private void openFindReplace(boolean showReplace) {
+        hideGoToLine(false);
+        tabMain.getTabPane().getSelectionModel().select(tabMain);
+        findReplacePanel.setVisible(true);
+        findReplacePanel.setManaged(true);
+        setReplaceModeVisible(showReplace);
+        updateReplacementControls();
+        findStatusLabel.setText("");
+
+        IndexRange selection = activeEditor.getSelection();
+        if (selection.getLength() > 0) {
+            String selected = activeEditor.getSelectedText();
+            if (selected.length() <= 200 && !selected.contains("\n") && !selected.contains("\r")) {
+                findField.setText(selected);
+            }
+        }
+        Platform.runLater(() -> {
+            findField.requestFocus();
+            findField.selectAll();
+        });
+    }
+
+    private void setReplaceModeVisible(boolean visible) {
+        replaceLabel.setVisible(visible);
+        replaceLabel.setManaged(visible);
+        replaceField.setVisible(visible);
+        replaceField.setManaged(visible);
+        replaceButton.setVisible(visible);
+        replaceButton.setManaged(visible);
+        replaceAllButton.setVisible(visible);
+        replaceAllButton.setManaged(visible);
+    }
+
+    private void updateReplacementControls() {
+        boolean readOnlyTarget = activeEditor == null || !activeEditor.isEditable();
+        replaceField.setDisable(readOnlyTarget);
+        replaceButton.setDisable(readOnlyTarget);
+        replaceAllButton.setDisable(readOnlyTarget);
+    }
+
+    @FXML
+    private void onFindFieldKeyPressed(KeyEvent event) {
+        if (event.getCode() == KeyCode.ENTER) {
+            if (event.isShiftDown()) onFindPrevious();
+            else onFindNext();
+            event.consume();
+        } else if (event.getCode() == KeyCode.ESCAPE) {
+            closeFindReplace();
+            event.consume();
+        }
+    }
+
+    @FXML
+    private void onFindNext() {
+        IndexRange selection = activeEditor.getSelection();
+        String signature = searchSignature();
+        boolean skipZeroLength = activeEditor == lastMatchEditor
+                && signature.equals(lastSearchSignature)
+                && lastMatchStart == lastMatchEnd
+                && selection.getLength() == 0
+                && activeEditor.getCaretPosition() == lastMatchEnd;
+
+        FindReplaceHelper.FindResult result = FindReplaceHelper.findNext(
+                activeEditor.getText(), findField.getText(), matchCaseCheckBox.isSelected(),
+                regexCheckBox.isSelected(), selection.getStart(), selection.getEnd(),
+                activeEditor.getCaretPosition(), skipZeroLength);
+        displayFindResult(result, false, signature);
+    }
+
+    @FXML
+    private void onFindPrevious() {
+        IndexRange selection = activeEditor.getSelection();
+        String signature = searchSignature();
+        boolean skipZeroLength = activeEditor == lastMatchEditor
+                && signature.equals(lastSearchSignature)
+                && lastMatchStart == lastMatchEnd
+                && selection.getLength() == 0
+                && activeEditor.getCaretPosition() == lastMatchEnd;
+        FindReplaceHelper.FindResult result = FindReplaceHelper.findPrevious(
+                activeEditor.getText(), findField.getText(), matchCaseCheckBox.isSelected(),
+                regexCheckBox.isSelected(), selection.getStart(), selection.getEnd(),
+                activeEditor.getCaretPosition(), skipZeroLength);
+        displayFindResult(result, true, signature);
+    }
+
+    private void displayFindResult(FindReplaceHelper.FindResult result, boolean previous, String signature) {
+        clearFindError();
+        if (result.found()) {
+            activeEditor.selectRange(result.start(), result.end());
+            activeEditor.requestFollowCaret();
+            lastMatchEditor = activeEditor;
+            lastSearchSignature = signature;
+            lastMatchStart = result.start();
+            lastMatchEnd = result.end();
+            if (result.outcome() == FindReplaceHelper.Outcome.WRAPPED) {
+                findStatusLabel.setText(previous ? "Wrapped to end" : "Wrapped to beginning");
+            } else {
+                findStatusLabel.setText("Match found");
+            }
+        } else {
+            clearLastMatch();
+            if (result.outcome() == FindReplaceHelper.Outcome.INVALID_PATTERN) {
+                showFindError("Invalid regex: " + result.error());
+            } else {
+                findStatusLabel.setText("No matches");
+            }
+        }
+    }
+
+    @FXML
+    private void onReplaceCurrent() {
+        if (!activeEditor.isEditable()) return;
+        IndexRange selection = activeEditor.getSelection();
+        FindReplaceHelper.ReplaceResult result = FindReplaceHelper.replaceCurrent(
+                activeEditor.getText(), findField.getText(), replaceField.getText(),
+                matchCaseCheckBox.isSelected(), regexCheckBox.isSelected(),
+                selection.getStart(), selection.getEnd());
+        clearFindError();
+
+        if (result.replaced()) {
+            String inserted = result.text().substring(result.selectionStart(), result.selectionEnd());
+            activeEditor.replaceText(selection.getStart(), selection.getEnd(), inserted);
+            activeEditor.selectRange(result.selectionEnd(), result.selectionEnd());
+            refreshSourceAfterReplacement();
+            findStatusLabel.setText("1 replacement");
+            clearLastMatch();
+        } else {
+            displayReplaceFailure(result);
+        }
+    }
+
+    @FXML
+    private void onReplaceAll() {
+        if (!activeEditor.isEditable()) return;
+        FindReplaceHelper.ReplaceResult result = FindReplaceHelper.replaceAll(
+                activeEditor.getText(), findField.getText(), replaceField.getText(),
+                matchCaseCheckBox.isSelected(), regexCheckBox.isSelected());
+        clearFindError();
+
+        if (result.replaced()) {
+            activeEditor.replaceText(result.text());
+            refreshSourceAfterReplacement();
+            findStatusLabel.setText(result.count() + (result.count() == 1 ? " replacement" : " replacements"));
+            clearLastMatch();
+        } else {
+            displayReplaceFailure(result);
+        }
+    }
+
+    private void displayReplaceFailure(FindReplaceHelper.ReplaceResult result) {
+        switch (result.outcome()) {
+            case INVALID_PATTERN -> showFindError("Invalid regex: " + result.error());
+            case INVALID_REPLACEMENT -> findStatusLabel.setText("Invalid replacement: " + result.error());
+            case NOT_COMPLETE_MATCH -> findStatusLabel.setText("Selection is not a complete match");
+            default -> findStatusLabel.setText("No matches");
+        }
+    }
+
+    private void refreshSourceAfterReplacement() {
+        if (activeEditor == textAreaSource) {
+            updateSourceInfo(OpenCC.zhoCheck(textAreaSource.getText()));
+        }
+    }
+
+    private String searchSignature() {
+        return findField.getText() + "\u0000" + matchCaseCheckBox.isSelected()
+                + "\u0000" + regexCheckBox.isSelected();
+    }
+
+    private void clearLastMatch() {
+        lastMatchEditor = null;
+        lastSearchSignature = null;
+        lastMatchStart = -1;
+        lastMatchEnd = -1;
+    }
+
+    private void showFindError(String message) {
+        findStatusLabel.setText(message);
+        if (!findField.getStyleClass().contains("find-invalid")) {
+            findField.getStyleClass().add("find-invalid");
+        }
+    }
+
+    private void clearFindError() {
+        findField.getStyleClass().remove("find-invalid");
+        clearLastMatch();
+    }
+
+    @FXML
+    private void onCloseFindReplace() {
+        closeFindReplace();
+    }
+
+    private void closeFindReplace() {
+        hideFindReplace(true);
+    }
+
+    private void hideFindReplace(boolean restoreFocus) {
+        findReplacePanel.setVisible(false);
+        findReplacePanel.setManaged(false);
+        findStatusLabel.setText("");
+        clearFindError();
+        if (restoreFocus) {
+            CodeArea editor = activeEditor;
+            Platform.runLater(editor::requestFocus);
+        }
+    }
+
+    private void openGoToLine() {
+        tabMain.getTabPane().getSelectionModel().select(tabMain);
+        hideFindReplace(false);
+        goToLinePanel.setVisible(true);
+        goToLinePanel.setManaged(true);
+        clearGoToLineError();
+        lineNumberField.setText(Integer.toString(activeEditor.getCurrentParagraph() + 1));
+        Platform.runLater(() -> {
+            lineNumberField.requestFocus();
+            lineNumberField.selectAll();
+        });
+    }
+
+    @FXML
+    private void onGoToLineFieldKeyPressed(KeyEvent event) {
+        if (event.getCode() == KeyCode.ENTER) {
+            onGoToLine();
+            event.consume();
+        } else if (event.getCode() == KeyCode.ESCAPE) {
+            closeGoToLine();
+            event.consume();
+        }
+    }
+
+    @FXML
+    private void onGoToLine() {
+        int paragraphCount = activeEditor.getParagraphs().size();
+        GoToLineHelper.Result result = GoToLineHelper.validate(
+                lineNumberField.getText(), paragraphCount);
+        if (!result.valid()) {
+            showGoToLineError(result.message());
+            lineNumberField.requestFocus();
+            lineNumberField.selectAll();
+            return;
+        }
+
+        CodeArea editor = activeEditor;
+        int paragraphIndex = result.paragraphIndex();
+        editor.moveTo(paragraphIndex, 0);
+        Platform.runLater(() -> {
+            editor.showParagraphAtCenter(paragraphIndex);
+            editor.requestFollowCaret();
+            lineNumberField.getStyleClass().remove("find-invalid");
+            goToLineStatusLabel.setText(
+                    "Line " + (paragraphIndex + 1) + " of " + paragraphCount);
+            lineNumberField.requestFocus();
+            lineNumberField.selectAll();
+        });
+    }
+
+    @FXML
+    private void onCloseGoToLine() {
+        closeGoToLine();
+    }
+
+    private void closeGoToLine() {
+        hideGoToLine(true);
+    }
+
+    private void hideGoToLine(boolean restoreFocus) {
+        goToLinePanel.setVisible(false);
+        goToLinePanel.setManaged(false);
+        clearGoToLineError();
+        if (restoreFocus) {
+            CodeArea editor = activeEditor;
+            Platform.runLater(editor::requestFocus);
+        }
+    }
+
+    private void showGoToLineError(String message) {
+        goToLineStatusLabel.setText(message);
+        if (!lineNumberField.getStyleClass().contains("find-invalid")) {
+            lineNumberField.getStyleClass().add("find-invalid");
+        }
+    }
+
+    private void clearGoToLineError() {
+        goToLineStatusLabel.setText("");
+        lineNumberField.getStyleClass().remove("find-invalid");
     }
 } // class DemoFxController

@@ -9,6 +9,21 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ## [1.3.0] - Unreleased
 
+### Added
+
+- Added Find and Replace for the main source and destination editors with `Ctrl`/`Command`+`F` and
+  `Ctrl`/`Command`+`H`, next/previous navigation, search wrapping, match-case and regular-expression options.
+    - Supports literal replacement, Java regular-expression capture-group replacement, Replace Current, and single-edit
+      Replace All in the editable source editor.
+    - Includes inline match, wrap, validation, and replacement-count feedback with light and dark theme styling.
+    - Keeps the read-only destination searchable while disabling replacement controls; the batch preview remains
+      read-only and outside editor search targeting.
+- Added Go to Line for the active source or destination editor with `Ctrl`/`Command`+`G`.
+    - Validates 1-based logical line numbers, centers the requested RichTextFX paragraph, and reports the current line
+      and total line count inline.
+    - Keeps the panel open after navigation with the line field focused and selected for rapid repeated jumps; Escape
+      and Close restore focus to the active editor.
+
 ### Changed
 
 - Update and optimize dictionary data to reduce ambiguity.

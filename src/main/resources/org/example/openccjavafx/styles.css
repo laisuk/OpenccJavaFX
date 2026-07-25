@@ -1106,3 +1106,82 @@
 .app-root.dark .spinner:focused .decrement-arrow-button {
     -fx-border-color: #60a5fa;
 }
+/* Find and Replace */
+.app-root .find-replace-panel {
+    -fx-background-color: #fbfbfc;
+    -fx-border-color: #d7dbe0;
+    -fx-border-width: 1px;
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+    -fx-padding: 8px 10px;
+}
+
+.app-root .find-replace-panel .label,
+.app-root .find-replace-panel .check-box {
+    -fx-text-fill: #1f1f1f;
+}
+
+.app-root .find-replace-panel .text-field {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cbd2d9;
+    -fx-background-radius: 7px;
+    -fx-border-radius: 7px;
+    -fx-padding: 4px 7px;
+}
+
+.app-root .find-replace-panel .text-field:focused {
+    -fx-border-color: #2563eb;
+    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.20), 5, 0.15, 0, 0);
+}
+
+.app-root .find-replace-panel .text-field.find-invalid {
+    -fx-border-color: #dc2626;
+}
+
+.app-root .find-button,
+.app-root .find-close-button {
+    -fx-background-radius: 7px;
+    -fx-border-radius: 7px;
+    -fx-padding: 5px 10px;
+}
+
+.app-root .find-close-button {
+    -fx-text-fill: #475569;
+}
+
+.app-root .find-status {
+    -fx-font-size: 12px;
+    -fx-text-fill: #5f6b7a;
+}
+
+.app-root.dark .find-replace-panel {
+    -fx-background-color: #2a2d2f;
+    -fx-border-color: #454b52;
+}
+
+.app-root.dark .find-replace-panel .label,
+.app-root.dark .find-replace-panel .check-box {
+    -fx-text-fill: #f3f4f6;
+}
+
+.app-root.dark .find-replace-panel .text-field {
+    -fx-background-color: #202325;
+    -fx-text-fill: #f3f4f6;
+    -fx-prompt-text-fill: #8f9aa8;
+    -fx-border-color: #59616b;
+}
+
+.app-root.dark .find-replace-panel .text-field:focused {
+    -fx-background-color: #202325;
+    -fx-border-color: #60a5fa;
+    -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.30), 6, 0.15, 0, 0);
+}
+
+.app-root.dark .find-replace-panel .text-field.find-invalid {
+    -fx-border-color: #f87171;
+}
+
+.app-root.dark .find-close-button,
+.app-root.dark .find-status {
+    -fx-text-fill: #b8c0cc;
+}
