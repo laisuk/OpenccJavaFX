@@ -23,6 +23,21 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
       and total line count inline.
     - Keeps the panel open after navigation with the line field focused and selected for rapid repeated jumps; Escape
       and Close restore focus to the active editor.
+- Added a Dialog Quotes Fixer for the editable source editor.
+    - Normalizes ASCII dialog quotes to matching curly or Traditional Chinese corner quote families while preserving
+      existing CJK quotation marks and Latin apostrophes inside words.
+    - Applies normalization as one undoable RichTextFX document edit, refreshes source metadata, and does not
+      automatically convert or modify the destination editor.
+- Added Dialog Quotes Validators for both source and destination editors.
+    - Conservatively reports reversed, mixed-family, and mixed-level completed quote pairs at logical line boundaries
+      without attempting speculative document-wide quote balancing.
+    - Presents up to five structured issues in a reusable light/dark-themed dialog, with clipped long-line previews and
+      a target-aware **Go to First Suspicious Line** action that returns to the editor that was validated.
+    - Reuses shared editor navigation with Go to Line and includes pure backend tests for normalization, validation,
+      newline handling, issue ordering, summaries, and immutable results.
+    - Localizes the complete feature UI, including tooltips, status messages, dialog titles, summaries, hints, line
+      labels, counts, and actions, in English, Simplified Chinese, and Traditional Chinese while preserving original
+      document excerpts verbatim.
 
 ### Changed
 
