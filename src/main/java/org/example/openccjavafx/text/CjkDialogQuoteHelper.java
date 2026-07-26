@@ -3,11 +3,33 @@ package org.example.openccjavafx.text;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Pure text operations for normalizing and validating CJK dialog quotes. */
+/**
+ * Provides pure text operations for normalizing and validating quotation marks
+ * commonly found in CJK dialog.
+ */
 public final class CjkDialogQuoteHelper {
     private CjkDialogQuoteHelper() {
     }
 
+    /**
+     * Normalizes ASCII dialog quotation marks according to the active curly or
+     * Traditional Chinese corner-quote family.
+     *
+     * <p>Existing curly and corner quotation marks are preserved and update the
+     * state used to interpret subsequent ASCII quotation marks. When an ASCII
+     * quote opens a quotation with no active family, curly quotation marks are
+     * used by default.</p>
+     *
+     * <p>When {@code preserveLatinApostrophes} is {@code true}, ASCII and curly
+     * single quotation marks between ASCII Latin letters are preserved without
+     * changing the current quote state. This protects apostrophes in words such
+     * as {@code don't}, {@code I'm}, {@code rock'n'roll}, and {@code O'Brien}.</p>
+     *
+     * @param text the input text to normalize; may be {@code null}
+     * @param preserveLatinApostrophes whether to preserve single quotation marks
+     *                                 between ASCII Latin letters
+     * @return the normalized text, or the original {@code null} or empty value
+     */
     public static String normalizeDialogQuotes(String text, boolean preserveLatinApostrophes) {
         if (text == null || text.isEmpty()) {
             return text;
@@ -18,7 +40,7 @@ public final class CjkDialogQuoteHelper {
         for (int index = 0; index < text.length(); index++) {
             char character = text.charAt(index);
             if (preserveLatinApostrophes
-                    && character == '\''
+                    && (character == '\'' || character == '‘' || character == '’')
                     && index > 0
                     && index + 1 < text.length()
                     && isAsciiLetter(text.charAt(index - 1))
@@ -31,6 +53,17 @@ public final class CjkDialogQuoteHelper {
         return normalized.toString();
     }
 
+    /**
+     * Validates completed dialog quote pairs at the beginning and end of each
+     * individual line.
+     *
+     * <p>The validator reports reversed pairs and pairs that mix quote families
+     * or nesting levels. It checks only the first and last non-whitespace
+     * characters and does not perform full multi-line quote balancing.</p>
+     *
+     * @param text the text whose dialog quotation marks should be inspected
+     * @return a validation result containing every suspicious line
+     */
     public static DialogQuoteValidationResult validateDialogQuotes(String text) {
         if (text == null || text.isEmpty()) {
             return new DialogQuoteValidationResult(List.of());

@@ -27,7 +27,7 @@ class CjkDialogQuoteHelperTest {
 
     @Test
     void preservesLatinApostrophes() {
-        String input = "I'm reading O'Brien's book. don't rock'n'roll";
+        String input = "I'm reading O'Brien's book. don't rock'n'roll I’m rock‘n’roll";
         assertEquals(input, normalize(input));
     }
 
