@@ -1477,8 +1477,9 @@ public class OpenccJavaFxController {
             return;
         }
 
-        textAreaSource.replaceText(normalized);
+        textAreaDestination.replaceText(normalized);
         updateSourceInfo(OpenCC.zhoCheck(normalized));
+        lblDestinationCode.setText(lblSourceCode.getText());
         lblStatus.setText(I18n.get("status.dialogQuote.normalized"));
     }
 
