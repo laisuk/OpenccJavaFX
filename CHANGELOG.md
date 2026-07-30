@@ -41,6 +41,13 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Changed
 
+- Replaced the embedded legacy CLI commands with the current OpenccJava CLI implementations, including current
+  validation, exit-code, help, conversion, Office, PDF, dictionary-generation, and progress behavior.
+- Synced the mirrored OpenccJava custom-dictionary API around `DictSlot` canonical names and
+  `CustomDictSpec.parse(<slot>:<append|override>:<path>)`, with strict active-slot validation, CLI delegation, and a
+  deprecated `withCustomDictFiles(...)` forwarding method.
+- Synced core parity fixes for conversion-plan cache retention, one-shot `OpenCC.convert(...)`, DeToFu level aliases,
+  and defensive `StarterUnion` state handling.
 - Update and optimize dictionary data to reduce ambiguity.
 - Updated the mirrored `openccjava` package with forward Taiwan/Hong Kong regional variant phrase slots:
     - Added `DictSlot.TWVariantsPhrases` and `DictSlot.HKVariantsPhrases`.

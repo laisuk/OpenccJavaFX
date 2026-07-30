@@ -87,14 +87,20 @@ public final class StarterUnion {
      * @param astralLenMask sparse map of astral code points (U+10000–U+10FFFF) to
      *                      their 64-bit length masks, using the same encoding as
      *                      {@code bmpLenMask}
+     * @throws NullPointerException if any argument is {@code null}
      */
     public StarterUnion(BitSet bmpMask, BitSet astralMask,
                         long[] bmpLenMask,
                         Map<Integer, Long> astralLenMask) {
-        this.bmpMask = bmpMask;
-        this.astralMask = astralMask;
-        this.bmpLenMask = bmpLenMask;
-        this.astralLenMask = Collections.unmodifiableMap(astralLenMask);
+        this.bmpMask = (BitSet) Objects.requireNonNull(bmpMask, "bmpMask").clone();
+        this.astralMask = (BitSet) Objects.requireNonNull(astralMask, "astralMask").clone();
+        this.bmpLenMask = Arrays.copyOf(
+                Objects.requireNonNull(bmpLenMask, "bmpLenMask"),
+                bmpLenMask.length
+        );
+        this.astralLenMask = Collections.unmodifiableMap(new HashMap<>(
+                Objects.requireNonNull(astralLenMask, "astralLenMask")
+        ));
     }
 
     /**
@@ -191,6 +197,7 @@ public final class StarterUnion {
      * @return a 64-bit length mask; {@code 0} if no keys are known to start with {@code cp}
      */
     public long lenMask(int cp) {
+        if (cp < 0) return 0L;
         if (cp < BMP_LIMIT) return bmpLenMask[cp];
         return astralLenMask.getOrDefault(cp, 0L);
     }

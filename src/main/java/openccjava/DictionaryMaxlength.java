@@ -264,7 +264,7 @@ public class DictionaryMaxlength {
 
     /**
      * Loads all dictionary files from the default {@code dicts} directory and
-     * applies custom dictionary files to selected slots.
+     * applies custom dictionary specifications to selected slots.
      *
      * <p>This is the file-level preload customization path. The official
      * dictionaries are loaded first, then each {@link CustomDictSpec} patches
@@ -278,8 +278,10 @@ public class DictionaryMaxlength {
      * @param customSpecs custom dictionary specs to apply; may be {@code null}
      *                    or empty
      * @return a newly loaded {@code DictionaryMaxlength} with custom patches applied
-     * @throws RuntimeException     if an official or custom dictionary file cannot be loaded
-     * @throws NullPointerException if {@code customSpecs} contains a {@code null} spec
+     * @throws RuntimeException         if an official or custom dictionary file cannot be loaded
+     * @throws NullPointerException     if {@code customSpecs} contains a {@code null} spec
+     * @throws IllegalArgumentException if a spec contains an inactive slot,
+     *                                  unsupported mode, empty source, or empty path
      */
     public static DictionaryMaxlength fromDicts(List<CustomDictSpec> customSpecs) {
         return fromDicts("dicts", customSpecs);
@@ -303,9 +305,11 @@ public class DictionaryMaxlength {
      * @param customSpecs custom dictionary specs to apply; may be {@code null}
      *                    or empty
      * @return a newly loaded {@code DictionaryMaxlength} with custom patches applied
-     * @throws RuntimeException     if an official or custom dictionary file cannot be loaded
-     * @throws NullPointerException if {@code basePath} is {@code null} or
-     *                              {@code customSpecs} contains a {@code null} spec
+     * @throws RuntimeException         if an official or custom dictionary file cannot be loaded
+     * @throws NullPointerException     if {@code basePath} is {@code null} or
+     *                                  {@code customSpecs} contains a {@code null} spec
+     * @throws IllegalArgumentException if a spec contains an inactive slot,
+     *                                  unsupported mode, empty source, or empty path
      */
     public static DictionaryMaxlength fromDicts(String basePath, List<CustomDictSpec> customSpecs) {
         final DictionaryMaxlength r = fromDicts(basePath);
@@ -384,6 +388,26 @@ public class DictionaryMaxlength {
         Objects.requireNonNull(dict, "dict");
         Objects.requireNonNull(spec, "spec");
 
+        if (spec.slot == null || !spec.slot.isActive()) {
+            throw new IllegalArgumentException(
+                    "Unknown or retired DictSlot: " + spec.slot
+            );
+        }
+
+        if (spec.mode != CustomDictMode.Append
+                && spec.mode != CustomDictMode.Override) {
+            throw new IllegalArgumentException(
+                    "Unsupported CustomDictMode: " + spec.mode
+            );
+        }
+
+        if (spec.paths == null || spec.pairs == null
+                || (spec.paths.isEmpty() && spec.pairs.isEmpty())) {
+            throw new IllegalArgumentException(
+                    "CustomDictSpec must provide paths or pairs"
+            );
+        }
+
         final String key = SLOT_KEYS.get(spec.slot);
 
         if (key == null) {
@@ -411,6 +435,11 @@ public class DictionaryMaxlength {
         }
 
         for (Path path : spec.paths) {
+            if (path == null || path.toString().trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Custom dictionary path must not be null or empty"
+                );
+            }
             try {
                 DictEntry loaded = loadDictionaryMaxlength(path);
                 merged.putAll(loaded.dict);
@@ -539,12 +568,13 @@ public class DictionaryMaxlength {
     }
 
     /**
-     * Returns a customized copy of this dictionary with in-memory custom dictionary
-     * pairs applied to selected slots.
+     * Returns a customized copy with custom dictionary specifications applied.
      *
-     * <p>This is the post-load customization path. The current instance is not
-     * mutated. Instead, all dictionary entries are copied first and the custom
-     * pairs are applied to the copy.</p>
+     * <p>This is the primary post-load customization API. Specifications may
+     * contain files, in-memory pairs, or both. The current instance is not
+     * mutated; all dictionary entries are copied before the specifications are
+     * applied in list order. File access occurs while this method applies each
+     * specification.</p>
      *
      * <p>If {@code specs} is {@code null} or empty, this method still returns a
      * separate copy with the same dictionary contents. This method does not read
@@ -552,7 +582,10 @@ public class DictionaryMaxlength {
      *
      * @param specs custom dictionary specs to apply; may be {@code null} or empty
      * @return a customized copy of this dictionary
-     * @throws NullPointerException if {@code specs} contains a {@code null} spec
+     * @throws NullPointerException     if {@code specs} contains a {@code null} spec
+     * @throws IllegalArgumentException if a spec contains an inactive slot,
+     *                                  unsupported mode, empty source, or empty path
+     * @throws RuntimeException         if a custom dictionary file cannot be loaded
      */
     public DictionaryMaxlength withCustomDicts(List<CustomDictSpec> specs) {
         DictionaryMaxlength copy = this.copy();
@@ -561,27 +594,23 @@ public class DictionaryMaxlength {
     }
 
     /**
-     * Returns a customized copy of this dictionary with custom dictionary files
-     * applied to selected slots.
+     * Returns a customized copy with custom dictionary specifications applied.
      *
-     * <p>This is the post-load customization path. The current instance is not
-     * mutated. Instead, all dictionary entries are copied first and the custom
-     * specs are applied to the copy. Custom dictionary files are parsed with the
-     * same parser used for built-in OpenCC text dictionaries.</p>
-     *
-     * <p>If {@code specs} is {@code null} or empty, this method still returns a
-     * separate copy with the same dictionary contents. This method does not read
-     * from or modify {@link OpenCC.DictionaryHolder}.</p>
+     * <p>This compatibility method delegates directly to
+     * {@link #withCustomDicts(java.util.List)}. Despite its historical name,
+     * specifications may contain files, in-memory pairs, or both.</p>
      *
      * @param specs custom dictionary specs to apply; may be {@code null} or empty
      * @return a customized copy of this dictionary
-     * @throws RuntimeException     if a custom dictionary file cannot be loaded
-     * @throws NullPointerException if {@code specs} contains a {@code null} spec
+     * @throws RuntimeException         if a custom dictionary file cannot be loaded
+     * @throws NullPointerException     if {@code specs} contains a {@code null} spec
+     * @throws IllegalArgumentException if a specification is invalid
+     * @deprecated Use {@link #withCustomDicts(java.util.List)}. This method is
+     * retained as a forwarding API for source and binary compatibility.
      */
+    @Deprecated
     public DictionaryMaxlength withCustomDictFiles(List<CustomDictSpec> specs) {
-        DictionaryMaxlength copy = this.copy();
-        applyCustomDictSpecs(copy, specs);
-        return copy;
+        return withCustomDicts(specs);
     }
 
     private DictionaryMaxlength copy() {

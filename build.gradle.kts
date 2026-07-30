@@ -68,7 +68,7 @@ dependencies {
     annotationProcessor("info.picocli:picocli-codegen:4.7.7")
 
     //PDFBox
-    implementation("org.apache.pdfbox:pdfbox:3.0.7")
+    implementation("org.apache.pdfbox:pdfbox:3.0.8")
 //    implementation("commons-logging:commons-logging:1.3.5")
 
     // JSoup

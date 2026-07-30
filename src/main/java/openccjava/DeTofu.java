@@ -29,6 +29,7 @@ import static openccjava.Utils.readUtf8;
  *
  * @see DeTofu.Level
  * @see DeTofu.Map
+ * @since 1.4.0
  */
 public final class DeTofu {
     private static final String BUILTIN_RESOURCE = "/dicts/TSCharactersTofu.txt";
@@ -125,27 +126,35 @@ public final class DeTofu {
             switch (value.trim().toLowerCase(Locale.ROOT)) {
                 case "all":
                 case "ext-b":
+                case "extb":
                 case "b":
                     return ExtB;
                 case "ext-c":
+                case "extc":
                 case "c":
                     return ExtC;
                 case "ext-d":
+                case "extd":
                 case "d":
                     return ExtD;
                 case "ext-e":
+                case "exte":
                 case "e":
                     return ExtE;
                 case "ext-f":
+                case "extf":
                 case "f":
                     return ExtF;
                 case "ext-g":
+                case "extg":
                 case "g":
                     return ExtG;
                 case "ext-h":
+                case "exth":
                 case "h":
                     return ExtH;
                 case "ext-i":
+                case "exti":
                 case "i":
                     return ExtI;
                 default:
@@ -153,6 +162,14 @@ public final class DeTofu {
                             "Supported DeTofu levels: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i."
                     );
             }
+        }
+    }
+
+    private static Level tryParseLevel(String value) {
+        try {
+            return Level.parse(value);
+        } catch (RuntimeException e) {
+            return null;
         }
     }
 
@@ -224,7 +241,7 @@ public final class DeTofu {
 
                 String tofu = readFirstScalar(parts[0].trim());
                 String fallback = readFirstScalar(parts[1].trim());
-                Level ext = tryParseExtension(parts[2]);
+                Level ext = tryParseLevel(parts[2]);
 
                 if (tofu != null && fallback != null && ext != null)
                     entries.add(new Entry(tofu, fallback, ext));
@@ -234,48 +251,6 @@ public final class DeTofu {
         }
 
         return entries;
-    }
-
-    private static Level tryParseExtension(String value) {
-        if (value == null)
-            return null;
-
-        switch (value.trim()) {
-            case "ExtB":
-            case "B":
-            case "b":
-                return Level.ExtB;
-            case "ExtC":
-            case "C":
-            case "c":
-                return Level.ExtC;
-            case "ExtD":
-            case "D":
-            case "d":
-                return Level.ExtD;
-            case "ExtE":
-            case "E":
-            case "e":
-                return Level.ExtE;
-            case "ExtF":
-            case "F":
-            case "f":
-                return Level.ExtF;
-            case "ExtG":
-            case "G":
-            case "g":
-                return Level.ExtG;
-            case "ExtH":
-            case "H":
-            case "h":
-                return Level.ExtH;
-            case "ExtI":
-            case "I":
-            case "i":
-                return Level.ExtI;
-            default:
-                return null;
-        }
     }
 
     private static String readFirstScalar(String value) {

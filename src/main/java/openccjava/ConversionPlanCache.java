@@ -1,5 +1,6 @@
 package openccjava;
 
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -23,9 +24,10 @@ import java.util.concurrent.ConcurrentMap;
 public final class ConversionPlanCache {
     /**
      * Shared cache registry keyed by dictionary instance.
-     * Weak keys allow custom dictionaries to be reclaimed when no longer referenced.
+     * Weak keys and weak cache values allow custom dictionaries and their caches
+     * to be reclaimed when no converter or caller retains them.
      */
-    private static final Map<DictionaryMaxlength, ConversionPlanCache> SHARED_CACHES =
+    private static final Map<DictionaryMaxlength, WeakReference<ConversionPlanCache>> SHARED_CACHES =
             Collections.synchronizedMap(new WeakHashMap<>());
 
     /**
@@ -37,11 +39,12 @@ public final class ConversionPlanCache {
     public static ConversionPlanCache forDictionary(DictionaryMaxlength dictionary) {
         Objects.requireNonNull(dictionary, "dictionary");
         synchronized (SHARED_CACHES) {
-            ConversionPlanCache cache = SHARED_CACHES.get(dictionary);
+            WeakReference<ConversionPlanCache> reference = SHARED_CACHES.get(dictionary);
+            ConversionPlanCache cache = reference == null ? null : reference.get();
             if (cache == null) {
                 final DictionaryMaxlength dict = dictionary;
                 cache = new ConversionPlanCache(() -> dict);
-                SHARED_CACHES.put(dict, cache);
+                SHARED_CACHES.put(dict, new WeakReference<>(cache));
             }
             return cache;
         }
