@@ -90,7 +90,7 @@
                     <Font size="14.0" />
                 </font>
             </RadioButton>
-            <CheckBox fx:id="cbZHTW" alignment="CENTER" mnemonicParsing="false" styleClass="fluent-check" text="ZH/TW Idioms（惯用语）" GridPane.columnIndex="3" GridPane.halignment="CENTER">
+            <CheckBox fx:id="cbZHTW" alignment="CENTER" mnemonicParsing="false" onMouseClicked="#onRbHkClicked" styleClass="fluent-check" text="ZH/TW Idioms（惯用语）" GridPane.columnIndex="3" GridPane.halignment="CENTER">
                 <font>
                     <Font size="14.0" />
                 </font>

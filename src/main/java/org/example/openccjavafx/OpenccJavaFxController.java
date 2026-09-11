@@ -1114,11 +1114,16 @@ public class OpenccJavaFxController {
     }
 
     public void onRbStdClicked() {
-        cbZHTW.setSelected(false);
+//        cbZHTW.setSelected(false);
         cbZHTW.setDisable(rbStd.isSelected());
     }
 
     public void onRbZhtwClicked() {
+//        cbZHTW.setSelected(true);
+        cbZHTW.setDisable(false);
+    }
+
+    public void onRbHkClicked() {
 //        cbZHTW.setSelected(true);
         cbZHTW.setDisable(false);
     }

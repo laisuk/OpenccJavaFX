@@ -33,10 +33,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Temurin JDK 21 (with jpackage)
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
@@ -124,7 +124,7 @@ jobs:
 
       # Artifacts (installers + app-image for inspection)
       - name: Upload app image folder
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-image-${{ matrix.os_tag }}
           # exclude Windows/macOS installers from the app-image artifact
@@ -137,7 +137,7 @@ jobs:
 
       - name: Upload Linux DEB installer
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installer-${{ matrix.os_tag }}-deb
           path: |
@@ -147,7 +147,7 @@ jobs:
 
       - name: Upload Linux RPM installer
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installer-${{ matrix.os_tag }}-rpm
           path: |
@@ -157,7 +157,7 @@ jobs:
 
       - name: Upload Windows/macOS installers
         if: ${{ !startsWith(matrix.os, 'ubuntu') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installers-${{ matrix.os_tag }}
           path: |
