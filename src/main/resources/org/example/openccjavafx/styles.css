@@ -87,7 +87,7 @@
 }
 
 .button-secondary {
-    -fx-padding: 0 5 0 5;   /* give icon breathing space */
+    -fx-padding: 0 5 0 5; /* give icon breathing space */
     -fx-alignment: center;
 
     /* DO NOT restrict width too tightly */
@@ -1106,6 +1106,7 @@
 .app-root.dark .spinner:focused .decrement-arrow-button {
     -fx-border-color: #60a5fa;
 }
+
 /* Find and Replace */
 .app-root .find-replace-panel {
     -fx-background-color: #fbfbfc;
@@ -1185,6 +1186,7 @@
 .app-root.dark .find-status {
     -fx-text-fill: #b8c0cc;
 }
+
 /* =========================================================
    Unified editor cards
    ========================================================= */
@@ -1258,6 +1260,7 @@
     -fx-background-color: #26292c;
     -fx-border-color: #3a3f44 transparent transparent transparent;
 }
+
 /* =========================================================
    Dialog quote validation
    ========================================================= */
@@ -1352,4 +1355,83 @@
 
 .dialog-quote-validation.dark .dialog-quote-more {
     -fx-text-fill: #b8c0cc;
+}
+
+/* =========================================================
+   ContextMenu - encoding / popup menus
+   ========================================================= */
+
+/* Light */
+.context-menu {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d7dbe0;
+    -fx-border-width: 1px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-padding: 4px;
+}
+
+.context-menu .menu-item {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6px;
+    -fx-padding: 6px 12px;
+}
+
+.context-menu .menu-item .label {
+    -fx-text-fill: #1f2937;
+}
+
+.context-menu .menu-item:focused {
+    -fx-background-color: #f3f6fa;
+}
+
+.context-menu .menu-item:focused .label {
+    -fx-text-fill: #1f2937;
+}
+
+/* RadioMenuItem check */
+.context-menu .radio-menu-item .radio {
+    -fx-background-color: #2563eb;
+}
+
+.context-menu .radio-menu-item:selected .radio {
+    -fx-background-color: #2563eb;
+}
+
+.context-menu .radio-menu-item:focused .radio {
+    -fx-background-color: #2563eb;
+}
+
+
+/* =========================================================
+   ContextMenu - Dark
+   ========================================================= */
+
+.context-menu.dark {
+    -fx-background-color: #2a2d2f;
+    -fx-border-color: #454b52;
+}
+
+.context-menu.dark .menu-item .label {
+    -fx-text-fill: #f3f4f6;
+}
+
+.context-menu.dark .menu-item:focused {
+    -fx-background-color: #34383d;
+}
+
+.context-menu.dark .menu-item:focused .label {
+    -fx-text-fill: #ffffff;
+}
+
+.context-menu.dark .radio-menu-item .radio {
+    -fx-background-color: #60a5fa;
+}
+
+.context-menu.dark .radio-menu-item:selected .radio {
+    -fx-background-color: #60a5fa;
+}
+
+.context-menu.dark .radio-menu-item:focused .radio {
+    -fx-background-color: #60a5fa;
 }

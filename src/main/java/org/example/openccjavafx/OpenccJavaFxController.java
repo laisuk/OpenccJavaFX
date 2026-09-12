@@ -40,10 +40,9 @@ import org.example.openccjavafx.ui.icon.AppIconGlyph;
 import org.example.openccjavafx.ui.icon.SymbolIcon;
 import org.fxmisc.richtext.CodeArea;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,6 +61,18 @@ public class OpenccJavaFxController {
             ".csv", ".java", ".md", ".html", ".cs", ".py", ".cpp"
     ));
     private int currentSourceCode = 0; // 0=non-zho, 1=hant, 2=hans
+
+    private static final List<String> TEXT_ENCODINGS = Arrays.asList(
+            "UTF-8",
+            "GB18030",
+            "Big5",
+            "Big5-HKSCS",
+            "Shift_JIS",
+            "UTF-16LE",
+            "UTF-16BE"
+    );
+
+    private Charset currentTextCharset = StandardCharsets.UTF_8;
 
     @FXML
 //    private TextArea textAreaSource;
@@ -292,6 +303,7 @@ public class OpenccJavaFxController {
         initEditorFontControls();
         initUiButtons();
         initEditorTools();
+        initFilenameEncodingMenu();
     }
 
     private void applyCurrentTheme() {
@@ -379,7 +391,22 @@ public class OpenccJavaFxController {
         StatusHoverHelper.bind(btnClearDestination, lblStatus, I18n.get("hint.clearDestination"));
         StatusHoverHelper.bind(btnCopy, lblStatus, I18n.get("hint.copy"));
         StatusHoverHelper.bind(lblPdfOptions, lblStatus, I18n.get("hint.pdfOptions"));
-        StatusHoverHelper.bind(lblFilename, lblStatus, lblFilename::getText);
+//        StatusHoverHelper.bind(lblFilename, lblStatus, lblFilename::getText);
+        StatusHoverHelper.bind(
+                lblFilename,
+                lblStatus,
+                () -> {
+                    if (openFileName == null || openFileName.isEmpty()) {
+                        return "";
+                    }
+
+                    File file = new File(openFileName);
+
+                    return isTextFile(file)
+                            ? openFileName + "  •  " + I18n.get("hint.reloadWithEncoding")
+                            : openFileName;
+                }
+        );
         StatusHoverHelper.bind(btnAdd, lblStatus, I18n.get("hint.add"));
         StatusHoverHelper.bind(btnRemove, lblStatus, I18n.get("hint.remove"));
         StatusHoverHelper.bind(btnClearList, lblStatus, I18n.get("hint.clearList"));
@@ -437,6 +464,72 @@ public class OpenccJavaFxController {
         textAreaSource.setStyle(finalStyle);
         textAreaDestination.setStyle(finalStyle);
 //        textAreaPreview.setStyle(finalStyle);
+    }
+
+    // Reload Opened File with Selected Encoding
+
+    private void initFilenameEncodingMenu() {
+        lblFilename.setCursor(javafx.scene.Cursor.HAND);
+
+        lblFilename.setOnMouseClicked(event -> {
+            if (event.getButton() != MouseButton.PRIMARY) {
+                return;
+            }
+
+            showFilenameEncodingMenu();
+        });
+    }
+
+    private void showFilenameEncodingMenu() {
+        if (openFileName == null || openFileName.isEmpty()) {
+            return;
+        }
+
+        File file = new File(openFileName);
+
+        // Encoding reload only makes sense for actual plain-text files.
+        if (!isTextFile(file)) {
+            lblStatus.setText("Encoding selection is available only for plain-text files.");
+            return;
+        }
+
+        ContextMenu menu = new ContextMenu();
+
+        if (ThemeManager.isEffectiveDarkMode()) {
+            menu.getStyleClass().add("dark");
+        }
+
+        ToggleGroup group = new ToggleGroup();
+
+        for (String charsetName : TEXT_ENCODINGS) {
+            Charset charset;
+
+            try {
+                charset = Charset.forName(charsetName);
+            } catch (Exception ex) {
+                continue;
+            }
+
+            RadioMenuItem item = new RadioMenuItem(
+                    charsetName.equals("Shift_JIS") ? "Shift-JIS" : charsetName
+            );
+            item.setToggleGroup(group);
+            item.setSelected(charset.equals(currentTextCharset));
+
+            item.setOnAction(event -> {
+                currentTextCharset = charset;
+                reloadCurrentTextFile(charset);
+            });
+
+            menu.getItems().add(item);
+        }
+
+        menu.show(
+                lblFilename,
+                javafx.geometry.Side.BOTTOM,
+                0,
+                0
+        );
     }
 
     private final Label lblOpenFile = new Label();
@@ -881,12 +974,43 @@ public class OpenccJavaFxController {
         ));
 
         if (openFileName != null) {
-            lblFilename.setText(new File(openFileName).getName());
+            updateFilenameLabel();
+            updateFilenameCursor();
             lblStatus.setText(openFileName);
         } else {
             openFileName = "";
             lblFilename.setText(openFileName);
         }
+    }
+
+    private void updateFilenameLabel() {
+        if (openFileName == null || openFileName.isEmpty()) {
+            lblFilename.setText("");
+            return;
+        }
+
+        File file = new File(openFileName);
+
+        if (isTextFile(file)) {
+            lblFilename.setText(
+                    file.getName() + "  [" + currentTextCharset.displayName() + "]"
+            );
+        } else {
+            lblFilename.setText(file.getName());
+        }
+    }
+
+    private void updateFilenameCursor() {
+        if (openFileName == null || openFileName.isEmpty()) {
+            lblFilename.setCursor(javafx.scene.Cursor.DEFAULT);
+            return;
+        }
+
+        lblFilename.setCursor(
+                isTextFile(new File(openFileName))
+                        ? javafx.scene.Cursor.HAND
+                        : javafx.scene.Cursor.DEFAULT
+        );
     }
 
     private String getCurrentConfig() {
@@ -1042,25 +1166,8 @@ public class OpenccJavaFxController {
                 // -------- Plain Text Handling --------
                 enablePdfOptions = false;
 
-                byte[] bytes = Files.readAllBytes(file.toPath());
-
-                // Quick binary sniff: avoid showing ZIP/EXE garbage as "text"
-                // (DOCX already handled above; this catches other binaries)
-                int zeros = 0;
-                int probe = Math.min(bytes.length, 4096);
-                for (int i = 0; i < probe; i++) {
-                    if (bytes[i] == 0) zeros++;
-                }
-                if (zeros > 0) {
-                    throw new IOException("This file looks like a binary file (not plain text).");
-                }
-
-                String content = new String(bytes, StandardCharsets.UTF_8);
-
-                // Remove BOM if present
-                if (content.startsWith("\uFEFF")) {
-                    content = content.substring(1);
-                }
+                currentTextCharset = StandardCharsets.UTF_8;
+                String content = readTextFile(file, currentTextCharset);
 
                 statusAfter = I18n.format("status.loadFile.txt", file);
                 return content;
@@ -1105,6 +1212,98 @@ public class OpenccJavaFxController {
         t.start();
     }
 
+    private String readTextFile(File file, Charset charset) throws IOException {
+        byte[] bytes = Files.readAllBytes(file.toPath());
+
+        // Binary sniff.
+        // Do not apply this check to UTF-16 because NUL bytes are normal there.
+        if (!StandardCharsets.UTF_16LE.equals(charset)
+                && !StandardCharsets.UTF_16BE.equals(charset)) {
+
+            int zeros = 0;
+            int probe = Math.min(bytes.length, 4096);
+
+            for (int i = 0; i < probe; i++) {
+                if (bytes[i] == 0) {
+                    zeros++;
+                }
+            }
+
+            if (zeros > 0) {
+                throw new IOException(
+                        "This file looks like a binary file (not plain text)."
+                );
+            }
+        }
+
+        String content = new String(bytes, charset);
+
+        // Remove decoded BOM.
+        if (content.startsWith("\uFEFF")) {
+            content = content.substring(1);
+        }
+
+        return content;
+    }
+
+    private void reloadCurrentTextFile(Charset charset) {
+        if (openFileName == null || openFileName.isEmpty()) {
+            return;
+        }
+
+        File file = new File(openFileName);
+
+        if (!file.isFile() || !isTextFile(file)) {
+            lblStatus.setText("Current file cannot be reloaded with a text encoding.");
+            return;
+        }
+
+        showProgressBarIndeterminate(
+                "Reloading as " + charset.displayName() + "..."
+        );
+
+        Task<String> task = new Task<String>() {
+            @Override
+            protected String call() throws Exception {
+                return readTextFile(file, charset);
+            }
+
+            @Override
+            protected void succeeded() {
+                try {
+                    String text = get();
+
+                    textAreaSource.replaceText(text);
+                    updateSourceInfo(OpenCC.zhoCheck(text));
+
+                    hideProgressBar(
+                            "Reloaded " + file.getName()
+                                    + " as " + charset.displayName()
+                    );
+                } catch (Exception ex) {
+                    failed();
+                }
+            }
+
+            @Override
+            protected void failed() {
+                Throwable ex = getException();
+
+                hideProgressBar(
+                        "Failed to reload " + file.getName()
+                                + " as " + charset.displayName()
+                );
+
+                if (ex != null && ex.getMessage() != null) {
+                    lblStatus.setText(ex.getMessage());
+                }
+            }
+        };
+
+        Thread thread = new Thread(task, "text-file-reload-thread");
+        thread.setDaemon(true);
+        thread.start();
+    }
 
     public void onSourceTextChanged() {
         lblSourceCharCount.setText(I18n.format(
@@ -1359,24 +1558,22 @@ public class OpenccJavaFxController {
                 startLoadFileTask(file);
             } else if (isTextFile(file)) {
                 try {
-                    BufferedReader reader = new BufferedReader(new FileReader(file));
-                    String line;
-                    StringBuilder content = new StringBuilder();
-                    while ((line = reader.readLine()) != null) {
-                        content.append(line).append("\n");
-                    }
-                    reader.close();
-                    String text = content.toString();
-                    // Remove BOM if present
-                    if (text.startsWith("\uFEFF")) {
-                        text = text.substring(1);
-                    }
+                    currentTextCharset = StandardCharsets.UTF_8;
+
+                    String text = readTextFile(file, currentTextCharset);
+
                     textAreaSource.replaceText(text);
                     openFileName = file.toString();
                     updateSourceInfo(OpenCC.zhoCheck(text));
+
                     success = true;
                 } catch (Exception e) {
-                    lblStatus.setText(I18n.format("status.dnd.textArea.error", e.getMessage()));
+                    lblStatus.setText(
+                            I18n.format(
+                                    "status.dnd.textArea.error",
+                                    e.getMessage()
+                            )
+                    );
                 }
             } else {
                 textAreaSource.replaceText(I18n.get("status.dnd.textArea.invalidTextFile"));
@@ -1507,7 +1704,7 @@ public class OpenccJavaFxController {
         lblStatus.setText(result.isValid()
                 ? I18n.get("status.dialogQuote.validationPassed")
                 : I18n.format("status.dialogQuote.suspiciousLines",
-                        result.suspiciousLines().size()));
+                result.suspiciousLines().size()));
 
         if (action != ValidationDialogAction.GO_TO_FIRST_ISSUE) {
             return;
@@ -1543,6 +1740,7 @@ public class OpenccJavaFxController {
         lblDestinationCode.setText("");
         lblStatus.setText(I18n.get("status.clearDestination"));
     }
+
     private void initEditorTools() {
         activeEditor = textAreaSource;
         textAreaPreview.setEditable(false);
