@@ -18,6 +18,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.scene.control.ProgressBar;
+import openccjava.DeTofu;
 import openccjava.OfficeHelper;
 import openccjava.OpenccConfig;
 import openxmlhelper.EpubHelper;
@@ -203,11 +204,15 @@ public class OpenccJavaFxController {
     @FXML
     private Button btnRefresh;
     @FXML
+    private Button btnNormCompat;
+    @FXML
     private Button btnFixDialogQuotes;
     @FXML
     private Button btnValidateSourceDialogQuotes;
     @FXML
     private Button btnSaveAs;
+    @FXML
+    private Button btnDeTofu;
     @FXML
     private Button btnValidateDestinationDialogQuotes;
     @FXML
@@ -344,8 +349,10 @@ public class OpenccJavaFxController {
         lblOpenFile.setText(I18n.get("button.openFile"));
         lblStart.setText(I18n.get("button.start"));
         lblExit.setText(I18n.get("button.exit"));
+        btnNormCompat.getTooltip().setText(I18n.get("hint.normCompat"));
         btnFixDialogQuotes.getTooltip().setText(I18n.get("hint.fixDialogQuotes"));
         btnValidateSourceDialogQuotes.getTooltip().setText(I18n.get("hint.validateDialogQuotes"));
+        btnDeTofu.getTooltip().setText(I18n.get("hint.deTofu"));
         btnValidateDestinationDialogQuotes.getTooltip().setText(I18n.get("hint.validateDialogQuotes"));
         lblOutputFolder.setText(I18n.get("label.outputFolder"));
         textFieldPath.setPromptText(I18n.get("textField.outputFolder.prompt"));
@@ -555,6 +562,7 @@ public class OpenccJavaFxController {
 
         // icon-only buttons unchanged
         btnRefresh.setGraphic(new SymbolIcon(AppIconGlyph.REFRESH, 20));
+        btnNormCompat.setGraphic(new SymbolIcon(AppIconGlyph.BULLET_LEST_MIRRORED, 20));
         btnFixDialogQuotes.setGraphic(new SymbolIcon(AppIconGlyph.COMMENT, 20));
         btnValidateSourceDialogQuotes.setGraphic(new SymbolIcon(AppIconGlyph.CHECKBOX_COMPOSITE, 20));
         btnClearSource.setGraphic(new SymbolIcon(AppIconGlyph.DELETE, 20));
@@ -1686,8 +1694,45 @@ public class OpenccJavaFxController {
     }
 
     @FXML
+    private void onNormalizeCompat() {
+        String source = textAreaSource.getText();
+        if (source == null || source.isEmpty()) {
+            lblStatus.setText(I18n.get("status.normCompat.sourceEmpty"));
+            return;
+        }
+
+        String normalized = openccInstance.normalizeCompatExtended(source);
+        if (source.equals(normalized)) {
+            lblStatus.setText(I18n.get("status.normCompat.noNormalizationNeeded"));
+            return;
+        }
+
+        textAreaSource.replaceText(normalized);
+        updateSourceInfo(OpenCC.zhoCheck(normalized));
+        lblStatus.setText(I18n.get("status.normCompat.normalized"));
+    }
+
+    @FXML
     private void onValidateSourceDialogQuotes() {
         validateDialogQuotes(textAreaSource);
+    }
+
+    @FXML
+    private void onDeTofu() {
+        String source = textAreaDestination.getText();
+        if (source == null || source.isEmpty()) {
+            lblStatus.setText(I18n.get("status.deTofu.sourceEmpty"));
+            return;
+        }
+
+        String normalized = openccInstance.deTofu(source, DeTofu.Level.ExtB);
+        if (source.equals(normalized)) {
+            lblStatus.setText(I18n.get("status.deTofu.noDeTofuNeeded"));
+            return;
+        }
+
+        textAreaDestination.replaceText(normalized);
+        lblStatus.setText(I18n.get("status.deTofu.completed"));
     }
 
     @FXML

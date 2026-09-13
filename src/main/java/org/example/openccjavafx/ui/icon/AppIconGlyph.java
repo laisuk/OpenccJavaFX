@@ -29,6 +29,7 @@ public enum AppIconGlyph {
     PREVIEW("\uE7B3"),
 
     // State
+    BULLET_LEST_MIRRORED("\uEA42"),
     CHECKBOX_COMPOSITE("\uE73A"),
     COMPLETED("\uE930"),
 

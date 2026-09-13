@@ -158,6 +158,11 @@
                                                             <Font size="16.0" />
                                                         </font>
                                                     </Button>
+                                             <Button fx:id="btnNormCompat" layoutX="56.0" layoutY="15.0" minWidth="30.0" mnemonicParsing="false" onAction="#onNormalizeCompat" styleClass="button-secondary">
+                                                <tooltip>
+                                                   <Tooltip text="Normalize CJK compatibility ideographs" />
+                                                </tooltip>
+                                             </Button>
                                                     <Button fx:id="btnFixDialogQuotes" minWidth="30.0" mnemonicParsing="false" onAction="#onFixDialogQuotes" styleClass="button-secondary">
                                                         <tooltip><Tooltip text="Fix Dialog Quotes" /></tooltip>
                                                     </Button>
@@ -216,6 +221,11 @@
                                                             <Font name="Segoe Fluent Icons" size="18.0" />
                                                         </font>
                                                     </Button>
+                                             <Button fx:id="btnDeTofu" minWidth="30.0" mnemonicParsing="false" onAction="#onDeTofu" styleClass="button-secondary" text="豆">
+                                                <tooltip>
+                                                   <Tooltip text="Restore tofu characters in destination text" />
+                                                </tooltip>
+                                             </Button>
                                                     <Button fx:id="btnValidateDestinationDialogQuotes" minWidth="30.0" mnemonicParsing="false" onAction="#onValidateDestinationDialogQuotes" styleClass="button-secondary">
                                                         <tooltip><Tooltip text="Validate Dialog Quotes" /></tooltip>
                                                     </Button>
