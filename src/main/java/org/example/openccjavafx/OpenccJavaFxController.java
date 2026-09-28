@@ -1254,6 +1254,24 @@ public class OpenccJavaFxController {
         return content;
     }
 
+    private static final int MAX_LOGICAL_LINE_LENGTH = 10_000;
+
+    private static boolean hasOversizedLogicalLine(String text) {
+        int lineLength = 0;
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            if (c == '\r' || c == '\n') {
+                lineLength = 0;
+            } else if (++lineLength > MAX_LOGICAL_LINE_LENGTH) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void reloadCurrentTextFile(Charset charset) {
         if (openFileName == null || openFileName.isEmpty()) {
             return;
@@ -1273,7 +1291,21 @@ public class OpenccJavaFxController {
         Task<String> task = new Task<String>() {
             @Override
             protected String call() throws Exception {
-                return readTextFile(file, charset);
+                String result = readTextFile(file, charset);
+
+                // Protect RichTextFX from pathological logical lines.
+                if ((StandardCharsets.UTF_16LE.equals(charset)
+                        || StandardCharsets.UTF_16BE.equals(charset))
+                        && hasOversizedLogicalLine(result)) {
+                    throw new IOException(String.format(
+                            "The file decoded with %s contains a line longer than %,d characters "
+                                    + "and cannot be displayed safely.",
+                            charset.displayName(),
+                            MAX_LOGICAL_LINE_LENGTH
+                    ));
+                }
+
+                return result;
             }
 
             @Override
