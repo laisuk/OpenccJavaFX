@@ -13,6 +13,7 @@ module org.example.openccjavafx {
     requires org.apache.commons.logging;
     requires org.jsoup;
     requires java.prefs;
+    requires jdk.charsets;
 
     opens org.example.openccjavafx to javafx.fxml;
     opens openccjavacli to info.picocli;
