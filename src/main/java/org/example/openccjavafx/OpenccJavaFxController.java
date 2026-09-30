@@ -826,7 +826,7 @@ public class OpenccJavaFxController {
         // Disable Start button while running (optional)
         btnStart.setDisable(true);
 
-        Task<Void> task = new Task<Void>() {
+        Task<Void> task = new Task<>() {
             @Override
             protected Void call() {
                 long startTime = System.currentTimeMillis();
@@ -1092,7 +1092,7 @@ public class OpenccJavaFxController {
         // Show progress bar immediately (UI thread)
         showProgressBarIndeterminate(I18n.format("status.loadFile", getFileExtension(file.toString())));
 
-        Task<String> task = new Task<String>() {
+        Task<String> task = new Task<>() {
 
             // These values are passed to succeeded() after background work finishes
             private boolean enablePdfOptions;
@@ -1288,7 +1288,7 @@ public class OpenccJavaFxController {
                 "Reloading as " + charset.displayName() + "..."
         );
 
-        Task<String> task = new Task<String>() {
+        Task<String> task = new Task<>() {
             @Override
             protected String call() throws Exception {
                 String result = readTextFile(file, charset);

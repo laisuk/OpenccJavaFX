@@ -8,9 +8,9 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
  *   <li>Use {@code Loader.loadPDF(...)} and try-with-resources throughout</li>
  * </ul>
  *
- * <p>This class is Java 8 compatible and uses {@link java.util.logging.Logger}
+ * <p>This class is Java 8 compatible and uses {@link Logger}
  * for basic diagnostics.</p>
  */
 public final class PdfBoxHelper {
@@ -413,6 +413,12 @@ public final class PdfBoxHelper {
         }
     }
 
+    /**
+     * Checks whether a file appears to be a PDF by extension and header bytes.
+     *
+     * @param file file to inspect
+     * @return {@code true} when the file exists and contains a PDF header marker
+     */
     public static boolean isPdf(File file) {
         if (file == null)
             return false;

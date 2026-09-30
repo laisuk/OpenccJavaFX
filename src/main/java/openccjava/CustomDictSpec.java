@@ -167,7 +167,9 @@ public final class CustomDictSpec {
      * Creates a spec for one custom dictionary file.
      *
      * <p>This factory validates the typed values but does not test whether the
-     * file exists. The file is opened only when the spec is passed to
+     * file exists. The supplied path retains its filesystem provider and spelling;
+     * unlike {@link #parse(String)}, this factory does not trim the path.
+     * The file is opened only when the spec is passed to
      * {@link DictionaryMaxlength#fromDicts(java.util.List)},
      * {@link DictionaryMaxlength#fromDicts(String, java.util.List)}, or
      * {@link DictionaryMaxlength#withCustomDicts(java.util.List)}.</p>
@@ -196,7 +198,8 @@ public final class CustomDictSpec {
      * <p>All files are parsed with the same parser used for built-in OpenCC
      * text dictionaries. Later files win when they define the same source key
      * as earlier files in the same spec. The input list is defensively copied.
-     * This factory does not test whether any file exists.</p>
+     * This factory does not test whether any file exists. Path objects retain
+     * their original filesystem provider and spelling.</p>
      *
      * @param slot  the dictionary slot to patch; must not be {@code null}
      * @param paths UTF-8 OpenCC dictionary text files; must not be {@code null}
@@ -285,11 +288,10 @@ public final class CustomDictSpec {
     }
 
     /**
-     * Validates a custom dictionary path and removes surrounding whitespace
-     * from its textual representation.
+     * Validates a custom dictionary path without changing its filesystem or spelling.
      *
      * @param path path to validate
-     * @return a path created from the trimmed path text
+     * @return the supplied path
      * @throws NullPointerException     if {@code path} is {@code null}
      * @throws IllegalArgumentException if the path text is empty
      */
@@ -299,6 +301,6 @@ public final class CustomDictSpec {
         if (pathText.isEmpty()) {
             throw new IllegalArgumentException("Custom dictionary path cannot be empty");
         }
-        return Paths.get(pathText);
+        return path;
     }
 }

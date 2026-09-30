@@ -81,5 +81,12 @@ public enum UnionKey {
     /**
      * Japanese Shinjitai pair: JPS phrases + JPS characters.
      */
-    JpsPair
+    JpsPair,
+
+    // ===== Traditional-Traditional-specific unions =====
+    /**
+     *  Simplified-style punctuation → Traditional-style punctuation only,
+     * used as an optional punctuation round for direct Traditional-region conversions.
+     */
+    StPunctOnly
 }

@@ -118,6 +118,7 @@ public final class PdfReflowHelper {
      * @param text             raw text extracted from PDF
      * @param addPdfPageHeader whether to keep PDF page headers (=== [Page 1/10] ===)
      * @param compact          true = "p1\np2\np3", false = "p1\n\np2\n\np3"
+     * @return reflowed paragraph text
      */
     public static String reflowCjkParagraphs(String text, boolean addPdfPageHeader, boolean compact) {
         Objects.requireNonNull(text, "text must not be null");
@@ -397,7 +398,7 @@ public final class PdfReflowHelper {
                     && !strippedHasUnclosedDialogQuote
                     && strippedIsCompleteStandalone) {
                 segments.add(stripped);
-//                dialogState.reset();
+                dialogState.reset();
                 continue;
             }
 
@@ -416,8 +417,6 @@ public final class PdfReflowHelper {
                         (PunctSets.tryGetPrevNonWhitespace(stripped, lastIdxRef.index, prevRef)
                                 || PunctSets.tryGetLastNonWhitespace(bufferText, prevRef))
                                 && PunctSets.isClauseOrEndPunct(prevRef.value);
-
-//                boolean lineHasBracketIssue = PunctSets.hasUnclosedBracket(stripped);
 
                 buffer.append(stripped);
                 dialogState.update(stripped);
@@ -525,6 +524,10 @@ public final class PdfReflowHelper {
 
     /**
      * Default: novel mode (with blank line between paragraphs).
+     *
+     * @param text             raw text extracted from PDF
+     * @param addPdfPageHeader whether to keep PDF page headers
+     * @return reflowed paragraph text with blank lines between paragraphs
      */
     @SuppressWarnings("unused")
     public static String reflowCjkParagraphs(String text, boolean addPdfPageHeader) {

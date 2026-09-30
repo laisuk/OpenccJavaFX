@@ -1,9 +1,6 @@
 package openccjava;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -30,8 +27,8 @@ import static openccjava.Utils.readUtf8;
  *
  * <p>This class cannot be instantiated.</p>
  *
- * @see Level
- * @see Map
+ * @see DeTofu.Level
+ * @see DeTofu.Map
  * @since 1.4.0
  */
 public final class DeTofu {

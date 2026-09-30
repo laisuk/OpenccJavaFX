@@ -42,6 +42,12 @@ public class ConvertCommand implements Callable<Integer> {
     private boolean normCompat;
 
     @Option(
+            names = {"-E", "--norm-compat-extended"},
+            description = "Normalize extended Unicode compatibility/allograph forms and CJK Compatibility Ideographs before conversion."
+    )
+    private boolean normCompatExtended;
+
+    @Option(
             names = "--detofu",
             paramLabel = "<level>",
             description = "Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i"
@@ -59,7 +65,8 @@ public class ConvertCommand implements Callable<Integer> {
             names = {"-D", "--custom-dict"},
             paramLabel = "<slot:mode:path>",
             split = ",",
-            description = "Apply custom dictionary file. Format: slot:append|override:path. Can be repeated or comma-separated."
+            completionCandidates = CliUtils.SlotCandidates.class,
+            description = "Apply custom dictionary file. Format: slot:append|override:path. Can be repeated or comma-separated. Supported slots: ${COMPLETION-CANDIDATES}"
     )
     private List<String> customDictSpecs;
 
@@ -90,8 +97,10 @@ public class ConvertCommand implements Callable<Integer> {
             return ExitCode.USAGE;
         }
 
-        if (detofuFile != null && (detofu == null || detofu.trim().isEmpty())) {
-            System.err.println("❌ --detofu-file requires --detofu");
+        try {
+            CliUtils.validateDeTofuOptions(detofu, detofuFile);
+        } catch (IllegalArgumentException e) {
+            System.err.println("❌ " + e.getMessage());
             return ExitCode.USAGE;
         }
 
@@ -122,19 +131,16 @@ public class ConvertCommand implements Callable<Integer> {
                 inputText = new String(inputStreamReadAllBytes(), inputCharset);
             }
 
-            if (normCompat) {
-                inputText = opencc.normalizeCompat(inputText);
-            }
+            TextConverter textConverter = CliUtils.createTextConverter(
+                    opencc,
+                    punct,
+                    normCompat,
+                    normCompatExtended,
+                    detofu,
+                    detofuFile
+            );
 
-            String outputText = opencc.convert(inputText, punct);
-
-            if (detofu != null && !detofu.trim().isEmpty()) {
-                DeTofu.Level level = DeTofu.Level.parse(detofu);
-
-                outputText = detofuFile != null
-                        ? opencc.deTofuWithCustomFile(outputText, level, detofuFile.getPath())
-                        : opencc.deTofu(outputText, level);
-            }
+            String outputText = textConverter.convert(inputText);
 
             if (output != null) {
                 Files.write(output.toPath(), outputText.getBytes(Charset.forName(outEncoding)));

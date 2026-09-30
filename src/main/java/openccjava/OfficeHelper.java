@@ -1,86 +1,75 @@
 package openccjava;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
-import java.util.function.Predicate;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Utility class for converting Office-based document formats using OpenCC logic.
+ * Converts text-bearing content inside Office, OpenDocument, and EPUB packages.
  *
- * <p>Supported formats include:
+ * <p>The package layer is independent of any particular text-conversion engine.
+ * Callers may provide an {@link TextConverter} that performs any
+ * {@code String -> String} transformation. Convenience overloads accepting an
+ * {@link OpenCC} instance are retained and adapt OpenCC conversion to the same
+ * generic package-processing core.</p>
+ *
+ * <p>This class owns package mechanics only: ZIP streaming and reconstruction,
+ * format-specific entry selection, XLSX inline-string handling, optional font
+ * preservation, EPUB {@code mimetype} rules, ZIP-entry safety checks, completed
+ * archive validation, and transactional file publication.</p>
+ *
+ * <p>Supported formats:</p>
  * <ul>
- *   <li>Microsoft Office XML formats: {@code .docx}, {@code .xlsx}, {@code .pptx}</li>
- *   <li>OpenDocument formats: {@code .odt}, {@code .ods}, {@code .odp}</li>
- *   <li>EPUB eBooks: {@code .epub}</li>
+ *   <li>Microsoft Office Open XML: {@code docx}, {@code xlsx}, {@code pptx}</li>
+ *   <li>OpenDocument: {@code odt}, {@code ods}, {@code odp}</li>
+ *   <li>EPUB: {@code epub}</li>
  * </ul>
  *
- * <p>Internally, the class handles these formats as ZIP archives, extracts and processes
- * their XML/XHTML content, applies OpenCC transformations, and repackages the result.
- *
- * <p>This class is designed for use in batch or CLI applications.
+ * <p>The implementation is compatible with Java 8.</p>
  */
 public class OfficeHelper {
+
     /**
-     * Unmodifiable list of supported file extensions for Office and EPUB documents.
+     * Supported logical Office/EPUB format names.
      */
     public static final List<String> OFFICE_FORMATS = Collections.unmodifiableList(
             Arrays.asList("docx", "xlsx", "pptx", "odt", "ods", "odp", "epub")
     );
 
-    /**
-     * Logger instance used for reporting non-fatal processing errors.
-     */
     private static final Logger LOGGER = Logger.getLogger(OfficeHelper.class.getName());
 
     /**
-     * Precompiled regular expression patterns for extracting font declarations
-     * across supported document formats.
-     *
-     * <p>Each pattern provides three capturing groups:
-     * <ol>
-     *   <li>Prefix (e.g., attribute or CSS property start)</li>
-     *   <li>The actual font value</li>
-     *   <li>Suffix (e.g., closing quote, semicolon, or delimiter)</li>
-     * </ol>
-     *
-     * <p>Supported formats and their corresponding attributes:
-     * <ul>
-     *   <li><b>docx</b>: {@code w:eastAsia}, {@code w:ascii}, {@code w:hAnsi}, {@code w:cs}</li>
-     *   <li><b>xlsx</b>: {@code val}</li>
-     *   <li><b>pptx</b>: {@code typeface}</li>
-     *   <li><b>odt/ods/odp</b>: {@code style:font-name}, {@code style:font-name-asian},
-     *       {@code style:font-name-complex}, {@code svg:font-family}, {@code style:name}</li>
-     *   <li><b>epub</b>: CSS {@code font-family}</li>
-     * </ul>
-     *
-     * <p>These patterns are used when {@code --keep-font} is enabled to temporarily
-     * replace font declarations with markers during OpenCC text conversion,
-     * and then restore them afterward.
-     */
-    private static final Map<String, Pattern> FONT_PATTERNS;
-
-    /**
      * Matches an XLSX inline-string cell:
-     * {@code <c ... t="inlineStr" ...>...</c>}
+     * {@code <c ... t="inlineStr" ...>...</c>}.
      */
     private static final Pattern XLSX_INLINE_STRING_CELL_PATTERN = Pattern.compile(
             "<c\\b(?=[^>]*\\bt=(?:\"inlineStr\"|'inlineStr'))[^>]*>.*?</c>",
@@ -88,16 +77,21 @@ public class OfficeHelper {
     );
 
     /**
-     * Matches text nodes inside inline-string content:
-     * {@code <t ...>TEXT</t>}
+     * Matches {@code <t>} text nodes inside XLSX inline-string cells.
      */
     private static final Pattern XLSX_TEXT_NODE_PATTERN = Pattern.compile(
             "(<t\\b[^>]*>)(.*?)(</t>)",
             Pattern.DOTALL
     );
 
+    /**
+     * Font declarations temporarily protected when {@code keepFont} is enabled.
+     */
+    private static final Map<String, Pattern> FONT_PATTERNS;
+
     static {
         Map<String, Pattern> map = new HashMap<>();
+
         map.put("docx", Pattern.compile("(w:(?:eastAsia|ascii|hAnsi|cs)=\")(.*?)(\")"));
         map.put("xlsx", Pattern.compile("(val=\")(.*?)(\")"));
         map.put("pptx", Pattern.compile("(typeface=\")(.*?)(\")"));
@@ -116,41 +110,24 @@ public class OfficeHelper {
 
     /**
      * Base type for Office/EPUB conversion results.
-     *
-     * <p>This abstract class represents the outcome of a conversion operation.
-     * Subclasses provide additional details depending on whether the conversion
-     * was performed on files ({@link FileResult}) or in-memory data
-     * ({@link MemoryResult}).</p>
-     *
-     * <p>The {@code success} flag indicates whether the conversion completed
-     * without errors, while {@code message} contains any accompanying description,
-     * such as warnings, error information, or status notes.</p>
      */
     public abstract static class Result {
+
         /**
-         * Indicates whether the conversion succeeded.
-         * <p>
-         * A value of {@code true} means the conversion completed normally.
-         * A value of {@code false} typically indicates a failure or that
-         * the operation was skipped due to unsupported format or invalid input.
-         * </p>
+         * {@code true} when conversion completed successfully.
          */
         public final boolean success;
 
         /**
-         * Descriptive message associated with the conversion result.
-         * <p>
-         * May contain an informational note, a warning description,
-         * or a detailed failure explanation. Never {@code null}.
-         * </p>
+         * Human-readable result or failure message. Never {@code null}.
          */
         public final String message;
 
         /**
-         * Creates a new result instance.
+         * Creates a conversion result.
          *
-         * @param success whether the conversion succeeded
-         * @param message descriptive message explaining the result; must not be {@code null}
+         * @param success whether conversion succeeded
+         * @param message result message; must not be {@code null}
          * @throws NullPointerException if {@code message} is {@code null}
          */
         protected Result(boolean success, String message) {
@@ -160,15 +137,15 @@ public class OfficeHelper {
     }
 
     /**
-     * Result for file-based conversions that do not expose an in-memory payload.
+     * Result of a file-to-file conversion.
      */
     public static final class FileResult extends Result {
+
         /**
-         * Creates a {@code FileResult}.
+         * Creates a file conversion result.
          *
-         * @param success true if the conversion succeeded, false otherwise
-         * @param message the result message or error description; must not be {@code null}
-         * @throws NullPointerException if {@code message} is {@code null}
+         * @param success whether conversion succeeded
+         * @param message result message; must not be {@code null}
          */
         public FileResult(boolean success, String message) {
             super(success, message);
@@ -176,21 +153,25 @@ public class OfficeHelper {
     }
 
     /**
-     * Result for in-memory conversions that expose converted document bytes.
+     * Result of an in-memory conversion.
      */
     public static final class MemoryResult extends Result {
+
         /**
-         * Converted document bytes (e.g., a DOCX/EPUB ZIP).
+         * Converted package bytes, or {@code null} when conversion failed.
+         *
+         * <p>The constructor defensively copies the supplied array. This public
+         * array itself remains mutable; callers needing an independent snapshot
+         * should clone it before sharing or modifying it.</p>
          */
         public final byte[] data;
 
         /**
-         * Creates a {@code MemoryResult}.
+         * Creates an in-memory conversion result.
          *
-         * @param success true if the conversion succeeded, false otherwise
-         * @param message the result message or error description; must not be {@code null}
-         * @param data    converted document bytes; defensively copied, or {@code null}
-         * @throws NullPointerException if {@code message} is {@code null}
+         * @param success whether conversion succeeded
+         * @param message result message; must not be {@code null}
+         * @param data    converted package bytes, or {@code null}
          */
         public MemoryResult(boolean success, String message, byte[] data) {
             super(success, message);
@@ -199,39 +180,128 @@ public class OfficeHelper {
     }
 
     /**
-     * Constructs an instance of {@code OfficeHelper}.
+     * Constructs an {@code OfficeHelper}.
+     *
+     * <p>The class currently exposes only static operations; the public constructor
+     * is retained for source and binary compatibility with existing callers.</p>
      */
     public OfficeHelper() {
-        // No initialization required
+        // Compatibility constructor.
     }
 
     /**
-     * Converts an Office or EPUB document from an in-memory byte array using the given
-     * OpenCC converter.
+     * Converts an Office or EPUB package entirely in memory.
      *
-     * <p>This overload is the core implementation for all Office/EPUB conversions.
-     * It performs the following steps:</p>
+     * <p>The source package is streamed from {@code inputBytes} into a rebuilt ZIP.
+     * Unchanged entries are copied through the ZIP streams, while only selected
+     * text-bearing XML/XHTML entries are materialized as UTF-8 strings and passed
+     * to {@code textConverter}. No temporary filesystem package is created.</p>
      *
-     * <ol>
-     *   <li>Unzips the input bytes into a temporary working directory</li>
-     *   <li>Locates all relevant XML/XHTML content files based on the document format</li>
-     *   <li>Optionally extracts and preserves font markup using format-specific patterns</li>
-     *   <li>Applies OpenCC text conversion to each content fragment</li>
-     *   <li>Restores any preserved font tags if {@code keepFont} is enabled</li>
-     *   <li>Re-packages the modified directory structure into a new ZIP (DOCX/ODT/EPUB) byte array</li>
-     * </ol>
+     * <p>For EPUB, {@code mimetype} is emitted first and stored without compression.
+     * The rebuilt archive is validated before it is returned.</p>
      *
-     * <p>Unlike {@link FileResult}, this method returns the converted document entirely
-     * in memory as a {@link MemoryResult}. This makes it suitable for server-side,
-     * streaming, or JNI/Blazor/WASM workflows where file I/O is unnecessary.</p>
+     * @param inputBytes    complete source package bytes
+     * @param format        logical format name:
+     *                      {@code docx/xlsx/pptx/odt/ods/odp/epub}
+     * @param textConverter caller-supplied text transformation
+     * @param keepFont      whether supported font declarations should be protected
+     * @return conversion result containing rebuilt package bytes on success
+     * @since 1.5.0
+     */
+    public static MemoryResult convert(
+            byte[] inputBytes,
+            String format,
+            TextConverter textConverter,
+            boolean keepFont
+    ) {
+        if (inputBytes == null || inputBytes.length == 0) {
+            return new MemoryResult(false, "❌ Input bytes are empty.", null);
+        }
+        if (textConverter == null) {
+            return new MemoryResult(false, "❌ Text converter must not be null.", null);
+        }
+
+        String normalizedFormat = normalizeFormat(format);
+        if (normalizedFormat == null) {
+            return new MemoryResult(false, "❌ Unsupported or invalid format: " + format, null);
+        }
+
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream(
+                    Math.max(8192, inputBytes.length)
+            );
+
+            int convertedCount;
+
+            try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(output))) {
+                if ("epub".equals(normalizedFormat)) {
+                    byte[] mimetype = findEntryBytes(
+                            new ByteArrayInputStream(inputBytes),
+                            "mimetype"
+                    );
+
+                    if (mimetype == null) {
+                        return new MemoryResult(
+                                false,
+                                "❌ 'mimetype' file is missing. EPUB requires this.",
+                                null
+                        );
+                    }
+
+                    writeStoredEntry(zos, "mimetype", mimetype);
+                }
+
+                try (ZipInputStream zis = new ZipInputStream(
+                        new BufferedInputStream(new ByteArrayInputStream(inputBytes)))) {
+                    convertedCount = convertArchive(
+                            zis,
+                            zos,
+                            normalizedFormat,
+                            textConverter,
+                            keepFont,
+                            "epub".equals(normalizedFormat)
+                    );
+                }
+            }
+
+            if (convertedCount == 0) {
+                return new MemoryResult(
+                        false,
+                        "⚠️ No valid XML fragments found in format: " + normalizedFormat,
+                        null
+                );
+            }
+
+            byte[] rebuilt = output.toByteArray();
+            validateZipBytes(rebuilt);
+
+            return new MemoryResult(
+                    true,
+                    successMessage(convertedCount, normalizedFormat),
+                    rebuilt
+            );
+        } catch (Exception ex) {
+            return new MemoryResult(
+                    false,
+                    "❌ Conversion failed: " + safeMessage(ex),
+                    null
+            );
+        }
+    }
+
+    /**
+     * Converts an Office or EPUB package entirely in memory using an initialized
+     * {@link OpenCC} instance.
      *
-     * @param inputBytes  the input Office/EPUB file as a byte array
-     * @param format      the file format (e.g., {@code docx}, {@code odt}, {@code epub})
-     * @param converter   the {@link OpenCC} instance used for text conversion
-     * @param punctuation whether to convert punctuation characters
-     * @param keepFont    whether to preserve font tags/markup during text replacement
-     * @return a {@link MemoryResult} indicating success or failure; on success,
-     * {@link MemoryResult#data} contains the fully converted document bytes
+     * <p>This convenience overload preserves the established API and adapts
+     * {@link OpenCC} to the generic {@link TextConverter} core.</p>
+     *
+     * @param inputBytes  complete source package bytes
+     * @param format      logical format name
+     * @param converter   initialized OpenCC converter
+     * @param punctuation whether punctuation conversion is enabled
+     * @param keepFont    whether supported font declarations should be protected
+     * @return conversion result containing rebuilt package bytes on success
      */
     public static MemoryResult convert(
             byte[] inputBytes,
@@ -240,130 +310,174 @@ public class OfficeHelper {
             boolean punctuation,
             boolean keepFont
     ) {
-        Path tempDir = null;
-        Path tempZipOut = null;
+        if (converter == null) {
+            return new MemoryResult(false, "❌ Converter must not be null.", null);
+        }
+
+        return convert(
+                inputBytes,
+                format,
+                openCcTextConverter(converter, punctuation),
+                keepFont
+        );
+    }
+
+    /**
+     * Converts an Office or EPUB package using a streaming file-to-file path.
+     *
+     * <p>The source package is not loaded into a single {@code byte[]}. Unchanged
+     * entries stream from the source ZIP to a rebuilt package, while selected
+     * text-bearing entries alone are buffered for conversion.</p>
+     *
+     * <p>The candidate package is written to a sibling temporary file, validated,
+     * and only then published to {@code outputFile}. Existing output therefore
+     * remains untouched if conversion or validation fails.</p>
+     *
+     * @param inputFile     source Office/EPUB package
+     * @param outputFile    destination package
+     * @param format        logical format name
+     * @param textConverter caller-supplied text transformation
+     * @param keepFont      whether supported font declarations should be protected
+     * @return file conversion result
+     * @since 1.5.0
+     */
+    public static FileResult convert(
+            File inputFile,
+            File outputFile,
+            String format,
+            TextConverter textConverter,
+            boolean keepFont
+    ) {
+        if (inputFile == null || !inputFile.isFile()) {
+            return new FileResult(
+                    false,
+                    "❌ Input file must exist and be a regular file."
+            );
+        }
+        if (outputFile == null) {
+            return new FileResult(false, "❌ Output file must not be null.");
+        }
+        if (textConverter == null) {
+            return new FileResult(false, "❌ Text converter must not be null.");
+        }
+
+        String normalizedFormat = normalizeFormat(format);
+        if (normalizedFormat == null) {
+            return new FileResult(
+                    false,
+                    "❌ Unsupported or invalid format: " + format
+            );
+        }
+
+        Path outputPath = outputFile.toPath().toAbsolutePath();
+        Path parent = outputPath.getParent();
+        Path tempOutput = null;
 
         try {
-            if (inputBytes == null || inputBytes.length == 0) {
-                return new MemoryResult(false, "❌ Input bytes are empty.", null);
-            }
-
-            tempDir = Files.createTempDirectory(format + "_temp_");
-            unzip(inputBytes, tempDir);
-
-            List<Path> targets = getTargetXmlPaths(format, tempDir);
-            if (targets == null || targets.isEmpty()) {
-                return new MemoryResult(false, "❌ Unsupported or invalid format: " + format, null);
-            }
-
-            int convertedCount = 0;
-            for (Path relativePath : targets) {
-                Path fullPath = tempDir.resolve(relativePath);
-                if (!Files.isRegularFile(fullPath)) {
-                    continue;
-                }
-
-                byte[] bytes = Files.readAllBytes(fullPath);
-                String xml = new String(bytes, StandardCharsets.UTF_8);
-                Map<String, String> fontMap = new HashMap<>();
-
-                if (keepFont && shouldMaskFonts(format, relativePath)) {
-                    Pattern pattern = getFontPattern(format);
-                    if (pattern != null) {
-                        Matcher matcher = pattern.matcher(xml);
-                        int counter = 0;
-                        StringBuffer sb = new StringBuffer();
-
-                        while (matcher.find()) {
-                            String marker = "__F_O_N_T_" + counter++ + "__";
-                            fontMap.put(marker, matcher.group(2));
-
-                            String group3 = matcher.groupCount() >= 3 && matcher.group(3) != null
-                                    ? matcher.group(3)
-                                    : "";
-
-                            matcher.appendReplacement(
-                                    sb,
-                                    Matcher.quoteReplacement(matcher.group(1) + marker + group3)
-                            );
-                        }
-                        matcher.appendTail(sb);
-                        xml = sb.toString();
-                    }
-                }
-
-                String converted = convertXmlContent(format, relativePath, xml, converter, punctuation);
-                if (converted == null) {
-                    throw new RuntimeException("native error: " + converter.getLastError());
-                }
-
-                if (!fontMap.isEmpty()) {
-                    for (Map.Entry<String, String> entry : fontMap.entrySet()) {
-                        converted = converted.replace(entry.getKey(), entry.getValue());
-                    }
-                }
-
-                Files.write(fullPath, converted.getBytes(StandardCharsets.UTF_8));
-                convertedCount++;
-            }
-
-            if (convertedCount == 0) {
-                return new MemoryResult(
-                        false,
-                        "⚠️ No valid XML fragments found in format: " + format,
-                        null
+            if (parent != null) {
+                Files.createDirectories(parent);
+                tempOutput = Files.createTempFile(
+                        parent,
+                        outputFile.getName() + ".",
+                        ".tmp"
+                );
+            } else {
+                tempOutput = Files.createTempFile(
+                        outputFile.getName() + ".",
+                        ".tmp"
                 );
             }
 
-            tempZipOut = Files.createTempFile(format + "_out_", "." + format);
-            if ("epub".equals(format)) {
-                FileResult epubResult = createEpubZip(tempDir, tempZipOut);
-                if (!epubResult.success) {
-                    return new MemoryResult(false, epubResult.message, null);
+            int convertedCount;
+
+            try (ZipOutputStream zos = new ZipOutputStream(
+                    new BufferedOutputStream(Files.newOutputStream(tempOutput)))) {
+
+                if ("epub".equals(normalizedFormat)) {
+                    byte[] mimetype;
+
+                    try (InputStream mimeInput = new BufferedInputStream(
+                            Files.newInputStream(inputFile.toPath()))) {
+                        mimetype = findEntryBytes(mimeInput, "mimetype");
+                    }
+
+                    if (mimetype == null) {
+                        return new FileResult(
+                                false,
+                                "❌ 'mimetype' file is missing. EPUB requires this."
+                        );
+                    }
+
+                    writeStoredEntry(zos, "mimetype", mimetype);
                 }
-            } else {
-                zip(tempDir, tempZipOut);
+
+                try (ZipInputStream zis = new ZipInputStream(
+                        new BufferedInputStream(Files.newInputStream(inputFile.toPath())))) {
+                    convertedCount = convertArchive(
+                            zis,
+                            zos,
+                            normalizedFormat,
+                            textConverter,
+                            keepFont,
+                            "epub".equals(normalizedFormat)
+                    );
+                }
             }
 
-            byte[] resultBytes = Files.readAllBytes(tempZipOut);
-            String successMessage = "✅ Successfully converted "
-                    + convertedCount + " fragment(s) in " + format + " document.";
-            return new MemoryResult(true, successMessage, resultBytes);
+            if (convertedCount == 0) {
+                return new FileResult(
+                        false,
+                        "⚠️ No valid XML fragments found in format: " + normalizedFormat
+                );
+            }
+
+            validateZipFile(tempOutput);
+            publishTempFile(tempOutput, outputPath);
+            tempOutput = null;
+
+            return new FileResult(
+                    true,
+                    successMessage(convertedCount, normalizedFormat)
+            );
+        } catch (IOException ex) {
+            return new FileResult(
+                    false,
+                    "❌ I/O error during conversion: " + safeMessage(ex)
+            );
         } catch (Exception ex) {
-            return new MemoryResult(false, "❌ Conversion failed: " + ex.getMessage(), null);
+            return new FileResult(
+                    false,
+                    "❌ Conversion failed: " + safeMessage(ex)
+            );
         } finally {
-            deleteRecursive(tempDir);
-            if (tempZipOut != null) {
+            if (tempOutput != null) {
                 try {
-                    Files.deleteIfExists(tempZipOut);
-                } catch (IOException e) {
-                    LOGGER.log(Level.WARNING, "Failed to delete temp zip " + tempZipOut, e);
+                    Files.deleteIfExists(tempOutput);
+                } catch (IOException ex) {
+                    LOGGER.log(
+                            Level.WARNING,
+                            "Failed to delete temporary output " + tempOutput,
+                            ex
+                    );
                 }
             }
         }
     }
 
     /**
-     * Converts an Office or EPUB document using the given OpenCC converter.
+     * Converts an Office or EPUB package using an initialized {@link OpenCC}
+     * instance and the streaming file-to-file path.
      *
-     * <p>This overload is a thin wrapper around the core byte[]-based implementation.
-     * It reads the input file into memory, delegates to
-     * {@link #convert(byte[], String, OpenCC, boolean, boolean)}, and, on success,
-     * writes the converted bytes to the specified output file.</p>
+     * <p>This convenience overload adapts OpenCC conversion to the generic
+     * {@link TextConverter} package-processing core.</p>
      *
-     * <p>Unlike {@link MemoryResult}, this file-based overload does not expose the
-     * converted document bytes in memory. It is intended for scenarios where
-     * file-in / file-out processing is sufficient and more memory efficient.</p>
-     *
-     * @param inputFile   the input Office or EPUB file
-     * @param outputFile  the destination file to write the converted result; must not be {@code null}
-     * @param format      the file format (e.g., {@code docx}, {@code odt}, {@code epub})
-     * @param converter   the {@link OpenCC} instance to use for conversion
-     * @param punctuation whether to convert punctuation characters
-     * @param keepFont    whether to preserve font tags/markup during conversion
-     * @return a {@link FileResult} indicating success or failure; on success, the
-     * converted document is written to {@code outputFile}, and no in-memory
-     * payload is retained
+     * @param inputFile   source Office/EPUB package
+     * @param outputFile  destination package
+     * @param format      logical format name
+     * @param converter   initialized OpenCC converter
+     * @param punctuation whether punctuation conversion is enabled
+     * @param keepFont    whether supported font declarations should be protected
+     * @return file conversion result
      */
     public static FileResult convert(
             File inputFile,
@@ -373,422 +487,705 @@ public class OfficeHelper {
             boolean punctuation,
             boolean keepFont
     ) {
-        try {
-            if (outputFile == null) {
-                return new FileResult(false, "❌ Output file must not be null.");
+        if (converter == null) {
+            return new FileResult(false, "❌ Converter must not be null.");
+        }
+
+        return convert(
+                inputFile,
+                outputFile,
+                format,
+                openCcTextConverter(converter, punctuation),
+                keepFont
+        );
+    }
+
+    /**
+     * Adapts an initialized {@link OpenCC} instance to the generic Office text
+     * transformation contract.
+     *
+     * <p>OpenCC-specific conversion state and error handling remain outside the
+     * package core.</p>
+     */
+    private static TextConverter openCcTextConverter(
+            final OpenCC converter,
+            final boolean punctuation
+    ) {
+        return text -> {
+            String converted = converter.convert(text, punctuation);
+
+            if (converted == null) {
+                throw new IllegalStateException(
+                        "native error: " + converter.getLastError()
+                );
             }
 
-            byte[] inputBytes = Files.readAllBytes(inputFile.toPath());
-            MemoryResult core = convert(inputBytes, format, converter, punctuation, keepFont);
+            return converted;
+        };
+    }
 
-            if (!core.success) {
-                return new FileResult(false, core.message);
+    /**
+     * Streams one ZIP package into another and converts selected entries.
+     *
+     * @param zis              source ZIP stream
+     * @param zos              destination ZIP stream
+     * @param format           normalized logical format
+     * @param textConverter    text transformation
+     * @param keepFont         whether supported font declarations should be protected
+     * @param skipEpubMimetype whether a separately emitted EPUB {@code mimetype}
+     *                         entry should be skipped
+     * @return number of converted package entries
+     * @throws IOException if ZIP reading or writing fails
+     */
+    private static int convertArchive(
+            ZipInputStream zis,
+            ZipOutputStream zos,
+            String format,
+            TextConverter textConverter,
+            boolean keepFont,
+            boolean skipEpubMimetype
+    ) throws IOException {
+        int convertedCount = 0;
+        ZipEntry sourceEntry;
+
+        while ((sourceEntry = zis.getNextEntry()) != null) {
+            String rawEntryName = sourceEntry.getName();
+            String entryName = normalizeEntryName(rawEntryName);
+
+            if (isUnsafeZipEntryName(entryName)) {
+                throw new IOException("Unsafe ZIP entry path: " + rawEntryName);
             }
 
-            if (core.data == null || core.data.length == 0) {
-                return new FileResult(false, "❌ Core conversion returned no data.");
+            if (skipEpubMimetype && "mimetype".equals(entryName)) {
+                zis.closeEntry();
+                continue;
             }
-            Path outPath = outputFile.toPath();
-            Path parent = outPath.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
+
+            if (sourceEntry.isDirectory()) {
+                String directoryName = entryName.endsWith("/")
+                        ? entryName
+                        : entryName + "/";
+
+                ZipEntry outputEntry = new ZipEntry(directoryName);
+                copyEntryMetadata(sourceEntry, outputEntry);
+
+                zos.putNextEntry(outputEntry);
+                zos.closeEntry();
+                zis.closeEntry();
+                continue;
             }
-            Files.write(outPath, core.data);
-            return new FileResult(true, core.message);
-        } catch (IOException ex) {
-            return new FileResult(false, "❌ I/O error during conversion: " + ex.getMessage());
+
+            boolean target = isTargetEntry(format, entryName);
+
+            ZipEntry outputEntry = new ZipEntry(entryName);
+            copyEntryMetadata(sourceEntry, outputEntry);
+            zos.putNextEntry(outputEntry);
+
+            if (target) {
+                byte[] bytes = readCurrentEntry(zis);
+                String xml = new String(bytes, StandardCharsets.UTF_8);
+
+                String converted = convertTextEntry(
+                        format,
+                        entryName,
+                        xml,
+                        textConverter,
+                        keepFont
+                );
+
+                zos.write(converted.getBytes(StandardCharsets.UTF_8));
+                convertedCount++;
+            } else {
+                copy(zis, zos);
+            }
+
+            zos.closeEntry();
+            zis.closeEntry();
+        }
+
+        return convertedCount;
+    }
+
+    /**
+     * Applies optional font protection and format-specific conversion to one
+     * selected text-bearing package entry.
+     */
+    private static String convertTextEntry(
+            String format,
+            String entryName,
+            String xml,
+            TextConverter textConverter,
+            boolean keepFont
+    ) {
+        Map<String, String> fontMap = new HashMap<>();
+
+        Path relativePath = Paths.get(entryName);
+
+        if (keepFont && shouldMaskFonts(format, relativePath)) {
+            Pattern pattern = getFontPattern(format);
+
+            if (pattern != null) {
+                Matcher matcher = pattern.matcher(xml);
+                int counter = 0;
+                StringBuffer masked = new StringBuffer();
+
+                while (matcher.find()) {
+                    String marker = "__F_O_N_T_" + counter++ + "__";
+                    fontMap.put(marker, matcher.group(2));
+
+                    String suffix = matcher.groupCount() >= 3
+                            && matcher.group(3) != null
+                            ? matcher.group(3)
+                            : "";
+
+                    matcher.appendReplacement(
+                            masked,
+                            Matcher.quoteReplacement(
+                                    matcher.group(1) + marker + suffix
+                            )
+                    );
+                }
+
+                matcher.appendTail(masked);
+                xml = masked.toString();
+            }
+        }
+
+        String converted = convertXmlContent(
+                format,
+                relativePath,
+                xml,
+                textConverter
+        );
+
+        for (Map.Entry<String, String> entry : fontMap.entrySet()) {
+            converted = converted.replace(entry.getKey(), entry.getValue());
+        }
+
+        return converted;
+    }
+
+    /**
+     * Returns whether a package entry contains text that should be converted.
+     */
+    private static boolean isTargetEntry(String format, String entryName) {
+        switch (format) {
+            case "docx":
+                return "word/document.xml".equals(entryName);
+
+            case "xlsx":
+                return "xl/sharedStrings.xml".equals(entryName)
+                        || isXlsxWorksheetEntry(entryName);
+
+            case "pptx":
+                return isPptxTargetEntry(entryName);
+
+            case "odt":
+            case "ods":
+            case "odp":
+                return "content.xml".equals(entryName);
+
+            case "epub":
+                return isEpubTextEntry(entryName);
+
+            default:
+                return false;
         }
     }
 
     /**
-     * Extracts the contents of a ZIP file provided as an in-memory byte array
-     * to a target directory.
-     *
-     * <p>This is used by the core {@link #convert(byte[], String, OpenCC, boolean, boolean)}
-     * overload so that callers do not need to go through the file system.</p>
-     *
-     * @param zipBytes  the ZIP archive bytes
-     * @param targetDir the directory to extract files into
-     * @throws IOException if an I/O error occurs during extraction
+     * Returns whether an XLSX package path is a worksheet XML part.
      */
-    private static void unzip(byte[] zipBytes, Path targetDir) throws IOException {
-        Files.createDirectories(targetDir);
+    private static boolean isXlsxWorksheetEntry(String entryName) {
+        String lower = entryName.toLowerCase(Locale.ROOT);
+        return lower.startsWith("xl/worksheets/")
+                && lower.endsWith(".xml");
+    }
 
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(zipBytes);
-             ZipInputStream zis = new ZipInputStream(bais)) {
+    /**
+     * Returns whether a PPTX XML part is intended for text conversion.
+     *
+     * <p>Matching is based on normalized package-relative paths rather than broad
+     * filename substring tests. This prevents unrelated XML parts from being
+     * converted accidentally.</p>
+     */
+    private static boolean isPptxTargetEntry(String entryName) {
+        String lower = entryName.toLowerCase(Locale.ROOT);
+
+        if (!lower.endsWith(".xml")) {
+            return false;
+        }
+
+        return lower.startsWith("ppt/slides/")
+                || lower.startsWith("ppt/notesslides/")
+                || lower.startsWith("ppt/slidemasters/")
+                || lower.startsWith("ppt/slidelayouts/")
+                || lower.startsWith("ppt/comments/")
+                || "ppt/commentauthors.xml".equals(lower);
+    }
+
+    /**
+     * Returns whether an EPUB package path contains text-bearing content.
+     */
+    private static boolean isEpubTextEntry(String entryName) {
+        String lower = entryName.toLowerCase(Locale.ROOT);
+
+        return lower.endsWith(".xhtml")
+                || lower.endsWith(".html")
+                || lower.endsWith(".opf")
+                || lower.endsWith(".ncx");
+    }
+
+    /**
+     * Normalizes and validates a logical format name.
+     *
+     * @return normalized format name, or {@code null} when unsupported
+     */
+    private static String normalizeFormat(String format) {
+        if (format == null) {
+            return null;
+        }
+
+        String normalized = format.trim().toLowerCase(Locale.ROOT);
+        return OFFICE_FORMATS.contains(normalized) ? normalized : null;
+    }
+
+    /**
+     * Normalizes ZIP entry separators to forward slashes.
+     */
+    private static String normalizeEntryName(String name) {
+        return name == null ? "" : name.replace('\\', '/');
+    }
+
+    /**
+     * Returns whether a ZIP entry name is unsafe to reproduce.
+     *
+     * <p>Absolute paths, Windows drive-qualified paths, empty names, and any
+     * {@code ..} path component are rejected. Although conversion does not extract
+     * package entries to arbitrary filesystem paths, validating names avoids
+     * propagating traversal-style entries into rebuilt archives.</p>
+     */
+    private static boolean isUnsafeZipEntryName(String entryName) {
+        if (entryName == null || entryName.isEmpty()) {
+            return true;
+        }
+
+        if (entryName.charAt(0) == '/' || entryName.charAt(0) == '\\') {
+            return true;
+        }
+
+        if (entryName.length() >= 3
+                && entryName.charAt(1) == ':'
+                && (entryName.charAt(2) == '/'
+                || entryName.charAt(2) == '\\')) {
+            return true;
+        }
+
+        String normalized = entryName.replace('\\', '/');
+        String[] parts = normalized.split("/");
+
+        for (String part : parts) {
+            if ("..".equals(part)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Copies ZIP metadata that does not constrain the rebuilt entry's compressed
+     * size, uncompressed size, CRC, or compression method.
+     */
+    private static void copyEntryMetadata(ZipEntry source, ZipEntry target) {
+        if (source.getTime() >= 0) {
+            target.setTime(source.getTime());
+        }
+
+        if (source.getComment() != null) {
+            target.setComment(source.getComment());
+        }
+
+        byte[] extra = source.getExtra();
+        if (extra != null) {
+            target.setExtra(extra);
+        }
+    }
+
+    /**
+     * Finds one ZIP entry and returns its bytes.
+     *
+     * <p>The supplied package stream is consumed and closed by this method.</p>
+     */
+    private static byte[] findEntryBytes(
+            InputStream packageInput,
+            String wantedName
+    ) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(packageInput)) {
+            ZipEntry entry;
+
+            while ((entry = zis.getNextEntry()) != null) {
+                String entryName = normalizeEntryName(entry.getName());
+
+                if (!entry.isDirectory() && wantedName.equals(entryName)) {
+                    return readCurrentEntry(zis);
+                }
+
+                zis.closeEntry();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Writes an uncompressed ZIP entry.
+     *
+     * <p>ZIP STORED entries require size and CRC values before the entry is
+     * opened.</p>
+     */
+    private static void writeStoredEntry(
+            ZipOutputStream zos,
+            String entryName,
+            byte[] data
+    ) throws IOException {
+        CRC32 crc = new CRC32();
+        crc.update(data, 0, data.length);
+
+        ZipEntry entry = new ZipEntry(entryName);
+        entry.setMethod(ZipEntry.STORED);
+        entry.setSize(data.length);
+        entry.setCompressedSize(data.length);
+        entry.setCrc(crc.getValue());
+
+        zos.putNextEntry(entry);
+        zos.write(data);
+        zos.closeEntry();
+    }
+
+    /**
+     * Reads the current ZIP entry completely.
+     */
+    private static byte[] readCurrentEntry(InputStream input) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        copy(input, output);
+        return output.toByteArray();
+    }
+
+    /**
+     * Copies all bytes from {@code input} to {@code output}.
+     */
+    private static void copy(InputStream input, OutputStream output) throws IOException {
+        byte[] buffer = new byte[8192];
+        int read;
+
+        while ((read = input.read(buffer)) != -1) {
+            output.write(buffer, 0, read);
+        }
+    }
+
+    /**
+     * Drains an input stream fully without retaining its contents.
+     */
+    private static void drain(InputStream input) throws IOException {
+        byte[] buffer = new byte[8192];
+
+        while (input.read(buffer) != -1) {
+            // Intentionally discard.
+        }
+    }
+
+    /**
+     * Validates an in-memory rebuilt ZIP archive.
+     *
+     * <p>Every entry is read fully so malformed compressed data or CRC failures are
+     * detected before the result is returned to the caller.</p>
+     */
+    private static void validateZipBytes(byte[] data) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(
+                new BufferedInputStream(new ByteArrayInputStream(data)))) {
 
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                Path newPath = targetDir.resolve(entry.getName()).normalize();
-                if (!newPath.startsWith(targetDir)) {
+                drain(zis);
+                zis.closeEntry();
+            }
+        }
+    }
+
+    /**
+     * Validates a completed filesystem ZIP archive before publication.
+     *
+     * <p>Every non-directory entry is read fully so malformed data and CRC failures
+     * are detected while the candidate file is still temporary.</p>
+     */
+    private static void validateZipFile(Path path) throws IOException {
+        try (ZipFile zipFile = new ZipFile(path.toFile())) {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+
+                if (entry.isDirectory()) {
                     continue;
                 }
 
-                if (entry.isDirectory()) {
-                    Files.createDirectories(newPath);
-                } else {
-                    Path parent = newPath.getParent();
-                    if (parent != null) {
-                        Files.createDirectories(parent);
-                    }
-                    Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
+                try (InputStream input = zipFile.getInputStream(entry)) {
+                    drain(input);
                 }
             }
         }
     }
 
     /**
-     * Backward-compatible unzip helper for file-based workflows.
+     * Publishes a validated sibling temporary file to its final destination.
      *
-     * <p>This is now a thin wrapper that reads the ZIP file into memory and
-     * delegates to {@link #unzip(byte[], Path)} to avoid code duplication.</p>
-     *
-     * @param zipFile   the ZIP file on disk
-     * @param targetDir the directory to extract the contents to
-     * @throws IOException if an I/O error occurs
+     * <p>An atomic replacement is attempted first. Filesystems that do not support
+     * {@link StandardCopyOption#ATOMIC_MOVE} fall back to a normal replacement.</p>
      */
-    private static void unzip(Path zipFile, Path targetDir) throws IOException {
-        byte[] data = Files.readAllBytes(zipFile);
-        unzip(data, targetDir);
+    private static void publishTempFile(
+            Path tempOutput,
+            Path outputPath
+    ) throws IOException {
+        try {
+            Files.move(
+                    tempOutput,
+                    outputPath,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE
+            );
+        } catch (IOException atomicMoveFailure) {
+            Files.move(
+                    tempOutput,
+                    outputPath,
+                    StandardCopyOption.REPLACE_EXISTING
+            );
+        }
+    }
+
+    /**
+     * Builds the standard success message.
+     */
+    private static String successMessage(
+            int convertedCount,
+            String format
+    ) {
+        return "✅ Successfully converted "
+                + convertedCount
+                + " fragment(s) in "
+                + format
+                + " document.";
+    }
+
+    /**
+     * Returns a useful exception message even when {@link Throwable#getMessage()}
+     * is {@code null}.
+     */
+    private static String safeMessage(Throwable throwable) {
+        String message = throwable.getMessage();
+        return message != null ? message : throwable.getClass().getSimpleName();
     }
 
     /**
      * Creates a ZIP archive from a file or directory.
      *
-     * <p>If the source path is a directory, it recursively adds all files under that path
-     * using forward-slash (UNIX-style) entry names. If the source is a single file,
-     * only that file is zipped.
+     * <p>This public utility is retained for backward compatibility. Office/EPUB
+     * conversion itself uses the dedicated streaming package pipeline above.</p>
      *
-     * @param sourcePath  the path to a file or directory to archive
-     * @param zipFilePath the destination ZIP file path
-     * @throws IOException if an error occurs during zipping
+     * @param sourcePath  file or directory to archive
+     * @param zipFilePath destination ZIP file
+     * @throws IOException              if ZIP creation fails
+     * @throws IllegalArgumentException if {@code sourcePath} is neither a regular
+     *                                  file nor a directory
      */
-    public static void zip(Path sourcePath, Path zipFilePath) throws IOException {
+    public static void zip(
+            Path sourcePath,
+            Path zipFilePath
+    ) throws IOException {
         Path parentDir = zipFilePath.getParent();
+
         if (parentDir != null) {
             Files.createDirectories(parentDir);
         }
 
-        try (OutputStream fos = Files.newOutputStream(zipFilePath);
-             ZipOutputStream zos = new ZipOutputStream(fos)) {
+        try (OutputStream output = Files.newOutputStream(zipFilePath);
+             ZipOutputStream zos = new ZipOutputStream(output)) {
 
             if (Files.isDirectory(sourcePath)) {
                 try (Stream<Path> paths = Files.walk(sourcePath)) {
-                    Iterator<Path> iterator = paths.filter(path -> !Files.isDirectory(path)).iterator();
+                    Iterator<Path> iterator = paths
+                            .filter(path -> !Files.isDirectory(path))
+                            .iterator();
+
                     while (iterator.hasNext()) {
                         Path path = iterator.next();
                         Path relativePath = sourcePath.relativize(path);
-                        ZipEntry zipEntry = new ZipEntry(relativePath.toString().replace('\\', '/'));
+
+                        ZipEntry zipEntry = new ZipEntry(
+                                relativePath.toString().replace('\\', '/')
+                        );
+
                         zos.putNextEntry(zipEntry);
                         Files.copy(path, zos);
                         zos.closeEntry();
                     }
                 }
             } else if (Files.isRegularFile(sourcePath)) {
-                ZipEntry zipEntry = new ZipEntry(sourcePath.getFileName().toString());
+                ZipEntry zipEntry = new ZipEntry(
+                        sourcePath.getFileName().toString()
+                );
+
                 zos.putNextEntry(zipEntry);
                 Files.copy(sourcePath, zos);
                 zos.closeEntry();
             } else {
-                throw new IllegalArgumentException("Source path must be a file or a directory: " + sourcePath);
+                throw new IllegalArgumentException(
+                        "Source path must be a file or a directory: " + sourcePath
+                );
             }
         }
     }
 
     /**
-     * Creates a valid EPUB ZIP archive from the extracted source directory.
+     * Returns whether font masking should be applied to a selected package part.
      *
-     * <p>According to the EPUB specification, the {@code mimetype} file:
-     * <ul>
-     *   <li>Must be the first entry in the ZIP archive</li>
-     *   <li>Must be stored uncompressed</li>
-     * </ul>
-     *
-     * <p>This method first adds the {@code mimetype} file, then recursively adds the remaining files
-     * in the directory. If the mimetype file is missing, an error {@link FileResult} is returned.
-     *
-     * @param sourceDir the base directory containing the EPUB structure
-     * @param outputZip the path to write the resulting EPUB ZIP file
-     * @return a {@link FileResult} indicating success or failure
+     * <p>For XLSX, broad {@code val="..."} masking is restricted to
+     * {@code xl/sharedStrings.xml}; worksheet XML contains many unrelated
+     * structural {@code val} attributes.</p>
      */
-    private static FileResult createEpubZip(Path sourceDir, Path outputZip) {
-        Path mimePath = sourceDir.resolve("mimetype");
-
-        if (!Files.exists(mimePath)) {
-            return new FileResult(false, "❌ 'mimetype' file is missing. EPUB requires this.");
-        }
-
-        try (FileOutputStream fos = new FileOutputStream(outputZip.toFile());
-             ZipOutputStream zos = new ZipOutputStream(fos)) {
-
-            ZipEntry mimeEntry = new ZipEntry("mimetype");
-            mimeEntry.setMethod(ZipEntry.STORED);
-
-            byte[] mimeBytes = Files.readAllBytes(mimePath);
-            mimeEntry.setSize(mimeBytes.length);
-            mimeEntry.setCompressedSize(mimeBytes.length);
-
-            CRC32 crc = new CRC32();
-            crc.update(mimeBytes, 0, mimeBytes.length);
-            mimeEntry.setCrc(crc.getValue());
-
-            zos.putNextEntry(mimeEntry);
-            zos.write(mimeBytes);
-            zos.closeEntry();
-
-            try (Stream<Path> stream = Files.walk(sourceDir)) {
-                stream
-                        .filter(p -> Files.isRegularFile(p) && !p.equals(mimePath))
-                        .forEach(p -> {
-                            try {
-                                String entryName = sourceDir.relativize(p)
-                                        .toString()
-                                        .replace("\\", "/");
-
-                                zos.putNextEntry(new ZipEntry(entryName));
-                                Files.copy(p, zos);
-                                zos.closeEntry();
-                            } catch (IOException e) {
-                                LOGGER.log(Level.WARNING,
-                                        "Failed to add file to zip: " + p.getFileName(), e);
-                            }
-                        });
-            }
-
-            return new FileResult(true, "✅ EPUB archive created successfully.");
-
-        } catch (Exception e) {
-            return new FileResult(false, "❌ Failed to create EPUB: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Returns a list of XML or XHTML file paths inside a document structure that should be converted.
-     *
-     * <p>This method identifies the key text-containing XML components based on the input format.
-     * For most formats, these are well-defined single paths. For formats like {@code pptx} and
-     * {@code epub}, this method uses recursive file discovery.
-     *
-     * @param format  the file format (e.g., {@code docx}, {@code epub}, {@code odt})
-     * @param baseDir the extracted root directory of the document
-     * @return a list of relative {@link Path} entries to be converted, or {@code null} if unsupported
-     */
-    private static List<Path> getTargetXmlPaths(String format, Path baseDir) {
-        switch (format) {
-            case "docx":
-                return Collections.singletonList(Paths.get("word/document.xml"));
-
-            case "xlsx": {
-                List<Path> targets = new ArrayList<>();
-
-                Path sharedStrings = baseDir.resolve("xl/sharedStrings.xml");
-                if (Files.isRegularFile(sharedStrings)) {
-                    targets.add(Paths.get("xl/sharedStrings.xml"));
-                }
-
-                Path worksheetsDir = baseDir.resolve("xl/worksheets");
-                if (Files.isDirectory(worksheetsDir)) {
-                    try (Stream<Path> stream = Files.walk(worksheetsDir)) {
-                        stream
-                                .filter(Files::isRegularFile)
-                                .filter(p -> p.getFileName().toString().endsWith(".xml"))
-                                .map(baseDir::relativize)
-                                .forEach(targets::add);
-                    } catch (IOException e) {
-                        LOGGER.log(Level.WARNING, "Failed to collect xlsx worksheet targets", e);
-                    }
-                }
-
-                return targets;
-            }
-
-            case "pptx": {
-                Path pptDir = baseDir.resolve("ppt");
-                if (!Files.isDirectory(pptDir)) {
-                    return Collections.emptyList();
-                }
-
-                Predicate<Path> isTarget = p -> {
-                    String name = p.getFileName().toString();
-                    return name.endsWith(".xml") && (
-                            name.startsWith("slide") ||
-                                    name.contains("notesSlide") ||
-                                    name.contains("slideMaster") ||
-                                    name.contains("slideLayout") ||
-                                    name.contains("comment")
-                    );
-                };
-
-                try (Stream<Path> stream = Files.walk(pptDir)) {
-                    return stream
-                            .filter(Files::isRegularFile)
-                            .filter(isTarget)
-                            .map(baseDir::relativize)
-                            .collect(Collectors.toList());
-                } catch (IOException e) {
-                    LOGGER.log(Level.WARNING, "Failed to collect pptx targets", e);
-                    return Collections.emptyList();
-                }
-            }
-
-            case "odt":
-            case "ods":
-            case "odp":
-                return Collections.singletonList(Paths.get("content.xml"));
-
-            case "epub": {
-                Predicate<Path> isTarget = p -> {
-                    String name = p.getFileName().toString().toLowerCase();
-                    return name.endsWith(".xhtml")
-                            || name.endsWith(".html")
-                            || name.endsWith(".opf")
-                            || name.endsWith(".ncx");
-                };
-
-                try (Stream<Path> stream = Files.walk(baseDir)) {
-                    return stream
-                            .filter(Files::isRegularFile)
-                            .filter(isTarget)
-                            .map(baseDir::relativize)
-                            .collect(Collectors.toList());
-                } catch (IOException e) {
-                    LOGGER.log(Level.WARNING, "Failed to collect epub targets", e);
-                    return Collections.emptyList();
-                }
-            }
-
-            default:
-                return null;
-        }
-    }
-
-    /**
-     * Returns whether font masking should be applied for the given file.
-     *
-     * <p>For XLSX, broad {@code val="..."} masking on worksheet XML is risky because
-     * worksheet files contain metadata and structural attributes unrelated to fonts.
-     * Therefore, XLSX font masking is limited to {@code xl/sharedStrings.xml} only.</p>
-     */
-    private static boolean shouldMaskFonts(String format, Path relativePath) {
+    private static boolean shouldMaskFonts(
+            String format,
+            Path relativePath
+    ) {
         if (!"xlsx".equals(format)) {
             return true;
         }
 
         String normalized = relativePath.toString().replace('\\', '/');
-        return "xl/sharedStrings.xml".equals(normalized);
+        return "xl/sharedStrings.xml".equalsIgnoreCase(normalized);
     }
 
     /**
-     * Returns a regular expression {@link Pattern} for extracting font declarations
-     * in the specified document format.
-     *
-     * <p>See {@link #FONT_PATTERNS} for the supported formats and attributes.</p>
-     *
-     * @param format the document format key
-     * @return the format-specific font extraction {@link Pattern}, or {@code null} if unsupported
+     * Returns the format-specific font declaration pattern.
      */
     private static Pattern getFontPattern(String format) {
         return FONT_PATTERNS.get(format);
     }
 
     /**
-     * Converts one XML/XHTML content fragment according to its format and relative path.
+     * Converts one selected XML/XHTML fragment.
      *
-     * <p>XLSX worksheet XML is handled narrowly:
-     * only inline-string cells are rewritten, and only their {@code <t>} text nodes
-     * are converted. Shared strings and other formats continue to use whole-fragment
-     * conversion.</p>
+     * <p>XLSX worksheets are handled narrowly: only cells whose type is
+     * {@code inlineStr} are rewritten, and within those cells only {@code <t>}
+     * text nodes are passed to the text converter. Shared strings and other
+     * supported package parts use whole-fragment conversion.</p>
      */
     private static String convertXmlContent(
             String format,
             Path relativePath,
             String xml,
-            OpenCC converter,
-            boolean punctuation
+            TextConverter textConverter
     ) {
         if ("xlsx".equals(format) && isWorksheetPath(relativePath)) {
-            return convertXlsxInlineStrings(xml, converter, punctuation);
+            return convertXlsxInlineStrings(xml, textConverter);
         }
-        return converter.convert(xml, punctuation);
+
+        return applyTextConverter(textConverter, xml);
     }
 
     /**
-     * Returns whether the relative path points to an XLSX worksheet XML file.
+     * Applies the caller-supplied text transformation and enforces its non-null
+     * return contract.
+     *
+     * @throws NullPointerException  if {@code textConverter} is {@code null}
+     * @throws IllegalStateException if the converter returns {@code null}
+     */
+    private static String applyTextConverter(
+            TextConverter textConverter,
+            String text
+    ) {
+        Objects.requireNonNull(
+                textConverter,
+                "textConverter must not be null"
+        );
+
+        String converted = textConverter.convert(text);
+
+        if (converted == null) {
+            throw new IllegalStateException(
+                    "Office text converter returned null."
+            );
+        }
+
+        return converted;
+    }
+
+    /**
+     * Returns whether the relative package path identifies an XLSX worksheet XML
+     * part.
      */
     private static boolean isWorksheetPath(Path relativePath) {
-        String normalized = relativePath.toString().replace('\\', '/');
-        return normalized.startsWith("xl/worksheets/") && normalized.endsWith(".xml");
+        String normalized = relativePath.toString()
+                .replace('\\', '/')
+                .toLowerCase(Locale.ROOT);
+
+        return normalized.startsWith("xl/worksheets/")
+                && normalized.endsWith(".xml");
     }
 
     /**
-     * Converts only XLSX inline-string cells in a worksheet XML file.
+     * Converts only inline-string cells in one XLSX worksheet XML document.
      */
-    private static String convertXlsxInlineStrings(String xml, OpenCC converter, boolean punctuation) {
+    private static String convertXlsxInlineStrings(
+            String xml,
+            TextConverter textConverter
+    ) {
         Matcher cellMatcher = XLSX_INLINE_STRING_CELL_PATTERN.matcher(xml);
         StringBuffer xmlOut = new StringBuffer();
 
         while (cellMatcher.find()) {
             String convertedCell = convertXlsxInlineStringCell(
                     cellMatcher.group(),
-                    converter,
-                    punctuation
+                    textConverter
             );
-            cellMatcher.appendReplacement(xmlOut, Matcher.quoteReplacement(convertedCell));
-        }
-        cellMatcher.appendTail(xmlOut);
 
+            cellMatcher.appendReplacement(
+                    xmlOut,
+                    Matcher.quoteReplacement(convertedCell)
+            );
+        }
+
+        cellMatcher.appendTail(xmlOut);
         return xmlOut.toString();
     }
 
     /**
-     * Converts only {@code <t>} text nodes inside one XLSX inline-string cell.
+     * Converts only {@code <t>} nodes inside one XLSX inline-string cell.
      */
-    private static String convertXlsxInlineStringCell(String cellXml, OpenCC converter, boolean punctuation) {
+    private static String convertXlsxInlineStringCell(
+            String cellXml,
+            TextConverter textConverter
+    ) {
         Matcher textMatcher = XLSX_TEXT_NODE_PATTERN.matcher(cellXml);
         StringBuffer cellOut = new StringBuffer();
 
         while (textMatcher.find()) {
-            String convertedText = converter.convert(textMatcher.group(2), punctuation);
-            if (convertedText == null) {
-                throw new IllegalStateException("native error: " + converter.getLastError());
-            }
+            String convertedText = applyTextConverter(
+                    textConverter,
+                    textMatcher.group(2)
+            );
 
-            String replacement = textMatcher.group(1) + convertedText + textMatcher.group(3);
-            textMatcher.appendReplacement(cellOut, Matcher.quoteReplacement(replacement));
+            String replacement = textMatcher.group(1)
+                    + convertedText
+                    + textMatcher.group(3);
+
+            textMatcher.appendReplacement(
+                    cellOut,
+                    Matcher.quoteReplacement(replacement)
+            );
         }
+
         textMatcher.appendTail(cellOut);
-
         return cellOut.toString();
-    }
-
-    /**
-     * Recursively deletes a directory and all its contents.
-     *
-     * <p>This method is typically used to clean up temporary extraction folders after document processing.
-     * It walks the file tree in reverse order (files first, then directories) to ensure successful deletion.
-     *
-     * <p>Any deletion failures (e.g. due to file locks) are logged but do not halt execution.
-     *
-     * @param dirPath the root directory to delete
-     */
-    private static void deleteRecursive(Path dirPath) {
-        if (dirPath == null || !Files.exists(dirPath)) {
-            return;
-        }
-
-        try {
-            try (Stream<Path> paths = Files.walk(dirPath)) {
-                paths.sorted(Comparator.reverseOrder())
-                        .forEach(p -> {
-                            try {
-                                Files.delete(p);
-                            } catch (IOException e) {
-                                LOGGER.log(Level.WARNING, "Failed to delete " + p, e);
-                            }
-                        });
-            }
-        } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Error walking directory for cleanup at " + dirPath, e);
-        }
     }
 }

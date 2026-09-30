@@ -56,6 +56,7 @@ javafx {
 
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     implementation("org.fxmisc.richtext:richtextfx:0.11.7")
 
@@ -89,6 +90,7 @@ tasks.withType<Jar> {
 
 tasks.test {
     systemProperty("file.encoding", "utf-8")
+    systemProperty("guiSmokeTest", providers.gradleProperty("guiSmokeTest").getOrElse("false"))
     useJUnitPlatform()
 }
 

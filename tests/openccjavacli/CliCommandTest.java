@@ -48,7 +48,7 @@ class CliCommandTest {
 
     @Test
     void pdfInvalidConfigReturnsUsage() {
-        Path samplePdf = Paths.get("sample.pdf").toAbsolutePath().normalize();
+        Path samplePdf = Paths.get("tests", "CHUNK_ABC.pdf").toAbsolutePath().normalize();
 
         CommandResult result = execute("pdf", "-i", samplePdf.toString(), "-c", "not-a-config");
 
@@ -112,6 +112,20 @@ class CliCommandTest {
 
         assertEquals(CommandLine.ExitCode.OK, result.exitCode, result.stderr);
         assertEquals("三二", new String(Files.readAllBytes(output), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void pdfExtractWritesTextFileFromSamplePdf() throws Exception {
+        Path samplePdf = Paths.get("tests", "CHUNK_ABC.pdf").toAbsolutePath().normalize();
+        Path output = tempDir.resolve("SanWenHans_extracted.txt");
+
+        CommandResult result = execute("pdf", "-i", samplePdf.toString(), "-e", "-o", output.toString());
+
+        assertEquals(CommandLine.ExitCode.OK, result.exitCode, result.stderr);
+        assertTrue(Files.exists(output), "Expected extracted text file to be created");
+        assertTrue(Files.size(output) > 0, "Expected extracted text file to be non-empty");
+        String text = new String(Files.readAllBytes(output), StandardCharsets.UTF_8);
+        assertFalse(text.trim().isEmpty(), "Expected extracted text content");
     }
 
     private static CommandResult execute(String... args) {

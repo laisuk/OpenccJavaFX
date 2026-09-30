@@ -175,11 +175,11 @@ class OpenccApiRegressionTest {
     }
 
     @Test
-    void officeConvertFailsWhenOutputFileIsNull() {
+    void officeConvertFailsWhenOutputFileIsNull(@org.junit.jupiter.api.io.TempDir Path tempDir) throws Exception {
         OpenCC converter = new OpenCC("s2t");
 
         OfficeHelper.FileResult result = OfficeHelper.convert(
-                new File("unused-input.docx"),
+                Files.createFile(tempDir.resolve("input.docx")).toFile(),
                 null,
                 "docx",
                 converter,

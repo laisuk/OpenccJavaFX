@@ -1,12 +1,31 @@
 package pdfboxhelper;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
+/**
+ * Punctuation tables and small scanning helpers for CJK PDF text reflow.
+ */
 public class PunctSets {
+    /**
+     * Creates a punctuation helper.
+     */
+    public PunctSets() {
+    }
+
     /**
      * Mutable out-param for a char (Java replacement for C# out char).
      */
     public static final class CharRef {
+        /**
+         * Creates a holder with the default null character value.
+         */
+        public CharRef() {
+        }
+
+        /**
+         * Referenced character value.
+         */
         public char value;
     }
 
@@ -14,7 +33,19 @@ public class PunctSets {
      * Mutable out-params for (index, char).
      */
     public static final class IndexCharRef {
+        /**
+         * Creates a holder with default index and character values.
+         */
+        public IndexCharRef() {
+        }
+
+        /**
+         * Referenced character index.
+         */
         public int index;
+        /**
+         * Referenced character value.
+         */
         public char ch;
     }
 
@@ -40,6 +71,12 @@ public class PunctSets {
 
     private static final boolean[] CJK_PUNCT_END_TABLE = new boolean[65536];
 
+    /**
+     * Checks whether a character is accepted as clause or sentence-ending punctuation.
+     *
+     * @param ch character to inspect
+     * @return {@code true} when {@code ch} is in the CJK end-punctuation table
+     */
     public static boolean isClauseOrEndPunct(char ch) {
         return CJK_PUNCT_END_TABLE[ch];
     }
@@ -70,6 +107,12 @@ public class PunctSets {
         COMMA_LIKE_TABLE['、'] = true; // ideographic comma
     }
 
+    /**
+     * Checks whether a character is comma-like for soft continuation logic.
+     *
+     * @param ch character to inspect
+     * @return {@code true} for ASCII comma, full-width comma, or ideographic comma
+     */
     public static boolean isCommaLike(char ch) {
         return COMMA_LIKE_TABLE[ch];
     }
@@ -77,6 +120,9 @@ public class PunctSets {
     /**
      * Returns true if the string contains any comma-like character.
      * Null or empty strings return false.
+     *
+     * @param s string to inspect
+     * @return {@code true} when {@code s} contains a comma-like character
      */
     public static boolean containsAnyCommaLike(String s) {
         if (s == null || s.isEmpty())
@@ -89,6 +135,12 @@ public class PunctSets {
         return false;
     }
 
+    /**
+     * Checks whether a character is an ASCII or full-width colon.
+     *
+     * @param ch character to inspect
+     * @return {@code true} for {@code ':'} or {@code '：'}
+     */
     public static boolean isColonLike(char ch) {
         return ch == '：' || ch == ':';
     }
@@ -96,6 +148,9 @@ public class PunctSets {
     /**
      * Returns true if the string ends with a colon-like character (':' or '：'),
      * ignoring trailing whitespace.
+     *
+     * @param s string to inspect
+     * @return {@code true} when the last non-whitespace character is colon-like
      */
     public static boolean endsWithColonLike(String s) {
         if (s == null || s.isEmpty())
@@ -162,6 +217,9 @@ public class PunctSets {
     private static final char[] BRACKET_CLOSE_BY_OPEN = new char[Character.MAX_VALUE + 1];
 
     // Metadata key-value separators
+    /**
+     * Characters accepted as metadata key-value separators.
+     */
     public static final char[] METADATA_SEPARATORS = new char[]{
             '：', // full-width colon
             ':',  // ASCII colon
@@ -217,10 +275,22 @@ public class PunctSets {
         }
     }
 
+    /**
+     * Checks whether a character opens a dialog quote.
+     *
+     * @param ch character to inspect
+     * @return {@code true} when {@code ch} is a configured dialog opener
+     */
     public static boolean isDialogOpener(char ch) {
         return DIALOG_OPENER_TABLE[ch];
     }
 
+    /**
+     * Checks whether a character closes a dialog quote.
+     *
+     * @param ch character to inspect
+     * @return {@code true} when {@code ch} is a configured dialog closer
+     */
     public static boolean isDialogCloser(char ch) {
         return DIALOG_CLOSER_TABLE[ch];
     }
@@ -229,26 +299,54 @@ public class PunctSets {
     // Helpers
     // ---------------------------------------------------------------------
 
+    /**
+     * Checks whether a character is a supported bracket opener.
+     *
+     * @param ch character to inspect
+     * @return {@code true} when {@code ch} has a configured matching closer
+     */
     public static boolean isBracketOpener(char ch) {
         return OPEN_BRACKET_TABLE[ch];
     }
 
+    /**
+     * Checks whether a character is a supported bracket closer.
+     *
+     * @param ch character to inspect
+     * @return {@code true} when {@code ch} is a configured closer
+     */
     public static boolean isBracketCloser(char ch) {
         return CLOSE_BRACKET_TABLE[ch];
     }
 
+    /**
+     * Checks whether two characters are a configured bracket pair.
+     *
+     * @param open  opening bracket candidate
+     * @param close closing bracket candidate
+     * @return {@code true} when {@code close} matches {@code open}
+     */
     public static boolean isMatchingBracket(char open, char close) {
         return BRACKET_CLOSE_BY_OPEN[open] == close;
     }
 
     /**
-     * C# TryGetMatchingCloser(open, out close)
+     * Finds the configured closer for an opening bracket.
+     *
+     * @param open opening bracket character
+     * @return matching closer, or {@code 0} when {@code open} is unknown
      */
     public static char tryGetMatchingCloser(char open) {
         // Return 0 when unknown.
         return BRACKET_CLOSE_BY_OPEN[open];
     }
 
+    /**
+     * Checks whether a closing parenthesis is allowed after sentence punctuation.
+     *
+     * @param ch character to inspect
+     * @return {@code true} for ASCII or full-width closing parenthesis
+     */
     public static boolean isAllowedPostfixCloser(char ch) {
         return ch == '）' || ch == ')';
     }
@@ -256,6 +354,9 @@ public class PunctSets {
     /**
      * Returns true if the string ends with an allowed postfix closer
      * ')' or '）', ignoring trailing whitespace.
+     *
+     * @param s string to inspect
+     * @return {@code true} when the last non-whitespace character is an allowed postfix closer
      */
     public static boolean endsWithAllowedPostfixCloser(String s) {
         if (s == null || s.isEmpty())
@@ -270,6 +371,12 @@ public class PunctSets {
         return false;
     }
 
+    /**
+     * Checks whether the first non-whitespace character starts dialog text.
+     *
+     * @param s string to inspect
+     * @return {@code true} when the first non-whitespace character is a dialog opener
+     */
     public static boolean isDialogStarter(String s) {
         if (s == null || s.isEmpty())
             return false;
@@ -365,6 +472,12 @@ public class PunctSets {
         return seenBracket && top != 0;
     }
 
+    /**
+     * Detects unmatched dialog quote characters.
+     *
+     * @param s text to inspect
+     * @return {@code true} when a dialog opener or closer is unbalanced
+     */
     public static boolean hasUnclosedDialogQuote(CharSequence s) {
         if (s == null || s.length() == 0) {
             return false;
@@ -412,6 +525,9 @@ public class PunctSets {
      *
      * <p>These lines represent layout boundaries and must always
      * force paragraph breaks during reflow.</p>
+     *
+     * @param s probe string to inspect
+     * @return {@code true} when the probe is a visual divider line
      */
     public static boolean isVisualDividerLine(String s) {
         if (s == null)
@@ -452,10 +568,22 @@ public class PunctSets {
         return total >= 3;
     }
 
+    /**
+     * Checks whether a character is a strong sentence-ending punctuation mark.
+     *
+     * @param ch character to inspect
+     * @return {@code true} for CJK or ASCII exclamation/question/full-stop sentence endings
+     */
     public static boolean isStrongSentenceEnd(char ch) {
         return ch == '。' || ch == '！' || ch == '？' || ch == '!' || ch == '?';
     }
 
+    /**
+     * Checks whether a character closes a quote.
+     *
+     * @param ch character to inspect
+     * @return {@code true} when {@code ch} is a configured dialog closer
+     */
     public static boolean isQuoteCloser(char ch) {
         // Rust: is_dialog_closer(ch)
         return isDialogCloser(ch);
@@ -466,6 +594,10 @@ public class PunctSets {
     // -------------------------
 
     /**
+     * Finds the last non-whitespace character.
+     *
+     * @param s   string to inspect
+     * @param out output holder for the character
      * @return true if found; writes last non-whitespace char into out. value
      */
     public static boolean tryGetLastNonWhitespace(String s, CharRef out) {
@@ -486,6 +618,10 @@ public class PunctSets {
     }
 
     /**
+     * Finds the last non-whitespace character and its index.
+     *
+     * @param s   string to inspect
+     * @param out output holder for the index and character
      * @return true if found; writes index+char into out.index/out.ch
      */
     public static boolean tryGetLastNonWhitespace(String s, IndexCharRef out) {
@@ -511,6 +647,9 @@ public class PunctSets {
     }
 
     /**
+     * Finds the first non-whitespace character index.
+     *
+     * @param s string to inspect
      * @return index of first non-whitespace char, or -1 if none
      */
     public static int indexOfFirstNonWhitespace(String s) {
@@ -526,6 +665,10 @@ public class PunctSets {
     }
 
     /**
+     * Finds the first non-whitespace character.
+     *
+     * @param s   string to inspect
+     * @param out output holder for the character
      * @return true if found; writes first non-whitespace char into out. value
      */
     public static boolean tryGetFirstNonWhitespace(String s, CharRef out) {
@@ -541,6 +684,11 @@ public class PunctSets {
     /**
      * Finds previous non-whitespace char strictly before startIndex.
      * Example: startIndex = s.length() => scans whole string backwards.
+     *
+     * @param s           string to inspect
+     * @param beforeIndex exclusive index before which scanning starts
+     * @param out         output holder for the character
+     * @return {@code true} when a previous non-whitespace character is found
      */
     public static boolean tryGetPrevNonWhitespace(String s, int beforeIndex, CharRef out) {
         if (s == null || s.isEmpty()) {
@@ -563,6 +711,11 @@ public class PunctSets {
     /**
      * Finds previous non-whitespace char strictly before beforeIndex.
      * Writes index+char into out.index/out.ch.
+     *
+     * @param s           string to inspect
+     * @param beforeIndex exclusive index before which scanning starts
+     * @param out         output holder for the index and character
+     * @return {@code true} when a previous non-whitespace character is found
      */
     public static boolean tryGetPrevNonWhitespace(String s, int beforeIndex, IndexCharRef out) {
         if (s == null || s.isEmpty()) {

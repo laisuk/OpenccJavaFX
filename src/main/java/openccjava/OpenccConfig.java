@@ -7,8 +7,10 @@ import java.util.*;
  *
  * <p>Each constant corresponds to an OpenCC conversion mode,
  * covering Simplified ↔ Traditional Chinese and region-specific variants
- * (Taiwan, Hong Kong, Japan). The {@code p} suffix indicates that
- * phrase-level mappings are also applied.</p>
+ * (Taiwan, Hong Kong, Japan). The {@code p} suffix indicates that additional
+ * region-specific phrase mappings are applied for Taiwan or Hong Kong;
+ * base conversions such as {@link #S2T} and {@link #T2S} already include
+ * their standard phrase dictionaries.</p>
  */
 public enum OpenccConfig {
 
@@ -225,7 +227,7 @@ public enum OpenccConfig {
      * (for example {@code "s2t"}, {@code "t2twp"}) and enum-style names
      * (for example {@code "S2T"}, {@code "T2TWP"}).</p>
      *
-     * <p>This method performs no allocation beyond parsing and never throws.</p>
+     * <p>This method performs tolerant parsing and never throws.</p>
      *
      * @param value the configuration string to check; may be {@code null}
      * @return {@code true} if the configuration is valid; {@code false} otherwise

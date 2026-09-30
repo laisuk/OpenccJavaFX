@@ -81,6 +81,7 @@ public final class StarterUnion {
      * @param astralMask    bit mask of starter presence in the astral planes
      *                      (U+10000–U+10FFFF), offset by {@code BMP_LIMIT}
      * @param bmpLenMask    array of per-starter length masks for BMP code points;
+     *                      must contain at least 65,536 elements;
      *                      {@code bmpLenMask[cp]} is a 64-bit bitmask where bit
      *                      {@code L} is set if a dictionary key of length {@code L}
      *                      starts with code point {@code cp}

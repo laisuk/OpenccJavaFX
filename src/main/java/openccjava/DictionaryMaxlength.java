@@ -7,23 +7,35 @@ import java.util.*;
 import java.util.function.BiConsumer;
 
 /**
- * Represents a container for all OpenCC dictionary mappings,
- * including phrase-level and character-level dictionaries.
+ * Represents a container for all OpenCC dictionary mappings, including
+ * phrase-level, character-level, and punctuation dictionaries.
  *
- * <p>This class supports loading from:</p>
+ * <p>This class supports loading dictionaries from:</p>
  * <ul>
- *     <li>JSON-serialized form (used in deployments)</li>
- *     <li>Individual dictionary text files (used during development or as fallback)</li>
+ *     <li>JSON-serialized dictionary snapshots</li>
+ *     <li>Individual OpenCC dictionary text files</li>
  * </ul>
  *
- * <p>Each dictionary is stored as a {@link DictEntry} with:</p>
+ * <p>Each dictionary is stored as a {@link DictEntry} containing:</p>
  * <ul>
- *     <li>{@code dict}: key-value pairs of source→target</li>
- *     <li>{@code maxLength}: the longest phrase/key length</li>
- *     <li>{@code minLength}: the shortest phrase/key length</li>
+ *     <li>{@code dict}: source-to-target key-value mappings</li>
+ *     <li>{@code maxLength}: the longest source key length</li>
+ *     <li>{@code minLength}: the shortest source key length</li>
  * </ul>
- * Holds multiple dictionary entries, each with defined minimum and maximum key lengths.
- * Used for efficient longest-match text conversion.
+ *
+ * <p>The length metadata is used by the conversion engine to perform efficient
+ * longest-match dictionary lookup.</p>
+ *
+ * <p>Advanced callers may preload, deserialize, or customize a
+ * {@code DictionaryMaxlength} and pass it to {@link OpenCC}. Once attached to
+ * an {@code OpenCC} instance, the dictionary should be treated as immutable
+ * for the lifetime of that converter because conversion metadata may be cached
+ * from its contents.</p>
+ *
+ * <p>Mutating an attached dictionary is unsupported and may produce conversion
+ * results that are inconsistent with the cached conversion plan. To use
+ * different dictionary contents, create or customize another
+ * {@code DictionaryMaxlength} and construct a new {@link OpenCC} instance.</p>
  */
 public class DictionaryMaxlength {
     /**
@@ -35,7 +47,7 @@ public class DictionaryMaxlength {
     }
 
     /**
-     * Represents a dictionary entry with mapping data and max phrase length.
+     * Represents a dictionary entry with mapping data and phrase-length bounds.
      */
 //    @JsonFormat(shape = JsonFormat.Shape.ARRAY)
     public static class DictEntry {
@@ -45,12 +57,14 @@ public class DictionaryMaxlength {
         public Map<String, String> dict;
 
         /**
-         * Maximum phrase length in this dictionary
+         * Maximum source key length in UTF-16 code units, as measured by
+         * {@link String#length()}.
          */
         public int maxLength;
 
         /**
-         * Minimum phrase length in this dictionary
+         * Minimum source key length in UTF-16 code units, as measured by
+         * {@link String#length()}.
          */
         public int minLength; // NEW
 
@@ -67,9 +81,13 @@ public class DictionaryMaxlength {
         /**
          * Constructs a new dictionary entry.
          *
-         * @param dict      The dictionary mapping strings.
-         * @param maxLength The maximum key length in the dictionary.
-         * @param minLength The minimum key length in the dictionary.
+         * <p>The map is retained directly, not copied. Length bounds are accepted
+         * as supplied; callers must keep them consistent with the source keys.</p>
+         *
+         * @param dict      the dictionary mapping strings, retained by reference
+         * @param maxLength the maximum source key length in UTF-16 code units
+         * @param minLength the minimum source key length in UTF-16 code units
+         * @throws NullPointerException if {@code dict} is {@code null}
          */
         public DictEntry(Map<String, String> dict, int maxLength, int minLength) {
             this.dict = Objects.requireNonNull(dict, "dict");
@@ -811,69 +829,116 @@ public class DictionaryMaxlength {
 
             int start = 0;
             int end = raw.length();
-            while (start < end && Character.isWhitespace(raw.charAt(start))) start++;
-            while (end > start && Character.isWhitespace(raw.charAt(end - 1))) end--;
-            if (start >= end) continue;
+
+            // Strip an optional UTF-8 BOM from the first physical line.
+            if (lineNo == 1 && start < end && raw.charAt(start) == '\uFEFF') {
+                start++;
+            }
+
+            while (start < end && Character.isWhitespace(raw.charAt(start))) {
+                start++;
+            }
+            while (end > start && Character.isWhitespace(raw.charAt(end - 1))) {
+                end--;
+            }
+
+            if (start >= end) {
+                continue;
+            }
 
             char first = raw.charAt(start);
-            if (first == '#') continue;
-            if (first == '/' && start + 1 < end && raw.charAt(start + 1) == '/') continue;
+            if (first == '#') {
+                continue;
+            }
+            if (first == '/' &&
+                    start + 1 < end &&
+                    raw.charAt(start + 1) == '/') {
+                continue;
+            }
 
             int tab = -1;
             for (int i = start; i < end; i++) {
-                if (raw.charAt(i) == '	') {
+                if (raw.charAt(i) == '\t') {
                     tab = i;
                     break;
                 }
             }
+
             if (tab < 0) {
-                System.err.println("Warning: malformed (no TAB) at line " + lineNo + ": " + raw);
+                System.err.println(
+                        "Warning: malformed (no TAB) at line " +
+                                lineNo + ": " + raw
+                );
                 continue;
             }
 
             int keyStart = start;
-
-            if (lineNo == 1 && keyStart < tab && raw.charAt(keyStart) == '\uFEFF') keyStart++;
             if (keyStart >= tab) {
-                System.err.println("Warning: empty key/value at line " + lineNo + ": " + raw);
+                System.err.println(
+                        "Warning: empty key/value at line " +
+                                lineNo + ": " + raw
+                );
                 continue;
             }
+
             String key = raw.substring(keyStart, tab);
 
             int valueStart = tab + 1;
             while (valueStart < end) {
                 char c = raw.charAt(valueStart);
-                if (c != ' ' && c != '	') break;
+                if (c != ' ' && c != '\t') {
+                    break;
+                }
                 valueStart++;
             }
+
             if (valueStart >= end) {
-                System.err.println("Warning: empty key/value at line " + lineNo + ": " + raw);
+                System.err.println(
+                        "Warning: empty key/value at line " +
+                                lineNo + ": " + raw
+                );
                 continue;
             }
 
             int valueEnd = valueStart;
             while (valueEnd < end) {
                 char c = raw.charAt(valueEnd);
-                if (c == ' ' || c == '	') break;
+                if (c == ' ' || c == '\t') {
+                    break;
+                }
                 valueEnd++;
             }
+
             if (valueEnd <= valueStart) {
-                System.err.println("Warning: empty key/value at line " + lineNo + ": " + raw);
+                System.err.println(
+                        "Warning: empty key/value at line " +
+                                lineNo + ": " + raw
+                );
                 continue;
             }
+
             String val = raw.substring(valueStart, valueEnd);
 
             dict.put(key, val);
+
             int len = key.length();
-            if (len > maxLength) maxLength = len;
-            if (len < minLength) minLength = len;
+            if (len > maxLength) {
+                maxLength = len;
+            }
+            if (len < minLength) {
+                minLength = len;
+            }
         }
+
         if (dict.isEmpty()) {
             return new DictEntry(dict, 1, 1);
-        } else {
-            if (minLength == Integer.MAX_VALUE) minLength = 1;
-            return new DictEntry(dict, maxLength, minLength);
         }
+
+        if (minLength == Integer.MAX_VALUE) {
+            minLength = 1;
+        }
+
+        return new DictEntry(dict, maxLength, minLength);
     }
 
     /**
@@ -917,7 +982,9 @@ public class DictionaryMaxlength {
      *
      * @param jsonFile the JSON file to read
      * @return a populated {@code DictionaryMaxlength} instance
-     * @throws IOException if reading fails
+     * @throws IOException          if reading fails
+     * @throws NullPointerException if {@code jsonFile} is {@code null}
+     * @since 1.4.0
      */
     public static DictionaryMaxlength fromJson(File jsonFile) throws IOException {
         Objects.requireNonNull(jsonFile, "jsonFile");
@@ -931,7 +998,9 @@ public class DictionaryMaxlength {
      *
      * @param path the JSON file path
      * @return a populated {@code DictionaryMaxlength} instance
-     * @throws IOException if reading fails
+     * @throws IOException          if reading fails
+     * @throws NullPointerException if {@code path} is {@code null}
+     * @since 1.4.0
      */
     public static DictionaryMaxlength fromJson(String path) throws IOException {
         return fromJsonFileNoDeps(path);
@@ -941,10 +1010,14 @@ public class DictionaryMaxlength {
      * Loads a {@code DictionaryMaxlength} from a JSON input stream.
      *
      * <p>This compatibility overload delegates to {@link #fromJsonNoDeps(InputStream)}.</p>
+     * <p>The supplied stream is closed on success or failure.</p>
      *
      * @param in an input stream containing the JSON (UTF-8 encoded)
      * @return a populated {@code DictionaryMaxlength} instance
-     * @throws IOException if reading fails
+     * @throws IOException          if reading fails
+     * @throws NullPointerException if {@code in} is {@code null}
+     * @throws IllegalArgumentException if the JSON is malformed or violates the expected schema
+     * @since 1.4.0
      */
     public static DictionaryMaxlength fromJson(InputStream in) throws IOException {
         return fromJsonNoDeps(in);
@@ -973,6 +1046,9 @@ public class DictionaryMaxlength {
 
     /**
      * Loads a {@code DictionaryMaxlength} from a JSON input stream without using external libraries.
+     *
+     * <p>This method takes ownership of the stream and closes it on success or
+     * failure, including parse errors.</p>
      * <p>
      * This method expects the JSON to follow the {@code dictionary_maxlength.json} schema:
      * each top-level field maps to an array
@@ -1074,6 +1150,7 @@ public class DictionaryMaxlength {
      * @param sortKeys   if {@code true}, sort dictionary keys lexically for
      *                   deterministic output
      * @throws IOException if writing fails
+     * @since 1.4.0
      */
     public void serializeToJson(Path outputPath, boolean pretty, boolean sortKeys) throws IOException {
         try (Writer w = new BufferedWriter(
@@ -1103,6 +1180,7 @@ public class DictionaryMaxlength {
      * @param sortKeys   if {@code true}, sort dictionary keys lexically for
      *                   deterministic output
      * @throws IOException if writing fails
+     * @since 1.4.0
      */
     public void serializeToJson(String outputPath, boolean pretty, boolean sortKeys) throws IOException {
         serializeToJson(Paths.get(outputPath), pretty, sortKeys);
@@ -1131,6 +1209,7 @@ public class DictionaryMaxlength {
      *                 deterministic output
      * @return JSON text held as a Java {@code String}
      * @throws IOException if an I/O error occurs while generating the JSON
+     * @since 1.4.0
      */
     public String serializeToJsonString(boolean pretty, boolean sortKeys) throws IOException {
         StringWriter sw = new StringWriter(1 << 20);

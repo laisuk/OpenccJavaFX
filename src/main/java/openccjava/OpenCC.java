@@ -110,14 +110,14 @@ public class OpenCC {
             ThreadLocal.withInitial(() -> new StringBuilder(MAX_SB_CAPACITY));
 
     /**
-     * Provides a lazily initialized, thread-safe singleton instance of
+     * Provides thread-safe lazy initialization of a shared instance of
      * {@link DictionaryMaxlength}.
      *
      * <p>This holder follows the <em>Initialization-on-demand holder idiom</em>:
      * the dictionary is not loaded until the first call to {@link #get()}.
      * This guarantees that:</p>
      * <ul>
-     *   <li>The dictionary is loaded exactly once per JVM.</li>
+     *   <li>The dictionary is loaded once per defining class loader.</li>
      *   <li>Access is thread-safe without requiring explicit synchronization.</li>
      *   <li>Subsequent calls to {@code get()} return the same shared instance.</li>
      * </ul>
@@ -134,7 +134,15 @@ public class OpenCC {
      *       dictionary text files via {@link DictionaryMaxlength#fromDicts()}.</li>
      * </ol>
      *
-     * <p>If all attempts fail, a {@link RuntimeException} is thrown.</p>
+     * <p>A source that exists but cannot be read or parsed fails initialization;
+     * fallback is used only when a source is absent. The first initialization
+     * failure is reported as an {@link ExceptionInInitializerError}. Later
+     * accesses to the failed holder can throw {@link NoClassDefFoundError}.</p>
+     *
+     * <p>Initialization is thread-safe, but the returned dictionary is mutable.
+     * Do not modify this shared instance: converters cache metadata derived from
+     * it. Use {@link DictionaryMaxlength#withCustomDicts(java.util.List)} to
+     * produce a separate dictionary instead.</p>
      *
      * <b>Usage Example:</b>
      * <pre>{@code
@@ -157,7 +165,8 @@ public class OpenCC {
          * The instance is created on first invocation.
          *
          * @return the shared dictionary instance
-         * @throws RuntimeException if dictionary loading fails
+         * @throws ExceptionInInitializerError if the initial dictionary load fails
+         * @throws NoClassDefFoundError if a previous initialization attempt failed
          */
         public static DictionaryMaxlength get() {
             return Holder.DEFAULT;
@@ -198,7 +207,11 @@ public class OpenCC {
      * ({@code s2t}) is used instead.</p>
      *
      * <p>This method never throws due to an invalid configuration string.
-     * The effective configuration can be queried via {@link #getConfig()}
+     * If {@code config} is {@code null}, empty, or invalid, the default
+     * configuration ({@code s2t}) is used and a diagnostic message is
+     * available through {@link #getLastError()}.</p>
+     *
+     * <p>The effective configuration can be queried via {@link #getConfig()}
      * or {@link #getConfigId()}.</p>
      *
      * @param config the configuration key (e.g. {@code "s2t"}, {@code "S2TWP"}, {@code "tw2s"});
@@ -236,8 +249,9 @@ public class OpenCC {
      * custom patches.</p>
      *
      * <p>Custom dictionary files are parsed with the same parser used for
-     * built-in OpenCC text dictionaries. After construction, the converter is
-     * immutable for normal conversion use and does not hot-reload custom files.</p>
+     * built-in OpenCC text dictionaries.
+     * After construction, custom dictionary files are not hot-reloaded.
+     * For normal use, the resulting dictionary should be treated as immutable.</p>
      *
      * @param specs custom dictionary specs to apply; may be {@code null} or empty
      * @return a new converter using a caller-owned dictionary
@@ -260,9 +274,9 @@ public class OpenCC {
      *
      * <p>If {@code config} is {@code null}, the default configuration
      * ({@code s2t}) is used. Custom dictionary files are parsed with the same
-     * parser used for built-in OpenCC text dictionaries. After construction,
-     * the converter is immutable for normal conversion use and does not
-     * hot-reload custom files.</p>
+     * parser used for built-in OpenCC text dictionaries.
+     * After construction, custom dictionary files are not hot-reloaded.
+     * For normal use, the resulting dictionary should be treated as immutable.</p>
      *
      * @param config the configuration ID, or {@code null} to use the default
      * @param specs  custom dictionary specs to apply; may be {@code null} or empty
@@ -292,9 +306,9 @@ public class OpenCC {
      *
      * <p>If {@code config} is {@code null}, the default configuration
      * ({@code s2t}) is used. Custom dictionary files are parsed with the same
-     * parser used for built-in OpenCC text dictionaries. After construction,
-     * the converter is immutable for normal conversion use and does not
-     * hot-reload custom files.</p>
+     * parser used for built-in OpenCC text dictionaries.
+     * After construction, custom dictionary files are not hot-reloaded.
+     * For normal use, the resulting dictionary should be treated as immutable.</p>
      *
      * @param config   the configuration ID, or {@code null} to use the default
      * @param basePath the path to the directory containing official dictionary
@@ -364,16 +378,18 @@ public class OpenCC {
      *   </li>
      * </ol>
      *
-     * <p><b>Important:</b> Because the dictionary is a shared singleton,
-     * any modification to its contents (for example, adding or removing entries)
-     * will affect <em>all</em> {@code OpenCC} instances within the same JVM.</p>
+     * <p>The shared dictionary must not be modified. Conversion metadata is
+     * cached, so mutation can cause inconsistent results in every converter
+     * using that dictionary. Use custom dictionary specifications to customize
+     * a separate copy.</p>
      *
-     * <p>If no dictionary source can be loaded or parsed, a
-     * {@link RuntimeException} is thrown before the instance can be created.</p>
+     * <p>Dictionary initialization failures are reported as described by
+     * {@link DictionaryHolder#get()}.</p>
      *
      * @param config the configuration key (for example {@code "s2t"},
      *               {@code "S2TWP"}, {@code "tw2sp"}); may be {@code null}
-     * @throws RuntimeException if no dictionary source can be loaded or parsed
+     * @throws ExceptionInInitializerError if the initial dictionary load fails
+     * @throws NoClassDefFoundError if a previous dictionary initialization failed
      * @since 1.1.0
      */
     public OpenCC(String config) {
@@ -391,7 +407,8 @@ public class OpenCC {
      * is performed lazily on first access.</p>
      *
      * @param configId the configuration ID, or {@code null} to use the default
-     * @throws RuntimeException if no dictionary source can be loaded or parsed
+     * @throws ExceptionInInitializerError if the initial dictionary load fails
+     * @throws NoClassDefFoundError if a previous dictionary initialization failed
      * @since 1.1.0
      */
     public OpenCC(OpenccConfig configId) {
@@ -408,9 +425,11 @@ public class OpenCC {
      * constructor does not use or modify {@link DictionaryHolder}. It is
      * intended for dictionaries built with custom files or loaded by the caller.</p>
      *
-     * <p>After construction, normal conversion is immutable and fast. To change
-     * custom dictionary contents, build a new {@link DictionaryMaxlength} and
-     * create a new {@code OpenCC} instance.</p>
+     * <p>The supplied dictionary should be treated as immutable after this
+     * converter is constructed. Mutating it afterward is unsupported because
+     * conversion metadata may be cached from its contents. To change dictionary
+     * contents, build a new {@link DictionaryMaxlength} and create a new
+     * {@code OpenCC} instance.</p>
      *
      * @param dictionary the dictionary to use; must not be {@code null}
      * @throws NullPointerException if {@code dictionary} is {@code null}
@@ -428,9 +447,13 @@ public class OpenCC {
      * intended for dictionaries built with custom files or loaded by the caller.</p>
      *
      * <p>If {@code config} is {@code null}, the default configuration
-     * ({@code s2t}) is used. After construction, normal conversion is immutable
-     * and fast. To change custom dictionary contents, build a new
-     * {@link DictionaryMaxlength} and create a new {@code OpenCC} instance.</p>
+     * ({@code s2t}) is used.</p>
+     *
+     * <p>The supplied dictionary should be treated as immutable after this
+     * converter is constructed. Mutating it afterward is unsupported because
+     * conversion metadata may be cached from its contents. To change dictionary
+     * contents, build a new {@link DictionaryMaxlength} and create a new
+     * {@code OpenCC} instance.</p>
      *
      * @param config     the configuration ID, or {@code null} to use the default
      * @param dictionary the dictionary to use; must not be {@code null}
@@ -739,7 +762,9 @@ public class OpenCC {
      * (Taiwan, Hong Kong, Japan).</p>
      *
      * <p>If {@code punctuation} is {@code true}, punctuation characters are
-     * converted using the corresponding punctuation dictionaries where applicable.
+     * converted for all supported configurations using the corresponding punctuation dictionaries.
+     * For Traditional/Taiwan/Hong Kong and Traditional/Japanese conversions, punctuation
+     * is applied after the main configuration conversion in a separate round.
      * If {@code false}, punctuation is preserved as-is.</p>
      *
      * <p>This method never throws due to an invalid configuration.
@@ -801,35 +826,35 @@ public class OpenCC {
                 break;
 
             case T2TW:
-                result = t2tw(input);
+                result = t2tw(input, punctuation);
                 break;
             case T2TWP:
-                result = t2twp(input);
+                result = t2twp(input, punctuation);
                 break;
             case TW2T:
-                result = tw2t(input);
+                result = tw2t(input, punctuation);
                 break;
             case TW2TP:
-                result = tw2tp(input);
+                result = tw2tp(input, punctuation);
                 break;
             case T2HK:
-                result = t2hk(input);
+                result = t2hk(input, punctuation);
                 break;
             case T2HKP:
-                result = t2hkp(input);
+                result = t2hkp(input, punctuation);
                 break;
             case HK2T:
-                result = hk2t(input);
+                result = hk2t(input, punctuation);
                 break;
             case HK2TP:
-                result = hk2tp(input);
+                result = hk2tp(input, punctuation);
                 break;
 
             case T2JP:
-                result = t2jp(input);
+                result = t2jp(input, punctuation);
                 break;
             case JP2T:
-                result = jp2t(input);
+                result = jp2t(input, punctuation);
                 break;
 
             default:
@@ -946,6 +971,37 @@ public class OpenCC {
         return conversionPlanCache.getPlan(cfg, punctuation);
     }
 
+    private static final int AVAILABLE_PROCESSORS =
+            Runtime.getRuntime().availableProcessors();
+
+    private static final int TEXT_THRESHOLD = 10_100;
+
+    /**
+     * Determines whether segmented replacement should use parallel processing.
+     *
+     * <p>Parallel processing is enabled only when the current runtime exposes
+     * more than one available processor and the input is large or sufficiently
+     * segmented to justify parallel-stream overhead.</p>
+     *
+     * <p>This avoids entering {@link java.util.stream.Stream#parallel()} on
+     * single-processor environments such as single-threaded WebAssembly runtimes,
+     * where parallel setup provides no useful concurrency.</p>
+     *
+     * @param textLength       input length in UTF-16 code units
+     * @param segmentCount     number of independent split ranges
+     * @param segmentThreshold minimum segment count that favors parallel processing
+     * @return {@code true} when parallel processing is worthwhile
+     */
+    private static boolean shouldRunSegmentReplaceInParallel(
+            int textLength,
+            int segmentCount,
+            int segmentThreshold
+    ) {
+        return AVAILABLE_PROCESSORS > 1
+                && (textLength > TEXT_THRESHOLD
+                || segmentCount > segmentThreshold);
+    }
+
     /**
      * Applies dictionary-based replacements to the input text using segment-based processing.
      *
@@ -956,7 +1012,14 @@ public class OpenCC {
      * @param dicts     the list of dictionaries (in order of priority) to apply
      * @param maxLength the maximum phrase length to match in the dictionaries
      * @return the converted text
+     * @deprecated For standard configured conversion, use {@link #convert(String)}
+     * or {@link #convert(String, boolean)}. There is no direct replacement for
+     * callers that supply an arbitrary dictionary list and maximum match length;
+     * migrate custom mappings to {@link DictionaryMaxlength} or
+     * {@link CustomDictSpec} and construct a suitably configured {@code OpenCC}
+     * instance. This method may be removed in version 2.0.
      */
+    @Deprecated
     public String segmentReplace(String text, List<DictEntry> dicts, int maxLength) {
         if (text == null || text.isEmpty()) return text;
 
@@ -972,7 +1035,12 @@ public class OpenCC {
         }
 
         // Use parallel stream if input is large or highly segmented
-        boolean useParallel = textLength > 10_000 || numSegments > 100;
+//        boolean useParallel = textLength > 10_000 || numSegments > 100;
+        boolean useParallel = shouldRunSegmentReplaceInParallel(
+                textLength,
+                numSegments,
+                100
+        );
         int sbCapacity = textLength + (textLength >> 4);
         StringBuilder sb = new StringBuilder(sbCapacity);
 
@@ -1000,16 +1068,23 @@ public class OpenCC {
     }
 
     /**
-     * Converts a single segment using the specified dictionaries with longest-match-first strategy.
+     * Converts a single segment using the specified dictionaries with a
+     * longest-match-first strategy.
      *
-     * <p>If the segment is a single delimiter character, it is returned as-is.
-     * Otherwise, the method performs greedy matching from left to right,
-     * trying to match the longest possible substrings found in the dictionaries.
+     * <p>If the segment is a single delimiter character, it is returned unchanged.
+     * Otherwise, this method performs greedy matching from left to right, trying
+     * longer dictionary keys before shorter ones.</p>
      *
-     * <p>This method reuses a thread-local {@code StringBuilder} to reduce allocations.
+     * <p>This method reuses a thread-local {@code StringBuilder} to reduce
+     * allocations.</p>
+     *
+     * <p><strong>API note:</strong> This is a low-level conversion primitive used
+     * internally by the direct {@code st()} and {@code ts()} fast paths. Although
+     * currently public for compatibility, it is not intended as a general-purpose
+     * application API and is planned to become private in the next major version.</p>
      *
      * @param segment   the text segment to convert
-     * @param dicts     the list of dictionaries to apply (highest priority first)
+     * @param dicts     the dictionaries to apply, in priority order
      * @param maxLength the maximum phrase length to consider
      * @return the converted segment
      */
@@ -1143,7 +1218,12 @@ public class OpenCC {
             return convertSegmentWithUnion(text, part);
         }
 
-        boolean useParallel = textLen > 100_000 || numSegments > 1_000;
+//        boolean useParallel = textLen > 100_000 || numSegments > 1_000;
+        boolean useParallel = shouldRunSegmentReplaceInParallel(
+                textLen,
+                numSegments,
+                1_000
+        );
         int sbCapacity = textLen + (textLen >> 4);
         StringBuilder sb = new StringBuilder(sbCapacity);
 
@@ -1292,7 +1372,7 @@ public class OpenCC {
      * Converts Simplified Chinese to Traditional Chinese.
      *
      * @param input       the text in Simplified Chinese
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in Traditional Chinese
      */
     public String s2t(String input, boolean punctuation) {
@@ -1304,7 +1384,7 @@ public class OpenCC {
      * Converts Traditional Chinese to Simplified Chinese.
      *
      * @param input       the text in Traditional Chinese
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in Simplified Chinese
      */
     public String t2s(String input, boolean punctuation) {
@@ -1316,7 +1396,7 @@ public class OpenCC {
      * Converts Simplified Chinese to Traditional Chinese (Taiwan standard).
      *
      * @param input       the text in Simplified Chinese
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in Traditional Chinese (Taiwan)
      */
     public String s2tw(String input, boolean punctuation) {
@@ -1328,7 +1408,7 @@ public class OpenCC {
      * Converts Traditional Chinese (Taiwan) to Simplified Chinese.
      *
      * @param input       the text in Traditional Chinese (Taiwan)
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in Simplified Chinese
      */
     public String tw2s(String input, boolean punctuation) {
@@ -1346,7 +1426,7 @@ public class OpenCC {
      * </ol>
      *
      * @param input       the text in Simplified Chinese
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in full Taiwan-style Traditional Chinese
      */
     public String s2twp(String input, boolean punctuation) {
@@ -1358,7 +1438,7 @@ public class OpenCC {
      * Converts Taiwan-style Traditional Chinese to Simplified Chinese.
      *
      * @param input       the text in Taiwan Traditional Chinese
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in Simplified Chinese
      */
     public String tw2sp(String input, boolean punctuation) {
@@ -1376,7 +1456,7 @@ public class OpenCC {
      * as {@link #s2twp(String, boolean)}.</p>
      *
      * @param input       the text in Simplified Chinese
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in phrase-normalized Hong Kong Traditional Chinese
      * @since 1.4.0
      */
@@ -1395,7 +1475,7 @@ public class OpenCC {
      * {@link #tw2sp(String, boolean)}.</p>
      *
      * @param input       the text in Hong Kong Traditional Chinese
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in Simplified Chinese
      * @since 1.4.0
      */
@@ -1408,7 +1488,7 @@ public class OpenCC {
      * Converts Simplified Chinese to Traditional Chinese (Hong Kong standard).
      *
      * @param input       the text in Simplified Chinese
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in Hong Kong-style Traditional Chinese
      */
     public String s2hk(String input, boolean punctuation) {
@@ -1420,7 +1500,7 @@ public class OpenCC {
      * Converts Hong Kong-style Traditional Chinese to Simplified Chinese.
      *
      * @param input       the text in Traditional Chinese (HK)
-     * @param punctuation whether to also convert punctuation marks
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text in Simplified Chinese
      */
     public String hk2s(String input, boolean punctuation) {
@@ -1431,11 +1511,15 @@ public class OpenCC {
     /**
      * Converts Traditional Chinese to Taiwan Traditional variants.
      *
-     * @param input the Traditional Chinese input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Traditional Chinese input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the text converted to Taiwan-style Traditional Chinese
      */
-    public String t2tw(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2TW, false);
+    public String t2tw(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2TW, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1443,22 +1527,30 @@ public class OpenCC {
      * Converts Traditional Chinese to Taiwan Traditional by applying Taiwan phrase,
      * phrase-variant, and character-variant dictionaries in one conversion round.
      *
-     * @param input the Traditional Chinese input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Traditional Chinese input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted Taiwan Traditional Chinese with phrases and variants
      */
-    public String t2twp(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2TWP, false);
+    public String t2twp(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2TWP, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
      * Converts Taiwan Traditional Chinese to base Traditional Chinese.
      *
-     * @param input the Taiwan Traditional input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Taiwan Traditional input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted base Traditional Chinese text
      */
-    public String tw2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2T, false);
+    public String tw2t(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2T, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1467,22 +1559,30 @@ public class OpenCC {
      * reverse Taiwan phrase, phrase-variant, and character-variant dictionaries in
      * one conversion round.
      *
-     * @param input the Taiwan Traditional input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Taiwan Traditional input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the fully reverted Traditional Chinese text
      */
-    public String tw2tp(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2TP, false);
+    public String tw2tp(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.TW2TP, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
      * Converts Traditional Chinese to Hong Kong Traditional variants.
      *
-     * @param input the Traditional Chinese input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Traditional Chinese input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted text using HK Traditional variants
      */
-    public String t2hk(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2HK, false);
+    public String t2hk(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2HK, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1490,22 +1590,30 @@ public class OpenCC {
      * Converts Traditional Chinese to Hong Kong Traditional by applying Hong Kong
      * phrase, phrase-variant, and character-variant dictionaries in one conversion round.
      *
-     * @param input the Traditional Chinese input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Traditional Chinese input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted Hong Kong Traditional Chinese with phrases and variants
      */
-    public String t2hkp(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2HKP, false);
+    public String t2hkp(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2HKP, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
      * Converts Hong Kong Traditional Chinese to base Traditional Chinese.
      *
-     * @param input the HK Traditional Chinese input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the HK Traditional Chinese input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted base Traditional Chinese text
      */
-    public String hk2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2T, false);
+    public String hk2t(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2T, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1514,33 +1622,45 @@ public class OpenCC {
      * reverse Hong Kong phrase, phrase-variant, and character-variant dictionaries in
      * one conversion round.
      *
-     * @param input the Hong Kong Traditional Chinese input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Hong Kong Traditional Chinese input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted base Traditional Chinese text
      */
-    public String hk2tp(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2TP, false);
+    public String hk2tp(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.HK2TP, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
      * Converts Traditional Chinese to Japanese Kanji variants.
      *
-     * @param input the Traditional Chinese input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Traditional Chinese input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the text converted to Japanese-style Kanji variants
      */
-    public String t2jp(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2JP, false);
+    public String t2jp(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2JP, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
     /**
      * Converts Japanese-style Kanji back to Traditional Chinese.
      *
-     * @param input the Japanese Kanji-style Chinese input
+     * <p>When punctuation is enabled, punctuation conversion is applied after the
+     * main conversion in a separate round.</p>
+     *
+     * @param input       the Japanese Kanji-style Chinese input
+     * @param punctuation {@code true} to also convert punctuation marks; {@code false} to preserve them
      * @return the converted Traditional Chinese text
      */
-    public String jp2t(String input) {
-        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.JP2T, false);
+    public String jp2t(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.JP2T, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 
@@ -1684,7 +1804,7 @@ public class OpenCC {
      * @param text the input text; {@code null} and empty strings return
      *             {@code ""}
      * @return normalized text
-     * @since 1.4.3
+     * @since 1.5.0
      */
     public String normalizeUnicodeCompat(String text) {
         return UnicodeCompat.normalize(text);
@@ -1709,7 +1829,7 @@ public class OpenCC {
      * @param text the input text; {@code null} and empty strings return
      *             {@code ""}
      * @return text after extended compatibility normalization
-     * @since 1.4.3
+     * @since 1.5.0
      */
     public String normalizeCompatExtended(String text) {
         if (text == null || text.isEmpty())

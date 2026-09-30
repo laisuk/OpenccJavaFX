@@ -33,7 +33,8 @@ public class DictgenCommand implements Runnable {
             names = {"-D", "--custom-dict"},
             paramLabel = "<slot:mode:path>",
             split = ",",
-            description = "Apply custom dictionary file. Format: slot:append|override:path. Can be repeated or comma-separated."
+            completionCandidates = CliUtils.SlotCandidates.class,
+            description = "Apply custom dictionary file. Format: slot:append|override:path. Can be repeated or comma-separated. Supported slots: ${COMPLETION-CANDIDATES}"
     )
     private List<String> customDictSpecs;
 
@@ -135,10 +136,10 @@ public class DictgenCommand implements Runnable {
                     System.out.println("done");
                 }
             } catch (URISyntaxException e) {
-                System.out.println("Failed to create URI for " + fileName);
+                System.err.println("Failed to create URI for " + fileName);
                 LOGGER.warning("Failed to create URI for " + fileUrl + ": " + e.getMessage());
             } catch (IOException e) {
-                System.out.println("Failed to download " + fileName);
+                System.err.println("Failed to download " + fileName);
                 LOGGER.warning("Failed to download " + fileUrl + ": " + e.getMessage());
             }
         }

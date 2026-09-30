@@ -3,6 +3,7 @@ package openccjavacli;
 import openccjava.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -35,6 +36,17 @@ public final class CliUtils {
         }
     }
 
+    /**
+     * Supplies canonical OpenCC configuration names for CLI option completion
+     * and generated help text.
+     */
+    @SuppressWarnings("NullableProblems")
+    static final class SlotCandidates implements Iterable<String> {
+        @Override
+        public Iterator<String> iterator() {
+            return DictSlot.supportedCanonicalNames().iterator();
+        }
+    }
 
     /**
      * Creates an {@link OpenCC} instance for a CLI command.
@@ -75,6 +87,115 @@ public final class CliUtils {
     }
 
     /**
+     * Creates the shared CLI text-conversion pipeline used by text and Office
+     * conversion commands.
+     *
+     * <p>The returned converter applies transformations in this order:</p>
+     * <ol>
+     *     <li>Extended compatibility normalization when requested, otherwise
+     *     CJK compatibility normalization when requested.</li>
+     *     <li>OpenCC conversion, optionally including punctuation conversion.</li>
+     *     <li>DeToFu fallback replacement when requested.</li>
+     * </ol>
+     *
+     * <p>When both normalization flags are enabled, extended normalization takes
+     * precedence because it already includes CJK Compatibility Ideograph
+     * normalization.</p>
+     *
+     * <p>The DeToFu level is parsed once when this method is called rather than
+     * once for every Office text fragment. A checked {@link IOException} raised
+     * while loading a custom DeToFu file is wrapped in an
+     * {@link IllegalStateException}, because {@link TextConverter} is a
+     * general text transformation contract and does not expose checked
+     * exceptions.</p>
+     *
+     * @param opencc             OpenCC converter used by the pipeline
+     * @param punctuation        whether OpenCC punctuation conversion is enabled
+     * @param normCompat         whether CJK compatibility normalization is enabled
+     * @param normCompatExtended whether extended Unicode compatibility
+     *                           normalization is enabled; takes precedence over
+     *                           {@code normCompat}
+     * @param detofu             DeToFu level name, or {@code null}/blank to
+     *                           disable DeToFu
+     * @param detofuFile         optional custom DeToFu mapping file; requires an
+     *                           enabled {@code detofu} level
+     * @return a reusable text converter implementing the requested CLI pipeline
+     * @throws IllegalArgumentException if the DeToFu options are inconsistent or
+     *                                  the level name is invalid
+     */
+    static TextConverter createTextConverter(
+            OpenCC opencc,
+            boolean punctuation,
+            boolean normCompat,
+            boolean normCompatExtended,
+            String detofu,
+            File detofuFile
+    ) {
+        if (opencc == null) {
+            throw new IllegalArgumentException("OpenCC converter must not be null");
+        }
+
+        validateDeTofuOptions(detofu, detofuFile);
+
+        final DeTofu.Level detofuLevel =
+                detofu == null || detofu.trim().isEmpty()
+                        ? null
+                        : DeTofu.Level.parse(detofu);
+
+        return text -> {
+            String result = text;
+
+            if (normCompatExtended) {
+                result = opencc.normalizeCompatExtended(result);
+            } else if (normCompat) {
+                result = opencc.normalizeCompat(result);
+            }
+
+            result = opencc.convert(result, punctuation);
+            if (result == null) {
+                throw new IllegalStateException(
+                        "OpenCC conversion failed: " + opencc.getLastError()
+                );
+            }
+
+            if (detofuLevel != null) {
+                if (detofuFile != null) {
+                    try {
+                        result = opencc.deTofuWithCustomFile(
+                                result,
+                                detofuLevel,
+                                detofuFile.getPath()
+                        );
+                    } catch (IOException e) {
+                        throw new IllegalStateException(
+                                "Failed to load DeToFu custom file: " + detofuFile,
+                                e
+                        );
+                    }
+                } else {
+                    result = opencc.deTofu(result, detofuLevel);
+                }
+            }
+
+            return result;
+        };
+    }
+
+    /**
+     * Validates the relationship between the DeToFu CLI options.
+     *
+     * @param detofu     DeToFu level name, or {@code null}/blank when disabled
+     * @param detofuFile optional custom DeToFu mapping file
+     * @throws IllegalArgumentException if {@code detofuFile} is supplied without
+     *                                  enabling {@code detofu}
+     */
+    static void validateDeTofuOptions(String detofu, File detofuFile) {
+        if (detofuFile != null && (detofu == null || detofu.trim().isEmpty())) {
+            throw new IllegalArgumentException("--detofu-file requires --detofu");
+        }
+    }
+
+    /**
      * Applies CLI custom dictionary specifications to an existing dictionary.
      *
      * <p>When no custom dictionary specs are supplied, the original dictionary is
@@ -104,9 +225,17 @@ public final class CliUtils {
 
     private static List<CustomDictSpec> parseCustomDictSpecs(List<String> values) {
         List<CustomDictSpec> specs = new ArrayList<>(values.size());
+
         for (String value : values) {
-            specs.add(CustomDictSpec.parse(value));
+            CustomDictSpec spec = CustomDictSpec.parse(value);
+
+            for (java.nio.file.Path path : spec.paths) {
+                validateFile(path.toFile(), "Custom dictionary file");
+            }
+
+            specs.add(spec);
         }
+
         return specs;
     }
 
@@ -118,16 +247,20 @@ public final class CliUtils {
      *                                  exist, or is not a regular file
      */
     static void validateInputFile(File input) {
-        if (input == null) {
-            throw new IllegalArgumentException("Input file must not be null");
+        validateFile(input, "Input file");
+    }
+
+    private static void validateFile(File file, String label) {
+        if (file == null) {
+            throw new IllegalArgumentException(label + " must not be null");
         }
 
-        if (!input.exists()) {
-            throw new IllegalArgumentException("Input file not found: " + input);
+        if (!file.exists()) {
+            throw new IllegalArgumentException(label + " not found: " + file);
         }
 
-        if (!input.isFile()) {
-            throw new IllegalArgumentException("Input path is not a file: " + input);
+        if (!file.isFile()) {
+            throw new IllegalArgumentException(label + " is not a file: " + file);
         }
     }
 }

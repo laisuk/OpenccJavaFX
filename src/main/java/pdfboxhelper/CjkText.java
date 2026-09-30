@@ -1,6 +1,21 @@
 package pdfboxhelper;
 
+/**
+ * CJK-oriented text predicates and trimming helpers used by PDF reflow.
+ */
 public class CjkText {
+    /**
+     * Creates a CJK text helper.
+     */
+    public CjkText() {
+    }
+
+    /**
+     * Removes trailing whitespace from a string.
+     *
+     * @param s input string, or {@code null}
+     * @return {@code s} without trailing whitespace, or {@code null} when input is {@code null}
+     */
     public static String trimEnd(String s) {
         if (s == null || s.isEmpty()) return s;
         int end = s.length();
@@ -10,6 +25,13 @@ public class CjkText {
         return s.substring(0, end);
     }
 
+    /**
+     * Finds the first occurrence of any character from {@code chars}.
+     *
+     * @param text  text to scan
+     * @param chars candidate characters
+     * @return zero-based index of the first match, or {@code -1} when no match is found
+     */
     public static int indexOfAny(String text, char[] chars) {
         if (text == null || text.isEmpty()) {
             return -1;
@@ -45,6 +67,12 @@ public class CjkText {
         return -1;
     }
 
+    /**
+     * Checks whether every character is in the ASCII range.
+     *
+     * @param s string to inspect
+     * @return {@code true} if every character is ASCII
+     */
     public static boolean isAllAscii(String s) {
         for (int i = 0; i < s.length(); i++)
             if (s.charAt(i) > 0x7F)
@@ -55,6 +83,9 @@ public class CjkText {
     /**
      * Minimal CJK checker (BMP focused).
      * Designed for heading / structure heuristics, not full Unicode linguistics.
+     *
+     * @param ch character to inspect
+     * @return {@code true} if {@code ch} is in a supported CJK block
      */
     public static boolean isCjk(char ch) {
 
@@ -97,10 +128,22 @@ public class CjkText {
         return seen;
     }
 
+    /**
+     * Checks whether all non-whitespace characters are CJK.
+     *
+     * @param s string to inspect
+     * @return {@code true} when the string contains at least one CJK character and no non-CJK content
+     */
     public static boolean isAllCjkIgnoringWhitespace(String s) {
         return isAllCjk(s, true);
     }
 
+    /**
+     * Checks whether the whole string is CJK with no whitespace.
+     *
+     * @param s string to inspect
+     * @return {@code true} when every character is CJK and the string is not empty
+     */
     public static boolean isAllCjkNoWhiteSpace(String s) {
         return isAllCjk(s, false);
     }
@@ -111,6 +154,9 @@ public class CjkText {
      * - ASCII all number (A-Z, a-z 0-9) OR full-width digits (０-９),
      * while rejecting any other characters except neutral ASCII separators:
      * space, '-', '/', ':', '.'
+     *
+     * @param s string to inspect
+     * @return {@code true} when both CJK and ASCII-like content are present
      */
     public static boolean isMixedCjkAscii(String s) {
         boolean hasCjk = false;
@@ -152,14 +198,16 @@ public class CjkText {
      * - Counts ASCII letters only (punctuation is neutral)
      * <p>
      * Rule:
-     * cjk > 0 && cjk >= asciiLetters
+     * {@code cjk > 0 && cjk >= asciiLetters}
      * <p>
      * Designed for heading / structure heuristics.
+     *
+     * @param s string to inspect
+     * @return {@code true} when CJK characters are present and are at least as common as ASCII letters
      */
     public static boolean isMostlyCjk(String s) {
-        if (s == null || s.isEmpty()) {
+        if (s == null || s.isEmpty())
             return false;
-        }
 
         return isMostlyCjk(s, 0, s.length());
     }
@@ -182,12 +230,10 @@ public class CjkText {
         for (int i = start; i < end; i++) {
             char ch = s.charAt(i);
 
-            // Neutral whitespace
             if (Character.isWhitespace(ch)) {
                 continue;
             }
 
-            // Neutral digits (ASCII + FULLWIDTH)
             if (isAsciiOrFullWidthDigit(ch)) {
                 continue;
             }
@@ -197,7 +243,6 @@ public class CjkText {
                 continue;
             }
 
-            // Count ASCII letters only; ASCII punctuation is neutral
             if (ch <= 0x7F && Character.isLetter(ch)) {
                 ascii++;
             }
@@ -235,6 +280,12 @@ public class CjkText {
 
     // ------ Sentence Boundary start ------ //
 
+    /**
+     * Checks whether a line appears to end at a sentence boundary.
+     *
+     * @param s line or paragraph text
+     * @return {@code true} when the text ends with CJK sentence punctuation or accepted OCR variants
+     */
     public static boolean endsWithSentenceBoundary(String s) {
         if (s == null) return false;
 
@@ -366,8 +417,14 @@ public class CjkText {
         return t.endsWith("…") || t.endsWith("……") || t.endsWith("...") || t.endsWith("..");
     }
 
-    // ------ Bracket Boundary start ------
+// ------ Bracket Boundary start ------
 
+    /**
+     * Checks whether a line is a complete CJK bracketed phrase suitable as a boundary.
+     *
+     * @param s line or paragraph text
+     * @return {@code true} when the text is balanced, bracketed, and mostly CJK
+     */
     public static boolean endsWithCjkBracketBoundary(String s) {
         if (s == null || isWhiteSpaceOnly(s))
             return false;
@@ -407,7 +464,13 @@ public class CjkText {
 // ------ Bracket Boundary end ------
 
     /**
-     * C# IsBracketTypeBalanced(ReadOnlySpan<char> s, char open)
+     * C# {@code IsBracketTypeBalanced(ReadOnlySpan<char> s, char open)}
+     *
+     * @param s     string containing the range to inspect
+     * @param start inclusive start index
+     * @param end   exclusive end index
+     * @param open  opening bracket character
+     * @return {@code true} when the matching bracket type is balanced in the range
      */
     public static boolean isBracketTypeBalanced(String s, int start, int end, char open) {
         char close = PunctSets.tryGetMatchingCloser(open);
@@ -615,4 +678,5 @@ public class CjkText {
 
         return PunctSets.hasUnclosedBracket(s, start, s.length());
     }
+
 }

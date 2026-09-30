@@ -35,6 +35,9 @@ final class UnionCache {
             case S2T_PUNCT:
                 return getOrInit(slots.s2t_punct,
                         () -> StarterUnion.build(Arrays.asList(d.st_phrases, d.st_characters, d.st_punctuations)));
+            case StPunctOnly:
+                return getOrInit(slots.st_punct_only,
+                        () -> StarterUnion.build(Collections.singletonList(d.st_punctuations)));
             case T2S:
                 return getOrInit(slots.t2s,
                         () -> StarterUnion.build(Arrays.asList(d.ts_phrases, d.ts_characters)));
@@ -91,6 +94,7 @@ final class UnionCache {
     static final class Unions {
         final AtomicReference<StarterUnion> s2t = new AtomicReference<>();
         final AtomicReference<StarterUnion> s2t_punct = new AtomicReference<>();
+        final AtomicReference<StarterUnion> st_punct_only = new AtomicReference<>();
         final AtomicReference<StarterUnion> t2s = new AtomicReference<>();
         final AtomicReference<StarterUnion> t2s_punct = new AtomicReference<>();
         final AtomicReference<StarterUnion> tw_triple = new AtomicReference<>();

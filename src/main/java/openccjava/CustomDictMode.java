@@ -6,7 +6,8 @@ package openccjava;
  *
  * <p>Modes are evaluated while building or copying a
  * {@link DictionaryMaxlength}. The resulting dictionary can then be supplied
- * to {@link OpenCC}; conversion remains immutable and fast after construction.</p>
+ * to {@link OpenCC}. Treat the dictionary as immutable after construction;
+ * the converter itself has mutable configuration and diagnostic state.</p>
  */
 public enum CustomDictMode {
     /**

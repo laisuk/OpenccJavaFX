@@ -14,6 +14,12 @@ import java.util.regex.Pattern;
  *
  * <p>Utility constants such as punctuation maps, delimiter sets, and strip regex are also defined
  * for use in Chinese variant normalization and segmentation logic.</p>
+ *
+ * <p>Instances are mutable and are not thread-safe during configuration. Finish
+ * configuring rounds before use. Plans returned by {@link ConversionPlanCache}
+ * are shared and must not be modified. Round partitions capture the supplied
+ * starter unions when constructed; assigning the public {@code u1}, {@code u2},
+ * or {@code u3} fields afterward does not update those partitions.</p>
  */
 public class DictRefs {
     private final DictPartition partition1;
@@ -183,19 +189,20 @@ public class DictRefs {
      * <p>
      * Each round is applied in sequence:</p>
      * <ol>
-     *   <li>Round&nbsp;1 is always applied with {@link #u1}.</li>
-     *   <li>If defined, round&nbsp;2 is applied with {@link #u2}.</li>
-     *   <li>If defined, round&nbsp;3 is applied with {@link #u3}.</li>
+     *   <li>Round&nbsp;1 is always applied with its captured partition.</li>
+     *   <li>If defined, round&nbsp;2 is applied with its captured partition.</li>
+     *   <li>If defined, round&nbsp;3 is applied with its captured partition.</li>
      * </ol>
      *
      * <p>
      * The provided {@link SegmentReplaceFnWithUnion} receives:</p>
      * <ul>
      *   <li>the current input text,</li>
-     *   <li>the cached partition for the round, including phrase/single splits,</li>
-     *   <li>the cached round metadata, including the round maximum phrase length,</li>
-     *   <li>and the corresponding {@link StarterUnion}.</li>
+     *   <li>the cached partition for the round, encapsulating dictionary splits,
+     *       length bounds, and the captured {@link StarterUnion}.</li>
      * </ul>
+     * <p>Partition internals are package-private. External callbacks can pass the
+     * partition to {@link OpenCC#segmentReplaceWithUnion(String, openccjava.DictRefs.DictPartition)}.</p>
      *
      * @param input     the text to process
      * @param segmentFn the function that performs replacement using cached round metadata

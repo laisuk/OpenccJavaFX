@@ -41,6 +41,11 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Changed
 
+- Synced the embedded OpenccJava library, CLI, and PDF helpers with OpenccJava 1.5.0 sources (2026-09-30), including the
+  TextConverter API, Office conversion fixes, and CLI/PDF improvements.
+  Preserved the JavaFX UI and existing controller APIs; added upstream regression coverage and an opt-in
+  FXML conversion smoke test (`./gradlew test -PguiSmokeTest=true`).
+
 - Replaced the embedded legacy CLI commands with the current OpenccJava CLI implementations, including current
   validation, exit-code, help, conversion, Office, PDF, dictionary-generation, and progress behavior.
 - Synced the mirrored OpenccJava custom-dictionary API around `DictSlot` canonical names and

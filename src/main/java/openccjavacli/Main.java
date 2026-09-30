@@ -6,7 +6,7 @@ import picocli.CommandLine.Command;
 @Command(
         name = "openccjavacli",
         mixinStandardHelpOptions = true,
-        version = "1.4.2",
+        version = "1.5.0",
         description = "\033[1;34mPure Java OpenCC (OpenccJava) CLI with multiple tools\033[0m",
         subcommands = {
                 ConvertCommand.class,
