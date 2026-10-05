@@ -110,7 +110,7 @@ public class DictRefs {
 
     /**
      * Groups dictionary entries into phrase dictionaries and single-character dictionaries,
-     * with cached phrase-length bounds and round-level metadata.
+     * with cached phrase-length bounds, a single-code-point lookup index, and round-level metadata.
      *
      * <p>This structure is built once per round inside {@link DictRefs}, so repeated
      * conversions do not need to repartition the same dictionaries.</p>
@@ -118,6 +118,7 @@ public class DictRefs {
     public static final class DictPartition {
         final List<DictEntry> phraseDicts;
         final List<DictEntry> singleDicts;
+        final SingleCodePointIndex singleIndex;
         final int phraseMaxLen;
         final int phraseMinLen;
         final int roundMaxLen;
@@ -131,6 +132,7 @@ public class DictRefs {
                       StarterUnion union) {
             this.phraseDicts = phraseDicts;
             this.singleDicts = singleDicts;
+            this.singleIndex = singleDicts.isEmpty() ? null : SingleCodePointIndex.build(singleDicts);
             this.phraseMaxLen = phraseMaxLen;
             this.phraseMinLen = phraseMinLen;
             this.roundMaxLen = roundMaxLen;

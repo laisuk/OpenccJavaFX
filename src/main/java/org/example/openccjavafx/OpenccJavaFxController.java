@@ -506,6 +506,12 @@ public class OpenccJavaFxController {
             menu.getStyleClass().add("dark");
         }
 
+        // Restore the automatically detected encoding.
+        MenuItem autoDetectItem = new MenuItem("Auto-Detect");
+        autoDetectItem.setOnAction(event -> reloadCurrentTextFile());
+        menu.getItems().add(autoDetectItem);
+        menu.getItems().add(new SeparatorMenuItem());
+
         ToggleGroup group = new ToggleGroup();
 
         for (String charsetName : TEXT_ENCODINGS) {
@@ -1174,8 +1180,19 @@ public class OpenccJavaFxController {
                 // -------- Plain Text Handling --------
                 enablePdfOptions = false;
 
-                currentTextCharset = StandardCharsets.UTF_8;
-                String content = readTextFile(file, currentTextCharset);
+                byte[] bytes = Files.readAllBytes(file.toPath());
+
+                CjkEncodingDetector.Result detected =
+                        CjkEncodingDetector.detect(bytes);
+
+                currentTextCharset = toCharset(detected.getEncoding());
+
+                String content = decodeText(bytes, currentTextCharset);
+
+                // Remove decoded BOM.
+                if (content.startsWith("\uFEFF")) {
+                    content = content.substring(1);
+                }
 
                 statusAfter = I18n.format("status.loadFile.txt", file);
                 return content;
@@ -1221,37 +1238,32 @@ public class OpenccJavaFxController {
     }
 
     private String readTextFile(File file, Charset charset) throws IOException {
-        byte[] bytes = Files.readAllBytes(file.toPath());
+        return decodeText(Files.readAllBytes(file.toPath()), charset);
+    }
 
-        // Binary sniff.
-        // Do not apply this check to UTF-16 because NUL bytes are normal there.
-        if (!StandardCharsets.UTF_16LE.equals(charset)
-                && !StandardCharsets.UTF_16BE.equals(charset)) {
-
-            int zeros = 0;
-            int probe = Math.min(bytes.length, 4096);
-
-            for (int i = 0; i < probe; i++) {
-                if (bytes[i] == 0) {
-                    zeros++;
-                }
-            }
-
-            if (zeros > 0) {
-                throw new IOException(
-                        "This file looks like a binary file (not plain text)."
-                );
-            }
-        }
-
+    private static String decodeText(byte[] bytes, Charset charset) {
         String content = new String(bytes, charset);
 
-        // Remove decoded BOM.
         if (content.startsWith("\uFEFF")) {
             content = content.substring(1);
         }
 
         return content;
+    }
+
+    private static Charset toCharset(
+            CjkEncodingDetector.EncodingKind encoding) {
+
+        return switch (encoding) {
+            case ASCII, UTF8, UTF8_BOM -> StandardCharsets.UTF_8;
+            case UTF16_LE, UTF16_LE_BOM -> StandardCharsets.UTF_16LE;
+            case UTF16_BE, UTF16_BE_BOM -> StandardCharsets.UTF_16BE;
+            case BIG5 -> Charset.forName("Big5");
+            case GB18030 -> Charset.forName("GB18030");
+            default ->
+                // Preserve the previous behavior when detection is inconclusive.
+                    StandardCharsets.UTF_8;
+        };
     }
 
     private static final int MAX_LOGICAL_LINE_LENGTH = 10_000;
@@ -1272,6 +1284,10 @@ public class OpenccJavaFxController {
         return false;
     }
 
+    private void reloadCurrentTextFile() {
+        reloadCurrentTextFile(null);
+    }
+
     private void reloadCurrentTextFile(Charset charset) {
         if (openFileName == null || openFileName.isEmpty()) {
             return;
@@ -1285,22 +1301,39 @@ public class OpenccJavaFxController {
         }
 
         showProgressBarIndeterminate(
-                "Reloading as " + charset.displayName() + "..."
+                charset == null
+                        ? "Auto-detecting text encoding..."
+                        : "Reloading as " + charset.displayName() + "..."
         );
 
         Task<String> task = new Task<>() {
+            private Charset effectiveCharset;
+
             @Override
             protected String call() throws Exception {
-                String result = readTextFile(file, charset);
+                String result;
+
+                if (charset == null) {
+                    byte[] bytes = Files.readAllBytes(file.toPath());
+
+                    CjkEncodingDetector.Result detected =
+                            CjkEncodingDetector.detect(bytes);
+
+                    effectiveCharset = toCharset(detected.getEncoding());
+                    result = decodeText(bytes, effectiveCharset);
+                } else {
+                    effectiveCharset = charset;
+                    result = readTextFile(file, effectiveCharset);
+                }
 
                 // Protect RichTextFX from pathological logical lines.
-                if ((StandardCharsets.UTF_16LE.equals(charset)
-                        || StandardCharsets.UTF_16BE.equals(charset))
+                if ((StandardCharsets.UTF_16LE.equals(effectiveCharset)
+                        || StandardCharsets.UTF_16BE.equals(effectiveCharset))
                         && hasOversizedLogicalLine(result)) {
                     throw new IOException(String.format(
                             "The file decoded with %s contains a line longer than %,d characters "
                                     + "and cannot be displayed safely.",
-                            charset.displayName(),
+                            effectiveCharset.displayName(),
                             MAX_LOGICAL_LINE_LENGTH
                     ));
                 }
@@ -1313,12 +1346,15 @@ public class OpenccJavaFxController {
                 try {
                     String text = get();
 
+                    // Update only after the reload succeeds.
+                    currentTextCharset = effectiveCharset;
+
                     textAreaSource.replaceText(text);
                     updateSourceInfo(OpenCC.zhoCheck(text));
 
                     hideProgressBar(
                             "Reloaded " + file.getName()
-                                    + " as " + charset.displayName()
+                                    + " as " + effectiveCharset.displayName()
                     );
                 } catch (Exception ex) {
                     failed();
@@ -1329,9 +1365,13 @@ public class OpenccJavaFxController {
             protected void failed() {
                 Throwable ex = getException();
 
+                String charsetName = effectiveCharset != null
+                        ? effectiveCharset.displayName()
+                        : "Auto-Detect";
+
                 hideProgressBar(
                         "Failed to reload " + file.getName()
-                                + " as " + charset.displayName()
+                                + " as " + charsetName
                 );
 
                 if (ex != null && ex.getMessage() != null) {
@@ -1592,37 +1632,29 @@ public class OpenccJavaFxController {
     public void onTaDragDropped(DragEvent dragEvent) {
         Dragboard dragboard = dragEvent.getDragboard();
         boolean success = false;
+
         if (dragboard.hasFiles()) {
             File file = dragboard.getFiles().get(0);
-            if (isPdfFile(file) || OpenXmlHelper.isDocx(file) || OpenXmlHelper.isOdt(file) || EpubHelper.isEpub(file)) {
+
+            if (isPdfFile(file)
+                    || OpenXmlHelper.isDocx(file)
+                    || OpenXmlHelper.isOdt(file)
+                    || EpubHelper.isEpub(file)
+                    || isTextFile(file)) {
+
                 startLoadFileTask(file);
-            } else if (isTextFile(file)) {
-                try {
-                    currentTextCharset = StandardCharsets.UTF_8;
-
-                    String text = readTextFile(file, currentTextCharset);
-
-                    textAreaSource.replaceText(text);
-                    openFileName = file.toString();
-                    updateSourceInfo(OpenCC.zhoCheck(text));
-
-                    success = true;
-                } catch (Exception e) {
-                    lblStatus.setText(
-                            I18n.format(
-                                    "status.dnd.textArea.error",
-                                    e.getMessage()
-                            )
-                    );
-                }
+                success = true;
             } else {
-                textAreaSource.replaceText(I18n.get("status.dnd.textArea.invalidTextFile"));
+                textAreaSource.replaceText(
+                        I18n.get("status.dnd.textArea.invalidTextFile")
+                );
             }
+
         } else if (dragboard.hasString()) {
-            // User dragged in plain text
+            // User dragged in plain text.
             String text = dragboard.getString();
 
-            // Remove BOM if present (just in case)
+            // Remove BOM if present, just in case.
             if (text.startsWith("\uFEFF")) {
                 text = text.substring(1);
             }
@@ -1632,6 +1664,7 @@ public class OpenccJavaFxController {
             updateSourceInfo(OpenCC.zhoCheck(text));
             success = true;
         }
+
         dragEvent.setDropCompleted(success);
         dragEvent.consume();
     }

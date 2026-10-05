@@ -1264,7 +1264,9 @@ public class OpenCC {
      *   <li><b>Phrase-first search (greedy):</b>
      *       <ul>
      *         <li>Candidate lengths are bounded by both {@code phraseMaxLen}/{@code phraseMinLen}
-     *             from {@link DictRefs.DictPartition} and the per-starter {@code lenMask} from {@code StarterUnion}.</li>
+     *             from {@link DictRefs.DictPartition}. Exact lengths below 64 are filtered by
+     *             {@code StarterUnion.lenMask}; longer candidates are bounded by its runtime
+     *             per-starter maximum in UTF-16 units and verified by dictionary lookup.</li>
      *         <li>Lengths are tried longest-to-shortest to ensure deterministic greedy matching.</li>
      *         <li>Each dictionary entry is filtered by its {@code minLength}/{@code maxLength} to skip
      *             impossible candidates early.</li>
@@ -1272,8 +1274,9 @@ public class OpenCC {
      *       </ul>
      *   </li>
      *   <li><b>Single-character fallback:</b>
-     *       If no phrase match is found, the algorithm attempts a lookup in {@code singleDicts} using exactly
-     *       the current code point (or surrogate pair). On hit, the replacement is appended and the cursor
+     *       If no phrase match is found, the algorithm queries the partition's precomputed single-code-point
+     *       index without constructing a substring. The index preserves {@code singleDicts} precedence.
+     *       On hit, the replacement is appended and the cursor
      *       advances by one code point.</li>
      *   <li><b>No match:</b>
      *       If neither phrase nor single dictionaries contain the key, the original code point is appended and
@@ -1293,8 +1296,9 @@ public class OpenCC {
 
         final StringBuilder out = new StringBuilder(n + (n >> 4));
         final StarterUnion union = part.union;
-        final boolean hasPhrases = !part.phraseDicts.isEmpty();
-        final boolean hasSingles = !part.singleDicts.isEmpty();
+        final int phraseDictCount = part.phraseDicts.size();
+        final boolean hasPhrases = phraseDictCount != 0;
+        final boolean hasSingles = part.singleIndex != null;
 
         int i = 0;
         while (i < n) {
@@ -1313,11 +1317,13 @@ public class OpenCC {
             if (hasPhrases) {
                 final int remaining = n - i;
                 if (remaining >= part.phraseMinLen) {
-                    final int tryMax = Math.min(Math.min(part.phraseMaxLen, part.roundMaxLen), remaining);
+                    int tryMax = Math.min(Math.min(part.phraseMaxLen, part.roundMaxLen), remaining);
+                    // Ordinary short-key probing retains its existing mask-only fast path.
+                    if (union != null && tryMax >= 64) tryMax = Math.min(tryMax, union.maxLen(cp));
                     final int tryMin = part.phraseMinLen;
                     if (tryMax >= tryMin) {
                         final long lMask = (union != null) ? union.lenMask(cp) : ~0L;
-                        if (lMask != 0L) {
+                        if (lMask != 0L || tryMax >= 64) {
                             outer:
                             for (int len = tryMax; len >= tryMin; len--) {
                                 if (len < 64 && ((lMask >>> len) & 1L) == 0L) continue;
@@ -1326,7 +1332,10 @@ public class OpenCC {
                                 if (j > n) continue;
 
                                 final String sub = input.substring(i, j);
-                                for (DictEntry e : part.phraseDicts) {
+                                // Partitions contain immutable ArrayLists; indexed access
+                                // preserves precedence without allocating an iterator.
+                                for (int dictIndex = 0; dictIndex < phraseDictCount; dictIndex++) {
+                                    final DictEntry e = part.phraseDicts.get(dictIndex);
                                     if (len < e.minLength || len > e.maxLength) continue;
                                     final String repl = e.dict.get(sub);
                                     if (repl != null) {
@@ -1342,18 +1351,8 @@ public class OpenCC {
             }
 
             if (hit == null && hasSingles) {
-                final int j = i + starterLen;
-                if (j <= n) {
-                    final String sub = input.substring(i, j);
-                    for (DictEntry e : part.singleDicts) {
-                        final String repl = e.dict.get(sub);
-                        if (repl != null) {
-                            hit = repl;
-                            hitLen = starterLen;
-                            break;
-                        }
-                    }
-                }
+                hit = part.singleIndex.get(cp);
+                if (hit != null) hitLen = starterLen;
             }
 
             if (hit != null) {

@@ -61,19 +61,24 @@ public final class StarterUnion {
      *
      * <p>This allows the conversion loop to skip impossible substring lengths for a
      * given starter character, avoiding wasted {@link String#substring(int, int)} calls
-     * and hash lookups. Keys longer than 63 UTF-16 units are ignored for bit-masking
-     * purposes.</p>
+     * and hash lookups. Keys longer than 63 UTF-16 units are tracked separately
+     * by {@link #maxLen(int)} and do not occupy an exact-length bit.</p>
      */
     private final long[] bmpLenMask;              // BMP cp -> bitmask of supported lengths
     private final Map<Integer, Long> astralLenMask; // astral cp -> bitmask
+    /** Runtime maximum key lengths in UTF-16 units, independent of the exact mask. */
+    private final int[] bmpMaxLen;
+    private final Map<Integer, Integer> astralMaxLen;
 
     /**
      * Creates a new {@code StarterUnion} with the given presence and length masks.
      *
-     * <p>This constructor is normally invoked by {@link #build(List)} after scanning
-     * all dictionary keys. It encapsulates both starter presence (which code points
-     * can begin a key) and per-starter length masks (which substring lengths are valid
-     * for that starter).</p>
+     * <p>This constructor accepts caller-provided starter presence and exact-length
+     * masks. {@link #build(List)} additionally derives runtime maximum lengths
+     * from dictionary keys.</p>
+     * <p>This compatibility constructor cannot infer lengths beyond the mask.
+     * {@link #maxLen(int)} therefore returns a conservative unbounded maximum
+     * for present starters. Use {@link #build(List)} for exact runtime maxima.</p>
      *
      * @param bmpMask       bit mask of starter presence in the Basic Multilingual Plane
      *                      (U+0000–U+FFFF); a set bit means at least one key starts
@@ -93,6 +98,12 @@ public final class StarterUnion {
     public StarterUnion(BitSet bmpMask, BitSet astralMask,
                         long[] bmpLenMask,
                         Map<Integer, Long> astralLenMask) {
+        this(bmpMask, astralMask, bmpLenMask, astralLenMask, null, null);
+    }
+
+    private StarterUnion(BitSet bmpMask, BitSet astralMask, long[] bmpLenMask,
+                         Map<Integer, Long> astralLenMask, int[] bmpMaxLen,
+                         Map<Integer, Integer> astralMaxLen) {
         this.bmpMask = (BitSet) Objects.requireNonNull(bmpMask, "bmpMask").clone();
         this.astralMask = (BitSet) Objects.requireNonNull(astralMask, "astralMask").clone();
         this.bmpLenMask = Arrays.copyOf(
@@ -102,6 +113,9 @@ public final class StarterUnion {
         this.astralLenMask = Collections.unmodifiableMap(new HashMap<>(
                 Objects.requireNonNull(astralLenMask, "astralLenMask")
         ));
+        this.bmpMaxLen = bmpMaxLen == null ? null : Arrays.copyOf(bmpMaxLen, bmpMaxLen.length);
+        this.astralMaxLen = astralMaxLen == null ? null
+                : Collections.unmodifiableMap(new HashMap<>(astralMaxLen));
     }
 
     /**
@@ -122,7 +136,10 @@ public final class StarterUnion {
      *             to its 64-bit length mask, using the same encoding as
      *             {@code bmpLenMask}.</li>
      *       </ul>
-     *       Keys of length ≥ 64 UTF-16 units are ignored for bit-masking purposes.</li>
+     *       Keys of length ≥ 64 UTF-16 units are represented by the runtime maximum,
+     *       not by an exact-length bit. Bit 63 remains exact length 63.</li>
+     *   <li>The maximum key length per starter is recorded separately in UTF-16 units,
+     *       including lengths beyond 63, without a 255-unit limit.</li>
      * </ul>
      *
      * <p>This enables the conversion loop to quickly reject impossible starters and
@@ -136,6 +153,8 @@ public final class StarterUnion {
         final BitSet astral = new BitSet((UNICODE_MAX - BMP_LIMIT) + 1);
         final long[] bmpLen = new long[BMP_LIMIT];
         final Map<Integer, Long> astralLen = new HashMap<>();
+        final int[] bmpMax = new int[BMP_LIMIT];
+        final Map<Integer, Integer> astralMax = new HashMap<>();
 
         for (DictionaryMaxlength.DictEntry d : dicts) {
             final Map<String, String> map = d.dict;
@@ -150,6 +169,8 @@ public final class StarterUnion {
 
                 // length bit (guard lengths >=64 to keep mask in a long)
                 final int L = k.length(); // UTF-16 units (astral counts as 2)
+                if (cp < BMP_LIMIT) bmpMax[cp] = Math.max(bmpMax[cp], L);
+                else astralMax.merge(cp, L, Math::max);
                 if (L >= 64) continue;
 
                 final long bit = 1L << L;
@@ -161,7 +182,7 @@ public final class StarterUnion {
             }
         }
 
-        return new StarterUnion(bmp, astral, bmpLen, astralLen);
+        return new StarterUnion(bmp, astral, bmpLen, astralLen, bmpMax, astralMax);
     }
 
     /**
@@ -195,12 +216,28 @@ public final class StarterUnion {
      * building substrings or performing hash lookups.</p>
      *
      * @param cp the Unicode code point to query
-     * @return a 64-bit length mask; {@code 0} if no keys are known to start with {@code cp}
+     * @return a 64-bit exact-length mask; zero can also mean a long-only starter
      */
     public long lenMask(int cp) {
         if (cp < 0) return 0L;
         if (cp < BMP_LIMIT) return bmpLenMask[cp];
         return astralLenMask.getOrDefault(cp, 0L);
+    }
+
+    /**
+     * Returns the maximum key length for a starter in Java UTF-16 code units.
+     * Lengths greater than 63 are tracked here, independently of {@link #lenMask(int)}.
+     * The compatibility constructor returns {@link Integer#MAX_VALUE} for present
+     * starters because its mask cannot establish a bound for long keys.
+     *
+     * @param cp Unicode code point of the starter
+     * @return maximum length, or zero for absent/invalid starters
+     */
+    public int maxLen(int cp) {
+        if (cp < 0 || cp > UNICODE_MAX) return 0;
+        if (bmpMaxLen == null) return hasStarter(cp) ? Integer.MAX_VALUE : 0;
+        if (cp < BMP_LIMIT) return bmpMaxLen[cp];
+        return astralMaxLen.getOrDefault(cp, 0);
     }
 
     /**

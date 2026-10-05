@@ -41,6 +41,11 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Changed
 
+- Synced the embedded OpenccJava core with upstream commit `84774ccf9442d63ea29a8d2f333f7162845e5ac9` (1.5.1 refinements).
+  Cached single-code-point fallback lookups and indexed phrase dictionary access reduce hot-path allocations;
+  runtime per-starter length bounds fix matching for dictionary keys of 64 or more UTF-16 units.
+  Added upstream regression tests for dictionary precedence, Unicode edge cases, and long keys.
+
 - Synced the embedded OpenccJava library, CLI, and PDF helpers with OpenccJava 1.5.0 sources (2026-09-30), including the
   TextConverter API, Office conversion fixes, and CLI/PDF improvements.
   Preserved the JavaFX UI and existing controller APIs; added upstream regression coverage and an opt-in
