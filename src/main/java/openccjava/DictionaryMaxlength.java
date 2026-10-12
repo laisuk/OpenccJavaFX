@@ -192,6 +192,23 @@ public class DictionaryMaxlength {
     public DictEntry jps_phrases;
 
     /**
+     * Small Seal Script to regular-script transcriptions.
+     */
+    public DictEntry seal_characters;
+    /**
+     * Regular-script transcriptions to Small Seal Script.
+     */
+    public DictEntry seal_characters_rev;
+    /**
+     * Modern characters to Seal regular-script variants.
+     */
+    public DictEntry seal_variants;
+    /**
+     * Seal regular-script variants to modern characters.
+     */
+    public DictEntry seal_variants_rev;
+
+    /**
      * Returns a human-readable summary showing how many dictionaries are loaded.
      */
     @Override
@@ -203,7 +220,8 @@ public class DictionaryMaxlength {
                 tw_variants_rev, tw_variants_rev_phrases,
                 hk_phrases, hk_phrases_rev, hk_variants, hk_variants_phrases,
                 hk_variants_rev, hk_variants_rev_phrases,
-                jps_characters, jps_characters_rev, jps_phrases
+                jps_characters, jps_characters_rev, jps_phrases,
+                seal_characters, seal_characters_rev, seal_variants, seal_variants_rev
         };
 
         int count = 0;
@@ -257,7 +275,7 @@ public class DictionaryMaxlength {
                     try (InputStream in = DictionaryMaxlength.class.getResourceAsStream(resPath)) {
                         if (in == null) {
                             if (isOptionalTextDictionary(dictName)) {
-                                // Direct HK phrase dictionaries were added after the original schema.
+                                // New dictionary slots are optional in older dictionary folders.
                                 // Treat missing files as empty so older dictionary folders still load.
                                 entry = new DictEntry();
                             } else {
@@ -276,7 +294,7 @@ public class DictionaryMaxlength {
             }
         }
 
-        ensureOptionalHkPhraseEntries(r);
+        ensureOptionalEntries(r);
         return r;
     }
 
@@ -506,6 +524,10 @@ public class DictionaryMaxlength {
         if ("jps_characters".equals(key)) return dict.jps_characters;
         if ("jps_characters_rev".equals(key)) return dict.jps_characters_rev;
         if ("jps_phrases".equals(key)) return dict.jps_phrases;
+        if ("seal_characters".equals(key)) return dict.seal_characters;
+        if ("seal_characters_rev".equals(key)) return dict.seal_characters_rev;
+        if ("seal_variants".equals(key)) return dict.seal_variants;
+        if ("seal_variants_rev".equals(key)) return dict.seal_variants_rev;
 
         throw new IllegalArgumentException("Unknown dictionary key: " + key);
     }
@@ -660,6 +682,11 @@ public class DictionaryMaxlength {
         r.jps_characters_rev = copyEntry(this.jps_characters_rev);
         r.jps_phrases = copyEntry(this.jps_phrases);
 
+        r.seal_characters = copyEntry(this.seal_characters);
+        r.seal_characters_rev = copyEntry(this.seal_characters_rev);
+        r.seal_variants = copyEntry(this.seal_variants);
+        r.seal_variants_rev = copyEntry(this.seal_variants_rev);
+
         return r;
     }
 
@@ -721,6 +748,10 @@ public class DictionaryMaxlength {
         m.put("jps_characters", (o, e) -> o.jps_characters = e);
         m.put("jps_characters_rev", (o, e) -> o.jps_characters_rev = e);
         m.put("jps_phrases", (o, e) -> o.jps_phrases = e);
+        m.put("seal_characters", (o, e) -> o.seal_characters = e);
+        m.put("seal_characters_rev", (o, e) -> o.seal_characters_rev = e);
+        m.put("seal_variants", (o, e) -> o.seal_variants = e);
+        m.put("seal_variants_rev", (o, e) -> o.seal_variants_rev = e);
         ASSIGN = Collections.unmodifiableMap(m);
 
         Map<String, String> f = new LinkedHashMap<>();
@@ -745,6 +776,10 @@ public class DictionaryMaxlength {
         f.put("jps_characters", "JPShinjitaiCharacters.txt");
         f.put("jps_characters_rev", "JPShinjitaiCharactersRev.txt");
         f.put("jps_phrases", "JPShinjitaiPhrases.txt");
+        f.put("seal_characters", "SealCharacters.txt");
+        f.put("seal_characters_rev", "SealCharactersRev.txt");
+        f.put("seal_variants", "SealVariants.txt");
+        f.put("seal_variants_rev", "SealVariantsRev.txt");
         FILES = Collections.unmodifiableMap(f);
 
         Map<DictSlot, String> s = new EnumMap<>(DictSlot.class);
@@ -769,16 +804,25 @@ public class DictionaryMaxlength {
         s.put(DictSlot.JPSCharacters, "jps_characters");
         s.put(DictSlot.JPSCharactersRev, "jps_characters_rev");
         s.put(DictSlot.JPSPhrases, "jps_phrases");
+        s.put(DictSlot.SealCharacters, "seal_characters");
+        s.put(DictSlot.SealCharactersRev, "seal_characters_rev");
+        s.put(DictSlot.SealVariants, "seal_variants");
+        s.put(DictSlot.SealVariantsRev, "seal_variants_rev");
         SLOT_KEYS = Collections.unmodifiableMap(s);
     }
 
     private static boolean isOptionalTextDictionary(String dictName) {
-        return "hk_phrases".equals(dictName) || "hk_phrases_rev".equals(dictName);
+        return "hk_phrases".equals(dictName) || "hk_phrases_rev".equals(dictName)
+                || dictName.startsWith("seal_");
     }
 
-    private static void ensureOptionalHkPhraseEntries(DictionaryMaxlength r) {
+    private static void ensureOptionalEntries(DictionaryMaxlength r) {
         if (r.hk_phrases == null) r.hk_phrases = new DictEntry();
         if (r.hk_phrases_rev == null) r.hk_phrases_rev = new DictEntry();
+        if (r.seal_characters == null) r.seal_characters = new DictEntry();
+        if (r.seal_characters_rev == null) r.seal_characters_rev = new DictEntry();
+        if (r.seal_variants == null) r.seal_variants = new DictEntry();
+        if (r.seal_variants_rev == null) r.seal_variants_rev = new DictEntry();
     }
 
     /**
@@ -1014,8 +1058,8 @@ public class DictionaryMaxlength {
      *
      * @param in an input stream containing the JSON (UTF-8 encoded)
      * @return a populated {@code DictionaryMaxlength} instance
-     * @throws IOException          if reading fails
-     * @throws NullPointerException if {@code in} is {@code null}
+     * @throws IOException              if reading fails
+     * @throws NullPointerException     if {@code in} is {@code null}
      * @throws IllegalArgumentException if the JSON is malformed or violates the expected schema
      * @since 1.4.0
      */
@@ -1118,9 +1162,9 @@ public class DictionaryMaxlength {
                 System.err.println("Unknown dict key in JSON: " + kv.getKey());
             }
         }
-        // Older JSON snapshots do not contain the direct HK phrase fields.
+        // Older JSON snapshots do not contain the direct HK phrase or Seal fields.
         // Initialize missing dictionaries as empty entries so all conversion plans are null-safe.
-        ensureOptionalHkPhraseEntries(r);
+        ensureOptionalEntries(r);
         return r;
     }
 
@@ -1335,7 +1379,11 @@ public class DictionaryMaxlength {
         firstField = writeField(w, "hk_variants_rev_phrases", hk_variants_rev_phrases, firstField, ind1, ind2, nl, sortKeys);
         firstField = writeField(w, "jps_characters", jps_characters, firstField, ind1, ind2, nl, sortKeys);
         firstField = writeField(w, "jps_characters_rev", jps_characters_rev, firstField, ind1, ind2, nl, sortKeys);
-        writeField(w, "jps_phrases", jps_phrases, firstField, ind1, ind2, nl, sortKeys);
+        firstField = writeField(w, "jps_phrases", jps_phrases, firstField, ind1, ind2, nl, sortKeys);
+        firstField = writeField(w, "seal_characters", seal_characters, firstField, ind1, ind2, nl, sortKeys);
+        firstField = writeField(w, "seal_characters_rev", seal_characters_rev, firstField, ind1, ind2, nl, sortKeys);
+        firstField = writeField(w, "seal_variants", seal_variants, firstField, ind1, ind2, nl, sortKeys);
+        writeField(w, "seal_variants_rev", seal_variants_rev, firstField, ind1, ind2, nl, sortKeys);
         w.write(nl);
         w.write("}");
         w.write(nl);

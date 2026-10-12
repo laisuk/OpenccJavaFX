@@ -7,7 +7,7 @@ import java.util.*;
  *
  * <p>Each constant corresponds to an OpenCC conversion mode,
  * covering Simplified ↔ Traditional Chinese and region-specific variants
- * (Taiwan, Hong Kong, Japan). The {@code p} suffix indicates that additional
+ * (Taiwan, Hong Kong, Japan), plus Small Seal Script. The {@code p} suffix indicates that additional
  * region-specific phrase mappings are applied for Taiwan or Hong Kong;
  * base conversions such as {@link #S2T} and {@link #T2S} already include
  * their standard phrase dictionaries.</p>
@@ -112,7 +112,19 @@ public enum OpenccConfig {
     /**
      * Japanese Shinjitai → Traditional.
      */
-    JP2T;
+    JP2T,
+
+    /** Simplified Chinese to Small Seal Script. */
+    S2SEAL,
+
+    /** Traditional Chinese to Small Seal Script. */
+    T2SEAL,
+
+    /** Small Seal Script to Simplified Chinese. */
+    SEAL2S,
+
+    /** Small Seal Script to Traditional Chinese. */
+    SEAL2T;
 
     /**
      * Returns the default OpenCC configuration.

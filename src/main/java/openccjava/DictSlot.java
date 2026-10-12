@@ -159,7 +159,19 @@ public enum DictSlot {
      * legacy source continues to compile and may be removed in version 2.0.
      */
     @Deprecated
-    JPVariantsRev("JPVariantsRev", false);
+    JPVariantsRev("JPVariantsRev", false),
+
+    /** Small Seal Script to regular-script transcriptions ({@code SealCharacters.txt}). */
+    SealCharacters("SealCharacters", true),
+
+    /** Regular-script transcriptions to Small Seal Script ({@code SealCharactersRev.txt}). */
+    SealCharactersRev("SealCharactersRev", true),
+
+    /** Modern characters to Seal regular-script variants ({@code SealVariants.txt}). */
+    SealVariants("SealVariants", true),
+
+    /** Seal regular-script variants to modern characters ({@code SealVariantsRev.txt}). */
+    SealVariantsRev("SealVariantsRev", true);
 
     private final String canonicalName;
     private final boolean active;

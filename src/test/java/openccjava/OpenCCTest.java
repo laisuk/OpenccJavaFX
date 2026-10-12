@@ -212,9 +212,9 @@ class OpenCCTest {
     void testConfiguredPunctuationFlagForAllConfigs(OpenccConfig config) {
         OpenCC cc = OpenCC.fromConfig(config);
         boolean toSimplified = Arrays.asList(OpenccConfig.T2S, OpenccConfig.TW2S,
-                OpenccConfig.TW2SP, OpenccConfig.HK2S, OpenccConfig.HK2SP).contains(config);
-        String input = toSimplified ? "「你好」『世界』" : "“你好”‘世界’";
-        String expected = toSimplified ? "“你好”‘世界’" : "「你好」『世界』";
+                OpenccConfig.TW2SP, OpenccConfig.HK2S, OpenccConfig.HK2SP, OpenccConfig.SEAL2S).contains(config);
+        String input = toSimplified ? "「hello」『world』" : "“hello”‘world’";
+        String expected = toSimplified ? "“hello”‘world’" : "「hello」『world』";
 
         assertEquals(input, cc.convert(input, false));
         assertEquals(expected, cc.convert(input, true));

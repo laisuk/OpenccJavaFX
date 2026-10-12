@@ -109,11 +109,13 @@ public class DictgenCommand implements Runnable {
 
     private void downloadDictsFromGithub(Path dictDir) throws IOException {
         String[] dictFiles = {
-                "STCharacters.txt", "STPhrases.txt", "TSCharacters.txt", "TSPhrases.txt",
+                "STCharacters.txt", "STPhrases.txt", "STPunctuations.txt",
+                "TSCharacters.txt", "TSPhrases.txt", "TSPunctuations.txt",
                 "TWPhrases.txt", "TWPhrasesRev.txt", "TWVariants.txt", "TWVariantsPhrases.txt",
-                "TWVariantsRev.txt", "TWVariantsRevPhrases.txt",
+                "TWVariantsRev.txt", "TWVariantsRevPhrases.txt", "HKPhrases.txt", "HKPhrasesRev.txt",
                 "HKVariants.txt", "HKVariantsPhrases.txt", "HKVariantsRev.txt", "HKVariantsRevPhrases.txt",
-                "JPShinjitaiCharacters.txt", "JPShinjitaiCharactersRev.txt", "JPShinjitaiPhrases.txt"
+                "JPShinjitaiCharacters.txt", "JPShinjitaiCharactersRev.txt", "JPShinjitaiPhrases.txt",
+                "SealCharacters.txt", "SealCharactersRev.txt", "SealVariants.txt", "SealVariantsRev.txt"
         };
 
         String baseUrl = "https://raw.githubusercontent.com/laisuk/OpenccJava/master/dicts/";

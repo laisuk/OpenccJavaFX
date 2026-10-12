@@ -41,6 +41,12 @@ public class OfficeCommand implements Runnable {
     private boolean keepFont;
 
     @Option(
+            names = {"-F", "--convert-filename"},
+            description = "Convert the output filename using the selected OpenCC configuration."
+    )
+    private boolean convertFilename;
+
+    @Option(
             names = {"-n", "--norm-compat"},
             description = "Normalize CJK Compatibility Ideographs before conversion."
     )
@@ -104,8 +110,26 @@ public class OfficeCommand implements Runnable {
                 officeFormat = ext.substring(1).toLowerCase();
             }
 
+            //            OpenCC opencc = new OpenCC(config);
+            OpenCC opencc = CliUtils.createOpenCC(config, customDictSpecs);
+
+            TextConverter textConverter = CliUtils.createTextConverter(
+                    opencc,
+                    punct,
+                    normCompat,
+                    normCompatExtended,
+                    detofu,
+                    detofuFile
+            );
+
             if (output == null) {
-                String defaultName = inputName + "_converted." + officeFormat;
+                String outputName = inputName;
+
+                if (convertFilename) {
+                    outputName = textConverter.convert(outputName);
+                }
+
+                String defaultName = outputName + "_converted." + officeFormat;
                 output = new File(input.getParentFile(), defaultName);
                 System.err.println("ℹ️ Output file not specified. Using: " + output);
             }
@@ -121,17 +145,7 @@ public class OfficeCommand implements Runnable {
                 return;
             }
 
-//            OpenCC opencc = new OpenCC(config);
-            OpenCC opencc = CliUtils.createOpenCC(config, customDictSpecs);
 
-            TextConverter textConverter = CliUtils.createTextConverter(
-                    opencc,
-                    punct,
-                    normCompat,
-                    normCompatExtended,
-                    detofu,
-                    detofuFile
-            );
 
             OfficeHelper.FileResult result = OfficeHelper.convert(
                     input,

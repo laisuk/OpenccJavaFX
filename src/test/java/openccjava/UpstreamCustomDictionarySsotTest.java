@@ -84,7 +84,11 @@ class UpstreamCustomDictionarySsotTest {
             DictSlot.HKVariantsRevPhrases,
             DictSlot.JPSCharacters,
             DictSlot.JPSCharactersRev,
-            DictSlot.JPSPhrases
+            DictSlot.JPSPhrases,
+            DictSlot.SealCharacters,
+            DictSlot.SealCharactersRev,
+            DictSlot.SealVariants,
+            DictSlot.SealVariantsRev
     );
 
     @Test

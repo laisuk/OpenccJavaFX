@@ -154,6 +154,7 @@ public final class ConversionPlanCache {
      *   <li><b>T2Tw / T2Twp / Tw2T / Tw2Tp</b> – Traditional ↔ Taiwan conversions</li>
      *   <li><b>T2Hk / T2Hkp / Hk2T / Hk2Tp</b> – Traditional ↔ Hong Kong conversions</li>
      *   <li><b>T2Jp / Jp2T</b> – Traditional ↔ Japanese conversions</li>
+     *   <li><b>S2Seal / T2Seal / Seal2S / Seal2T</b> – Small Seal Script conversions</li>
      * </ul>
      *
      * <p>
@@ -411,6 +412,34 @@ public final class ConversionPlanCache {
                     refs = new DictRefs(r1, unionCache.unionFor(UnionKey.JpsPair));
                 }
 
+                break;
+            }
+            case S2SEAL: {
+                r1 = new ArrayList<>(Arrays.asList(d.st_phrases, d.st_characters));
+                if (punctuation) r1.add(d.st_punctuations);
+                refs = new DictRefs(r1, unionCache.unionFor(punctuation ? UnionKey.S2T_PUNCT : UnionKey.S2T))
+                        .withRound2(Collections.singletonList(d.seal_variants), unionCache.unionFor(UnionKey.SealVariantsOnly))
+                        .withRound3(Collections.singletonList(d.seal_characters_rev), unionCache.unionFor(UnionKey.SealCharactersRevOnly));
+                break;
+            }
+            case T2SEAL: {
+                refs = new DictRefs(Collections.singletonList(d.seal_variants), unionCache.unionFor(UnionKey.SealVariantsOnly))
+                        .withRound2(Collections.singletonList(d.seal_characters_rev), unionCache.unionFor(UnionKey.SealCharactersRevOnly));
+                if (punctuation) refs.withRound3(Collections.singletonList(d.st_punctuations), unionCache.unionFor(UnionKey.StPunctOnly));
+                break;
+            }
+            case SEAL2S: {
+                r2 = new ArrayList<>(Arrays.asList(d.ts_phrases, d.ts_characters));
+                if (punctuation) r2.add(d.ts_punctuations);
+                refs = new DictRefs(Collections.singletonList(d.seal_characters), unionCache.unionFor(UnionKey.SealCharactersOnly))
+                        .withRound2(Collections.singletonList(d.seal_variants_rev), unionCache.unionFor(UnionKey.SealVariantsRevOnly))
+                        .withRound3(r2, unionCache.unionFor(punctuation ? UnionKey.T2S_PUNCT : UnionKey.T2S));
+                break;
+            }
+            case SEAL2T: {
+                refs = new DictRefs(Collections.singletonList(d.seal_characters), unionCache.unionFor(UnionKey.SealCharactersOnly))
+                        .withRound2(Collections.singletonList(d.seal_variants_rev), unionCache.unionFor(UnionKey.SealVariantsRevOnly));
+                if (punctuation) refs.withRound3(Collections.singletonList(d.st_punctuations), unionCache.unionFor(UnionKey.StPunctOnly));
                 break;
             }
             default:

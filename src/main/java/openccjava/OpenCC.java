@@ -166,7 +166,7 @@ public class OpenCC {
          *
          * @return the shared dictionary instance
          * @throws ExceptionInInitializerError if the initial dictionary load fails
-         * @throws NoClassDefFoundError if a previous initialization attempt failed
+         * @throws NoClassDefFoundError        if a previous initialization attempt failed
          */
         public static DictionaryMaxlength get() {
             return Holder.DEFAULT;
@@ -389,7 +389,7 @@ public class OpenCC {
      * @param config the configuration key (for example {@code "s2t"},
      *               {@code "S2TWP"}, {@code "tw2sp"}); may be {@code null}
      * @throws ExceptionInInitializerError if the initial dictionary load fails
-     * @throws NoClassDefFoundError if a previous dictionary initialization failed
+     * @throws NoClassDefFoundError        if a previous dictionary initialization failed
      * @since 1.1.0
      */
     public OpenCC(String config) {
@@ -408,7 +408,7 @@ public class OpenCC {
      *
      * @param configId the configuration ID, or {@code null} to use the default
      * @throws ExceptionInInitializerError if the initial dictionary load fails
-     * @throws NoClassDefFoundError if a previous dictionary initialization failed
+     * @throws NoClassDefFoundError        if a previous dictionary initialization failed
      * @since 1.1.0
      */
     public OpenCC(OpenccConfig configId) {
@@ -856,6 +856,18 @@ public class OpenCC {
             case JP2T:
                 result = jp2t(input, punctuation);
                 break;
+            case S2SEAL:
+                result = s2seal(input, punctuation);
+                break;
+            case T2SEAL:
+                result = t2seal(input, punctuation);
+                break;
+            case SEAL2S:
+                result = seal2s(input, punctuation);
+                break;
+            case SEAL2T:
+                result = seal2t(input, punctuation);
+                break;
 
             default:
                 // Should be unreachable unless new enum values are added
@@ -974,7 +986,7 @@ public class OpenCC {
     private static final int AVAILABLE_PROCESSORS =
             Runtime.getRuntime().availableProcessors();
 
-    private static final int TEXT_THRESHOLD = 10_100;
+    private static final int TEXT_THRESHOLD = 10_000;
 
     /**
      * Determines whether segmented replacement should use parallel processing.
@@ -1660,6 +1672,54 @@ public class OpenCC {
      */
     public String jp2t(String input, boolean punctuation) {
         DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.JP2T, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+    }
+
+    /**
+     * Converts simplified Chinese to Small Seal Script.
+     *
+     * @param input       the text to convert
+     * @param punctuation whether to convert punctuation in the target direction
+     * @return the converted text
+     */
+    public String s2seal(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.S2SEAL, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+    }
+
+    /**
+     * Converts traditional Chinese to Small Seal Script.
+     *
+     * @param input       the text to convert
+     * @param punctuation whether to convert punctuation in the target direction
+     * @return the converted text
+     */
+    public String t2seal(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.T2SEAL, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+    }
+
+    /**
+     * Converts small Seal Script to Simplified Chinese.
+     *
+     * @param input       the text to convert
+     * @param punctuation whether to convert punctuation in the target direction
+     * @return the converted text
+     */
+    public String seal2s(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.SEAL2S, punctuation);
+        return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
+    }
+
+    /**
+     * Converts small Seal Script to Traditional Chinese.
+     *
+     * @param input       the text to convert
+     * @param punctuation whether to convert punctuation in the target direction
+     * @return the converted text
+     */
+    public String seal2t(String input, boolean punctuation) {
+        DictRefs refs = getDictRefsUnionForConfigId(OpenccConfig.SEAL2T, punctuation);
         return refs.applySegmentReplace(input, this::segmentReplaceWithUnion);
     }
 

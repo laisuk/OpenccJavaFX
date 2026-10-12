@@ -23,6 +23,47 @@ class CliCommandTest {
     Path tempDir;
 
     @Test
+    void sealConfigsConvertUtf8FilesAndHonorCustomSlots() throws Exception {
+        String simplified = "你好，小篆国际编码18";
+        String traditional = "你好，小篆國際編碼18";
+        String seal = "你𿒛，𽌠𽴖𾇓𿭖𿛛碼18";
+        String[] configs = {"s2seal", "t2seal", "seal2s", "seal2t"};
+        String[] inputs = {simplified, traditional, seal, seal};
+        String[] outputs = {seal, seal, simplified, traditional};
+        Path input = tempDir.resolve("seal-input.txt");
+        Path output = tempDir.resolve("seal-output.txt");
+        for (int i = 0; i < configs.length; i++) {
+            Files.write(input, inputs[i].getBytes(StandardCharsets.UTF_8));
+            CommandResult result = execute("convert", "-c", configs[i], "-i", input.toString(), "-o", output.toString());
+            assertEquals(CommandLine.ExitCode.OK, result.exitCode, result.stderr);
+            assertEquals(outputs[i], new String(Files.readAllBytes(output), StandardCharsets.UTF_8));
+        }
+        Path custom = tempDir.resolve("seal-custom.txt");
+        Files.write(custom, "A\tB\n".getBytes(StandardCharsets.UTF_8));
+        Files.write(input, "A".getBytes(StandardCharsets.UTF_8));
+        CommandResult result = execute("convert", "-c", "t2seal", "-i", input.toString(), "-o", output.toString(),
+                "-D", "SealCharactersRev:append:" + custom);
+        assertEquals(CommandLine.ExitCode.OK, result.exitCode, result.stderr);
+        assertEquals("B", new String(Files.readAllBytes(output), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void helpListsSealConfigsAndSlotsAcrossCommands() {
+        for (String command : new String[]{"convert", "office", "pdf", "dictgen"}) {
+            CommandResult result = execute(command, "--help");
+            assertEquals(CommandLine.ExitCode.OK, result.exitCode, result.stderr);
+            for (String slot : new String[]{"SealCharacters", "SealCharactersRev", "SealVariants", "SealVariantsRev"}) {
+                assertTrue(result.stdout.contains(slot), result.stdout);
+            }
+            if (!"dictgen".equals(command)) {
+                for (String config : new String[]{"s2seal", "t2seal", "seal2s", "seal2t"}) {
+                    assertTrue(result.stdout.contains(config), result.stdout);
+                }
+            }
+        }
+    }
+
+    @Test
     void convertMissingConfigReturnsUsage() {
         CommandResult result = execute("convert");
         assertEquals(CommandLine.ExitCode.USAGE, result.exitCode);

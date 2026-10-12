@@ -29,7 +29,9 @@ class CustomDictionarySsotTest {
             DictSlot.HKPhrasesRev, DictSlot.HKVariants,
             DictSlot.HKVariantsPhrases, DictSlot.HKVariantsRev,
             DictSlot.HKVariantsRevPhrases, DictSlot.JPSCharacters,
-            DictSlot.JPSCharactersRev, DictSlot.JPSPhrases
+            DictSlot.JPSCharactersRev, DictSlot.JPSPhrases,
+            DictSlot.SealCharacters, DictSlot.SealCharactersRev,
+            DictSlot.SealVariants, DictSlot.SealVariantsRev
     );
 
     @Test

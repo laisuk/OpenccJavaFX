@@ -74,6 +74,18 @@ final class UnionCache {
             case JpsPair:
                 return getOrInit(slots.jps_pair,
                         () -> StarterUnion.build(Arrays.asList(d.jps_phrases, d.jps_characters)));
+            case SealCharactersOnly:
+                return getOrInit(slots.seal_characters,
+                        () -> StarterUnion.build(Collections.singletonList(d.seal_characters)));
+            case SealCharactersRevOnly:
+                return getOrInit(slots.seal_characters_rev,
+                        () -> StarterUnion.build(Collections.singletonList(d.seal_characters_rev)));
+            case SealVariantsOnly:
+                return getOrInit(slots.seal_variants,
+                        () -> StarterUnion.build(Collections.singletonList(d.seal_variants)));
+            case SealVariantsRevOnly:
+                return getOrInit(slots.seal_variants_rev,
+                        () -> StarterUnion.build(Collections.singletonList(d.seal_variants_rev)));
             default:
                 throw new IllegalArgumentException("Unhandled UnionKey: " + key);
         }
@@ -92,6 +104,10 @@ final class UnionCache {
     }
 
     static final class Unions {
+        final AtomicReference<StarterUnion> seal_characters = new AtomicReference<>();
+        final AtomicReference<StarterUnion> seal_characters_rev = new AtomicReference<>();
+        final AtomicReference<StarterUnion> seal_variants = new AtomicReference<>();
+        final AtomicReference<StarterUnion> seal_variants_rev = new AtomicReference<>();
         final AtomicReference<StarterUnion> s2t = new AtomicReference<>();
         final AtomicReference<StarterUnion> s2t_punct = new AtomicReference<>();
         final AtomicReference<StarterUnion> st_punct_only = new AtomicReference<>();
