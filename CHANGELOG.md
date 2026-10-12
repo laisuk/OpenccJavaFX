@@ -38,6 +38,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
     - Localizes the complete feature UI, including tooltips, status messages, dialog titles, summaries, hints, line
       labels, counts, and actions, in English, Simplified Chinese, and Traditional Chinese while preserving original
       document excerpts verbatim.
+- Added auto-detect CJK plain text encoding when open file to Editor.
 
 ### Changed
 
