@@ -90,7 +90,7 @@ public final class ConversionComboBoxHelper {
     }
 
     private static <T> ListCell<T> createBoundLabelCell(Function<T, ObservableValue<String>> labelProperty) {
-        return new ListCell<T>() {
+        return new ListCell<>() {
             @Override
             protected void updateItem(T item, boolean empty) {
                 super.updateItem(item, empty);
