@@ -407,9 +407,9 @@
                     </AnchorPane>
                 </content>
             </Tab>
-         <Tab text="Dictionary">
+         <Tab fx:id="tabDictionary" text="Dictionary">
            <content>
-             <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" />
+             <fx:include fx:id="dictionaryView" source="dictionary-view.fxml" />
            </content>
          </Tab>
             <Tab fx:id="tabSettings" onSelectionChanged="#onTabSettingsSelectionChanged" text="Settings">

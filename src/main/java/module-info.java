@@ -16,6 +16,7 @@ module org.example.openccjavafx {
     requires jdk.charsets;
 
     opens org.example.openccjavafx to javafx.fxml;
+    opens org.example.openccjavafx.ui.icon to javafx.fxml;
     opens openccjavacli to info.picocli;
     exports org.example.openccjavafx;
     exports org.example.openccjavafx.ui;

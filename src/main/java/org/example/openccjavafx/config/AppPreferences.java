@@ -25,6 +25,42 @@ public final class AppPreferences {
     private AppPreferences() {
     }
 
+    public record DictionaryRow(String slot, String mode, String path) { }
+
+    public static boolean getApplyDictionariesAtStartup() {
+        return PREFS.getBoolean("dictionary.applyAtStartup", false);
+    }
+
+    public static void saveApplyDictionariesAtStartup(boolean enabled) {
+        PREFS.putBoolean("dictionary.applyAtStartup", enabled);
+    }
+
+    public static java.util.List<DictionaryRow> loadDictionaryRows() {
+        Preferences settings = PREFS.node("dictionaryRows");
+        java.util.List<DictionaryRow> rows = new java.util.ArrayList<>();
+        int count = Math.max(0, Math.min(settings.getInt("count", 0), 1000));
+        for (int i = 0; i < count; i++) {
+            rows.add(new DictionaryRow(settings.get(i + ".slot", ""),
+                    settings.get(i + ".mode", "Append"), settings.get(i + ".path", "")));
+        }
+        return rows;
+    }
+
+    public static void saveDictionaryRows(java.util.List<DictionaryRow> rows) {
+        Preferences settings = PREFS.node("dictionaryRows");
+        int previous = settings.getInt("count", 0);
+        for (int i = 0; i < rows.size(); i++) {
+            DictionaryRow row = rows.get(i);
+            settings.put(i + ".slot", row.slot());
+            settings.put(i + ".mode", row.mode());
+            settings.put(i + ".path", row.path());
+        }
+        for (int i = rows.size(); i < previous; i++) {
+            settings.remove(i + ".slot"); settings.remove(i + ".mode"); settings.remove(i + ".path");
+        }
+        settings.putInt("count", rows.size());
+    }
+
     public static void saveShowLineNumber(boolean show) {
         PREFS.putBoolean(PREF_SHOW_LINE_NUMBER, show);
     }

@@ -154,6 +154,10 @@ public class OpenccJavaFxController {
     @FXML
     private Tab tabBatch;
     @FXML
+    private Tab tabDictionary;
+    @FXML
+    private DictionaryController dictionaryViewController;
+    @FXML
     private Tab tabSettings;
     @FXML
     private Button btnOpenFile;
@@ -309,6 +313,7 @@ public class OpenccJavaFxController {
         initUiButtons();
         initEditorTools();
         initFilenameEncodingMenu();
+        dictionaryViewController.connect(dictionaryService, converter -> openccInstance = converter);
     }
 
     private void applyCurrentTheme() {
@@ -317,6 +322,7 @@ public class OpenccJavaFxController {
         Parent root = scene.getRoot();
         boolean dark = ThemeManager.isEffectiveDarkMode();
         ThemeManager.applyTheme(root, dark);
+        dictionaryViewController.refreshTheme();
     }
 
     private void applyLineNumber(CodeArea area, boolean enabled) {
@@ -342,6 +348,8 @@ public class OpenccJavaFxController {
         tabMain.setText(I18n.get("tab.main"));
         tabBatch.setText(I18n.get("tab.batch"));
         tabSettings.setText(I18n.get("tab.settings"));
+        tabDictionary.setText(I18n.get("dict.title"));
+        dictionaryViewController.refreshTexts();
 
         lblSource.setText(I18n.get("label.source"));
         lblDestination.setText(I18n.get("label.destination"));
@@ -586,6 +594,7 @@ public class OpenccJavaFxController {
 
         initTabIcon(tabMain, AppIconGlyph.SYNC, 18);
         initTabIcon(tabBatch, AppIconGlyph.MOVE_TO_FOLDER, 20);
+        initTabIcon(tabDictionary, AppIconGlyph.DICTIONARY, 18);
         initTabIcon(tabSettings, AppIconGlyph.SETTINGS, 18);
     }
 
@@ -664,7 +673,8 @@ public class OpenccJavaFxController {
     private boolean isOpenFileDisabled = false;
     private boolean isStartDisabled = false;
     private String openFileName;
-    private final OpenCC openccInstance = new OpenCC();
+    private final DictionaryService dictionaryService = new DictionaryService();
+    private OpenCC openccInstance = dictionaryService.converter();
 
     @FXML
     protected void onBtnPasteClick() {
@@ -824,7 +834,8 @@ public class OpenccJavaFxController {
 
         // Prepare config once
         final String config = getCurrentConfig();
-        openccInstance.setConfig(config);
+        final OpenCC batchConverter = dictionaryService.converter();
+        batchConverter.setConfig(config);
 
         textAreaPreview.clear();
         lblStatus.setText(I18n.get("status.batch.running"));
@@ -847,7 +858,7 @@ public class OpenccJavaFxController {
 
                     String outputFilename = buildConvertedFilename(sourceFilePath.getName(), config);
                     if (cbConvertFilename.isSelected()) {
-                        outputFilename = openccInstance.convert(outputFilename);
+                        outputFilename = batchConverter.convert(outputFilename);
                     }
                     Path outputFilePath = outputDirectoryPath.resolve(outputFilename);
 
@@ -858,7 +869,7 @@ public class OpenccJavaFxController {
                                     sourceFilePath,
                                     outputFilePath.toFile(),
                                     extNoDot,
-                                    openccInstance,
+                                    batchConverter,
                                     cbPunctuation.isSelected(),
                                     true // Keep font
                             );
@@ -896,7 +907,7 @@ public class OpenccJavaFxController {
                                 reflowed = PdfReflowHelper.reflowCjkParagraphs(raw, addHeader, compact);
                             }
 
-                            String converted = openccInstance.convert(reflowed, cbPunctuation.isSelected());
+                            String converted = batchConverter.convert(reflowed, cbPunctuation.isSelected());
 
                             String txtExt = ".txt";
                             Path txtOutputPath = replaceExtension(outputFilePath, txtExt);
@@ -914,7 +925,7 @@ public class OpenccJavaFxController {
                             Path sourcePath = sourceFilePath.toPath();
 //                            String contents = Files.readString(sourcePath, StandardCharsets.UTF_8);
                             String contents = new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
-                            String convertedText = openccInstance.convert(contents, cbPunctuation.isSelected());
+                            String convertedText = batchConverter.convert(contents, cbPunctuation.isSelected());
                             Files.write(outputFilePath, convertedText.getBytes(StandardCharsets.UTF_8));
 
                             final int idx = counter;

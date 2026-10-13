@@ -108,7 +108,8 @@
     -fx-alignment: center;
 }
 
-.button-secondary .button-content.danger .app-icon {
+.button-secondary .button-content.danger .app-icon,
+.app-root .button.danger .app-icon {
     -fx-text-fill: #ef4444;
 }
 
@@ -1435,3 +1436,23 @@
 .context-menu.dark .radio-menu-item:focused .radio {
     -fx-background-color: #60a5fa;
 }
+/* Dictionary page and its dynamically created rows. */
+.dictionary-scroll, .dictionary-scroll > .viewport { -fx-background-color: transparent; }
+.dictionary-frame, .dictionary-card { -fx-background-color: #ffffff; -fx-border-color: #dce1e7; -fx-border-radius: 6; -fx-background-radius: 6; }
+.dictionary-card { -fx-padding: 12; }
+.dictionary-frame .text-field {
+    -fx-min-height: 32px;
+    -fx-pref-height: 34px;
+    -fx-padding: 5px 8px;
+    -fx-alignment: center-left;
+}
+.dictionary-badge { -fx-background-color: #0078d4; -fx-background-radius: 12; -fx-padding: 5 12; -fx-text-fill: white; }
+.app-root.dark .dictionary-frame, .app-root.dark .dictionary-card { -fx-background-color: #242424; -fx-border-color: #484848; }
+.app-root.dark .dictionary-badge { -fx-text-fill: white; }
+.app-root.dark .dictionary-scroll .scroll-bar { -fx-background-color: #242424; }
+.app-root.dark .dictionary-scroll .scroll-bar .thumb { -fx-background-color: #606060; }
+.dictionary-popup .virtual-flow, .dictionary-popup .corner,
+.dictionary-popup .scroll-bar, .dictionary-popup .scroll-bar .track {
+    -fx-background-color: -fx-control-inner-background;
+}
+.dictionary-popup .scroll-bar .thumb { -fx-background-color: -dictionary-scroll-thumb; }

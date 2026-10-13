@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import org.example.openccjavafx.ui.icon.SymbolIcon?>
+<ScrollPane xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.DictionaryController"
+            fx:id="root" fitToWidth="true" hbarPolicy="NEVER" styleClass="dictionary-scroll">
+    <content><VBox spacing="18" styleClass="dictionary-frame">
+        <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Label userData="dict.title" styleClass="section-label"/>
+            <Region HBox.hgrow="ALWAYS"/><Label fx:id="activeLabel" styleClass="dictionary-badge"/>
+        </HBox>
+        <VBox fx:id="controls" spacing="14">
+            <Label userData="dict.base"/>
+            <HBox alignment="CENTER_LEFT" spacing="8"><TextField fx:id="baseDirectory" HBox.hgrow="ALWAYS"/>
+                <Button userData="dict.browse" onAction="#browseBase"><graphic><SymbolIcon icon="FOLDER_OPEN"/></graphic></Button>
+            </HBox>
+            <Label userData="dict.output"/>
+            <HBox alignment="CENTER_LEFT" spacing="8"><TextField fx:id="outputDirectory" HBox.hgrow="ALWAYS"/>
+                <Button userData="dict.browse" onAction="#browseOutput"><graphic><SymbolIcon icon="FOLDER_OPEN"/></graphic></Button>
+            </HBox>
+            <Label userData="dict.custom" styleClass="section-label"/>
+            <VBox spacing="10" styleClass="dictionary-card">
+                <HBox spacing="8"><Label userData="dict.slot" prefWidth="190"/><Label userData="dict.mode" prefWidth="125"/><Label userData="dict.file"/></HBox>
+                <VBox fx:id="rows" spacing="8"/>
+                <FlowPane hgap="10" vgap="10">
+                    <Button userData="dict.add" onAction="#addRow"><graphic><SymbolIcon icon="ADD_TO"/></graphic></Button>
+                    <Button userData="dict.apply" onAction="#apply"><graphic><SymbolIcon icon="READING_MODE"/></graphic></Button>
+                    <CheckBox fx:id="startup" userData="dict.startup"/>
+                </FlowPane>
+            </VBox>
+            <Button userData="dict.generate" onAction="#generate"><graphic><SymbolIcon icon="DICTIONARY"/></graphic></Button>
+        </VBox>
+        <ProgressBar fx:id="progress" maxWidth="Infinity" visible="false" managed="false"/>
+        <Label fx:id="status" wrapText="true" maxWidth="Infinity" styleClass="dictionary-card"/>
+    </VBox></content>
+</ScrollPane>

@@ -71,6 +71,20 @@ cd OpenccJavaFX
 
 ## Usage
 
+### Dictionary tab
+
+Add custom UTF-8 OpenCC text dictionaries, choose an active slot and Append or Override,
+then select **Apply custom slots**. Each apply starts from the default dictionary;
+remove all rows and apply to restore it. Rows are saved automatically, and the startup
+checkbox optionally reapplies them on launch. Invalid configurations leave the active
+dictionary intact. Running batches retain the dictionary they started with.
+
+**Generate JSON** builds `dictionary_maxlength.json` from the base text dictionary
+directory plus the configured rows. The base directory defaults to the application's
+`dicts` folder, and output defaults to the application directory. Relative paths resolve
+against that directory. Generation replaces the output file after writing successfully
+and does not activate it. Only standard JSON output is supported.
+
 ### Embedded OpenccJava custom dictionaries
 
 The mirrored Java API and command-line tools use one portable custom-dictionary token grammar:
