@@ -24,11 +24,14 @@
             <VBox spacing="10" styleClass="dictionary-card">
                 <HBox spacing="8"><Label userData="dict.slot" prefWidth="190"/><Label userData="dict.mode" prefWidth="125"/><Label userData="dict.file"/></HBox>
                 <VBox fx:id="rows" spacing="8"/>
-                <FlowPane hgap="10" vgap="10">
+                <HBox alignment="CENTER_LEFT" spacing="10">
                     <Button userData="dict.add" onAction="#addRow"><graphic><SymbolIcon icon="ADD_TO"/></graphic></Button>
-                    <Button userData="dict.apply" onAction="#apply"><graphic><SymbolIcon icon="READING_MODE"/></graphic></Button>
-                    <CheckBox fx:id="startup" userData="dict.startup"/>
-                </FlowPane>
+                    <Region minWidth="24" HBox.hgrow="ALWAYS"/>
+                    <HBox alignment="CENTER_RIGHT" spacing="10">
+                        <Button userData="dict.apply" onAction="#apply"><graphic><SymbolIcon icon="READING_MODE"/></graphic></Button>
+                        <CheckBox fx:id="startup" userData="dict.startup"/>
+                    </HBox>
+                </HBox>
             </VBox>
             <Button userData="dict.generate" onAction="#generate"><graphic><SymbolIcon icon="DICTIONARY"/></graphic></Button>
         </VBox>
