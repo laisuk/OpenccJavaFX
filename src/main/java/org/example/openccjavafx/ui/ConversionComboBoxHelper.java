@@ -31,7 +31,11 @@ public final class ConversionComboBoxHelper {
             new ConfigItem("hk2t", "config.manual.hk2t"),
             new ConfigItem("hk2tp", "config.manual.hk2tp"),
             new ConfigItem("t2jp", "config.manual.t2jp"),
-            new ConfigItem("jp2t", "config.manual.jp2t")
+            new ConfigItem("jp2t", "config.manual.jp2t"),
+            new ConfigItem("s2seal", "config.manual.s2seal"),
+            new ConfigItem("t2seal", "config.manual.t2seal"),
+            new ConfigItem("seal2s", "config.manual.seal2s"),
+            new ConfigItem("seal2t", "config.manual.seal2t")
     );
 
     private static final List<SaveTargetItem> SAVE_TARGET_LIST = Arrays.asList(
