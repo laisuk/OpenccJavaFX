@@ -1260,6 +1260,7 @@ public class OpenccJavaFxController {
             case UTF16_BE, UTF16_BE_BOM -> StandardCharsets.UTF_16BE;
             case BIG5 -> Charset.forName("Big5");
             case GB18030 -> Charset.forName("GB18030");
+            case SHIFT_JIS -> Charset.forName("Shift_JIS");
             default ->
                 // Preserve the previous behavior when detection is inconclusive.
                     StandardCharsets.UTF_8;
