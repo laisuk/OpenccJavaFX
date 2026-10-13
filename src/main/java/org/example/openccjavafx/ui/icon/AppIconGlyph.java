@@ -27,6 +27,9 @@ public enum AppIconGlyph {
     SAVE_AS("\uE792"),
     EDIT("\uE70F"),
     PREVIEW("\uE7B3"),
+    DICTIONARY("\uE82D"),
+    DICTIONARY_ADD("\uE82E"),
+    READING_MODE("\uE736"),
 
     // State
     BULLET_LEST_MIRRORED("\uEA42"),
