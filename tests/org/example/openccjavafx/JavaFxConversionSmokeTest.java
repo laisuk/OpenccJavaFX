@@ -31,6 +31,7 @@ class JavaFxConversionSmokeTest {
     @Test
     void fxmlControllerConvertsBothDirectionsAndSelectedText() throws Exception {
         FutureTask<Void> smoke = new FutureTask<>(() -> {
+            verifyDictionaryDesignLoad();
             FXMLLoader loader = new FXMLLoader(OpenccJavaFxApplication.class.getResource("openccjavafx-view.fxml"));
             Parent root = loader.load();
             new Scene(root, 1000, 800);
@@ -58,13 +59,101 @@ class JavaFxConversionSmokeTest {
             verifyDictionaryPage(loader, root);
             return null;
         });
-        Platform.startup(() -> {});
+        Platform.startup(() -> Platform.setImplicitExit(false));
         try {
             Platform.runLater(smoke);
             smoke.get(30, TimeUnit.SECONDS);
+            verifyAsyncStatusDoesNotDimOrRebuildControls();
         } finally {
             Platform.exit();
         }
+    }
+
+    private void verifyAsyncStatusDoesNotDimOrRebuildControls() throws Exception {
+        var savedRows = AppPreferences.loadDictionaryRows();
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var completed = new java.util.concurrent.CompletableFuture<Void>();
+        var fixture = new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();
+        var oldModeCell = new java.util.concurrent.atomic.AtomicReference<ListCell<?>>();
+        var oldTooltip = new java.util.concurrent.atomic.AtomicReference<Tooltip>();
+        FutureTask<Void> start = new FutureTask<>(() -> {
+            FXMLLoader loader = new FXMLLoader(OpenccJavaFxApplication.class.getResource("dictionary-view.fxml"));
+            ScrollPane page = loader.load();
+            fixture.set(loader);
+            new Scene(page);
+            page.applyCss();
+            page.layout();
+            VBox controls = (VBox) loader.getNamespace().get("controls");
+            page.lookupAll(".button").stream().filter(node -> "dict.add".equals(node.getUserData()))
+                    .map(Button.class::cast).findFirst().orElseThrow().fire();
+            VBox rows = (VBox) loader.getNamespace().get("rows");
+            Parent lastRow = (Parent) rows.getChildren().get(rows.getChildren().size() - 1);
+            ComboBox<?> mode = (ComboBox<?>) lastRow.getChildrenUnmodifiable().get(1);
+            oldModeCell.set(mode.getButtonCell());
+            TextField base = (TextField) loader.getNamespace().get("baseDirectory");
+            oldTooltip.set(base.getTooltip());
+            DictionaryController controller = loader.getController();
+            var run = DictionaryController.class.getDeclaredMethod("run", java.util.concurrent.Callable.class, java.util.function.Consumer.class);
+            run.setAccessible(true);
+            run.invoke(controller, (java.util.concurrent.Callable<Object>) () -> {
+                if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("Timed out waiting for UI check");
+                return null;
+            }, (java.util.function.Consumer<Object>) value -> completed.complete(null));
+            assertFalse(controls.isDisabled());
+            assertFalse(base.isDisabled());
+            // Clicking Generate while busy must be ignored, even if the newly edited input is invalid.
+            base.setText("invalid\u0000path");
+            page.lookupAll(".button").stream().filter(node -> "dict.generate".equals(node.getUserData()))
+                    .map(Button.class::cast).findFirst().orElseThrow().fire();
+            assertEquals(I18n.get("dict.working"), ((Label) loader.getNamespace().get("status")).getText());
+            return null;
+        });
+        try {
+            Platform.runLater(start);
+            start.get(10, TimeUnit.SECONDS);
+            release.countDown();
+            completed.get(10, TimeUnit.SECONDS);
+            FutureTask<Void> finish = new FutureTask<>(() -> {
+                FXMLLoader loader = fixture.get();
+                VBox rows = (VBox) loader.getNamespace().get("rows");
+                Parent lastRow = (Parent) rows.getChildren().get(rows.getChildren().size() - 1);
+                ComboBox<?> mode = (ComboBox<?>) lastRow.getChildrenUnmodifiable().get(1);
+                assertSame(oldModeCell.get(), mode.getButtonCell());
+                assertSame(oldTooltip.get(), ((TextField) loader.getNamespace().get("baseDirectory")).getTooltip());
+                assertFalse(((VBox) loader.getNamespace().get("controls")).isDisabled());
+                return null;
+            });
+            Platform.runLater(finish);
+            finish.get(10, TimeUnit.SECONDS);
+        } finally {
+            release.countDown();
+            AppPreferences.saveDictionaryRows(savedRows);
+        }
+    }
+
+    private void verifyDictionaryDesignLoad() throws Exception {
+        var location = OpenccJavaFxApplication.class.getResource("dictionary-view.fxml");
+        String fxml;
+        try (var input = location.openStream()) {
+            fxml = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        // Scene Builder ignores controllers and handlers and has no application classes on its classpath.
+        fxml = fxml.replaceAll("\\s+fx:controller=\"[^\"]*\"", "")
+                .replaceAll("\\s+onAction=\"[^\"]*\"", "");
+        FXMLLoader designer = new FXMLLoader(location);
+        designer.setClassLoader(new ClassLoader(getClass().getClassLoader()) {
+            @Override protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+                if (name.startsWith("org.example.openccjavafx.") || name.startsWith("openccjava."))
+                    throw new ClassNotFoundException("Application class unavailable to designer: " + name);
+                return super.loadClass(name, resolve);
+            }
+        });
+        try (var input = new java.io.ByteArrayInputStream(fxml.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            assertInstanceOf(ScrollPane.class, designer.load(input));
+        }
+        assertEquals(Label.class, designer.getNamespace().get("baseBrowseIcon").getClass());
+        assertEquals(org.example.openccjavafx.ui.icon.AppIconGlyph.FOLDER_OPEN.glyph(),
+                ((Label) designer.getNamespace().get("baseBrowseIcon")).getText());
     }
 
     private void verifyDictionaryPage(FXMLLoader loader, Parent root) throws Exception {
@@ -80,6 +169,7 @@ class JavaFxConversionSmokeTest {
         try {
             stage.show();
             root.applyCss(); root.layout();
+            verifyStableStatusFrame(page, root);
             VBox rows = (VBox) page.lookup("#rows");
             int before = rows.getChildren().size();
             page.lookupAll(".button").stream().filter(node -> "dict.add".equals(node.getUserData()))
@@ -116,6 +206,27 @@ class JavaFxConversionSmokeTest {
             stage.close();
             AppPreferences.saveDictionaryRows(savedRows);
             I18n.setLocale(locale);
+        }
+    }
+
+    private void verifyStableStatusFrame(ScrollPane page, Parent root) {
+        Label status = (Label) page.lookup("#status");
+        Node frame = page.lookup("#statusFrame");
+        String original = status.getText();
+        double contentHeight = page.getContent().getLayoutBounds().getHeight();
+        double frameHeight = frame.getLayoutBounds().getHeight();
+        try {
+            status.setText("Processing dictionary…");
+            root.applyCss(); root.layout();
+            assertEquals(contentHeight, page.getContent().getLayoutBounds().getHeight(), 0.01);
+            assertEquals(frameHeight, frame.getLayoutBounds().getHeight(), 0.01);
+            status.setText("A long output path or error message: ".repeat(30));
+            root.applyCss(); root.layout();
+            assertEquals(contentHeight, page.getContent().getLayoutBounds().getHeight(), 0.01);
+            assertEquals(frameHeight, frame.getLayoutBounds().getHeight(), 0.01);
+        } finally {
+            status.setText(original);
+            root.applyCss(); root.layout();
         }
     }
 

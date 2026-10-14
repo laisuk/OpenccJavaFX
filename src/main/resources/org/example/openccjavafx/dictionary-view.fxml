@@ -2,40 +2,42 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
-<?import org.example.openccjavafx.ui.icon.SymbolIcon?>
 <ScrollPane xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.openccjavafx.DictionaryController"
             fx:id="root" fitToWidth="true" hbarPolicy="NEVER" styleClass="dictionary-scroll">
     <content><VBox spacing="18" styleClass="dictionary-frame">
         <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
         <HBox alignment="CENTER_LEFT" spacing="12">
-            <Label userData="dict.title" styleClass="section-label"/>
-            <Region HBox.hgrow="ALWAYS"/><Label fx:id="activeLabel" styleClass="dictionary-badge"/>
+            <Label userData="dict.title" text="Dictionary" styleClass="section-label"/>
+            <Region HBox.hgrow="ALWAYS"/><Label fx:id="activeLabel" text="Default dictionary" styleClass="dictionary-badge"/>
         </HBox>
         <VBox fx:id="controls" spacing="14">
-            <Label userData="dict.base"/>
+            <Label userData="dict.base" text="Base dictionary directory"/>
             <HBox alignment="CENTER_LEFT" spacing="8"><TextField fx:id="baseDirectory" HBox.hgrow="ALWAYS"/>
-                <Button userData="dict.browse" onAction="#browseBase"><graphic><SymbolIcon icon="FOLDER_OPEN"/></graphic></Button>
+                <Button userData="dict.browse" text="Browse" onAction="#browseBase"><graphic><Label fx:id="baseBrowseIcon" styleClass="app-icon" text="&#xE838;"/></graphic></Button>
             </HBox>
-            <Label userData="dict.output"/>
+            <Label userData="dict.output" text="Output directory"/>
             <HBox alignment="CENTER_LEFT" spacing="8"><TextField fx:id="outputDirectory" HBox.hgrow="ALWAYS"/>
-                <Button userData="dict.browse" onAction="#browseOutput"><graphic><SymbolIcon icon="FOLDER_OPEN"/></graphic></Button>
+                <Button userData="dict.browse" text="Browse" onAction="#browseOutput"><graphic><Label fx:id="outputBrowseIcon" styleClass="app-icon" text="&#xE838;"/></graphic></Button>
             </HBox>
-            <Label userData="dict.custom" styleClass="section-label"/>
+            <Label userData="dict.custom" text="Custom dictionaries" styleClass="section-label"/>
             <VBox spacing="10" styleClass="dictionary-card">
-                <HBox spacing="8"><Label userData="dict.slot" prefWidth="190"/><Label userData="dict.mode" prefWidth="125"/><Label userData="dict.file"/></HBox>
+                <HBox spacing="8"><Label userData="dict.slot" text="Slot" prefWidth="190"/><Label userData="dict.mode" text="Mode" prefWidth="125"/><Label userData="dict.file" text="Dictionary text file"/></HBox>
                 <VBox fx:id="rows" spacing="8"/>
                 <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Button userData="dict.add" onAction="#addRow"><graphic><SymbolIcon icon="ADD_TO"/></graphic></Button>
+                    <Button userData="dict.add" text="Add custom dictionary" onAction="#addRow"><graphic><Label fx:id="addIcon" styleClass="app-icon" text="&#xECC8;"/></graphic></Button>
                     <Region minWidth="24" HBox.hgrow="ALWAYS"/>
                     <HBox alignment="CENTER_RIGHT" spacing="10">
-                        <Button userData="dict.apply" onAction="#apply"><graphic><SymbolIcon icon="READING_MODE"/></graphic></Button>
-                        <CheckBox fx:id="startup" userData="dict.startup"/>
+                        <Button userData="dict.apply" text="Apply custom slots" onAction="#apply"><graphic><Label fx:id="applyIcon" styleClass="app-icon" text="&#xE736;"/></graphic></Button>
+                        <CheckBox fx:id="startup" userData="dict.startup" text="Apply custom slots during startup"/>
                     </HBox>
                 </HBox>
             </VBox>
-            <Button userData="dict.generate" onAction="#generate"><graphic><SymbolIcon icon="DICTIONARY"/></graphic></Button>
+            <Button userData="dict.generate" text="Generate JSON" onAction="#generate"><graphic><Label fx:id="generateIcon" styleClass="app-icon" text="&#xE82D;"/></graphic></Button>
         </VBox>
-        <ProgressBar fx:id="progress" maxWidth="Infinity" visible="false" managed="false"/>
-        <Label fx:id="status" wrapText="true" maxWidth="Infinity" styleClass="dictionary-card"/>
+        <VBox fx:id="statusFrame" minHeight="64" prefHeight="64" maxHeight="64" styleClass="dictionary-card">
+            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" minHeight="0" VBox.vgrow="ALWAYS" styleClass="dictionary-scroll">
+                <content><Label fx:id="status" text="Ready." wrapText="true" maxWidth="Infinity"/></content>
+            </ScrollPane>
+        </VBox>
     </VBox></content>
 </ScrollPane>

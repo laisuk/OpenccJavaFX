@@ -18,6 +18,7 @@ import org.example.openccjavafx.config.AppPreferences;
 import org.example.openccjavafx.i18n.I18n;
 import org.example.openccjavafx.theme.ThemeManager;
 import org.example.openccjavafx.ui.icon.AppIconGlyph;
+import org.example.openccjavafx.ui.icon.AppIconFont;
 import org.example.openccjavafx.ui.icon.SymbolIcon;
 
 import java.io.File;
@@ -29,11 +30,11 @@ import java.util.concurrent.Callable;
 /** FXML owns the static page; only custom dictionary rows are constructed here. */
 public final class DictionaryController {
     @FXML private ScrollPane root;
-    @FXML private VBox controls, rows;
+    @FXML private VBox rows;
     @FXML private TextField baseDirectory, outputDirectory;
     @FXML private CheckBox startup;
     @FXML private Label activeLabel, status;
-    @FXML private ProgressBar progress;
+    @FXML private Label baseBrowseIcon, outputBrowseIcon, addIcon, applyIcon, generateIcon;
     private final List<Row> customRows = new ArrayList<>();
     private final BooleanProperty dark = new SimpleBooleanProperty();
     private DictionaryService service;
@@ -41,8 +42,15 @@ public final class DictionaryController {
     private String statusKey = "dict.ready";
     private Object[] statusArgs = {};
     private boolean restoring;
+    private boolean busy;
 
     @FXML private void initialize() {
+        // Standard Label graphics keep this FXML editable without loading application classes in Scene Builder.
+        configureIcon(baseBrowseIcon, AppIconGlyph.FOLDER_OPEN);
+        configureIcon(outputBrowseIcon, AppIconGlyph.FOLDER_OPEN);
+        configureIcon(addIcon, AppIconGlyph.ADD_TO);
+        configureIcon(applyIcon, AppIconGlyph.READING_MODE);
+        configureIcon(generateIcon, AppIconGlyph.DICTIONARY);
         baseDirectory.setText(DictionaryService.appDirectory().resolve("dicts").toString());
         outputDirectory.setText(DictionaryService.appDirectory().toString());
         restoring = true;
@@ -57,6 +65,11 @@ public final class DictionaryController {
         startup.selectedProperty().addListener((obs, old, value) -> AppPreferences.saveApplyDictionariesAtStartup(value));
         refreshTexts();
         refreshTheme();
+    }
+
+    private void configureIcon(Label label, AppIconGlyph glyph) {
+        label.setText(glyph.glyph());
+        label.setFont(AppIconFont.font(16));
     }
 
     public void connect(DictionaryService service, Consumer<OpenCC> activate) {
@@ -74,10 +87,14 @@ public final class DictionaryController {
     public void refreshTexts() {
         localize(root);
         for (Row row : customRows) row.refreshTexts();
-        activeLabel.setText(I18n.get(service != null && service.isCustom() ? "dict.active.custom" : "dict.active.default"));
+        refreshActiveLabel();
         status.setText(I18n.format(statusKey, statusArgs));
         baseDirectory.setTooltip(new Tooltip(I18n.get("dict.base.hint")));
         outputDirectory.setTooltip(new Tooltip(I18n.get("dict.output.hint")));
+    }
+
+    private void refreshActiveLabel() {
+        activeLabel.setText(I18n.get(service != null && service.isCustom() ? "dict.active.custom" : "dict.active.default"));
     }
 
     private void localize(Node node) {
@@ -112,19 +129,20 @@ public final class DictionaryController {
     }
 
     @FXML private void apply() {
-        if (controls.isDisabled() || service == null) return;
+        if (busy || service == null) return;
         try {
             List<CustomDictSpec> specs = specs();
             run(() -> service.prepare(specs), dictionary -> {
                 service.activate(dictionary, !specs.isEmpty());
                 activate.accept(service.converter());
+                refreshActiveLabel();
                 showStatus(specs.isEmpty() ? "dict.reset" : "dict.applied");
             });
         } catch (Exception e) { failure(e); }
     }
 
     @FXML private void generate() {
-        if (controls.isDisabled()) return;
+        if (busy) return;
         try {
             Path base = directory(baseDirectory.getText(), "dict.base");
             Path output = directory(outputDirectory.getText(), "dict.output");
@@ -140,18 +158,20 @@ public final class DictionaryController {
     }
 
     private <T> void run(Callable<T> work, Consumer<T> success) {
-        controls.setDisable(true);
-        progress.setVisible(true);
-        progress.setManaged(true);
+        // Work uses captured inputs. Prevent overlapping operations without dimming the page.
+        busy = true;
         showStatus("dict.working");
         Task<T> task = new Task<>() { @Override protected T call() throws Exception { return work.call(); } };
-        task.setOnSucceeded(event -> { busyDone(); success.accept(task.getValue()); refreshTexts(); });
-        task.setOnFailed(event -> { busyDone(); failure(task.getException()); });
+        task.setOnSucceeded(event -> {
+            try { success.accept(task.getValue()); }
+            catch (Exception error) { failure(error); }
+            finally { busy = false; }
+        });
+        task.setOnFailed(event -> { busy = false; failure(task.getException()); });
         Thread thread = new Thread(task, "dictionary-worker");
         thread.setDaemon(true);
         thread.start();
     }
-    private void busyDone() { controls.setDisable(false); progress.setVisible(false); progress.setManaged(false); }
     private void failure(Throwable error) { showStatus("dict.failed", error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage()); }
     private void showStatus(String key, Object... args) { statusKey = key; statusArgs = args; status.setText(I18n.format(key, args)); }
 
