@@ -132,6 +132,8 @@ public class OpenccJavaFxController {
     @FXML
     private CheckBox cbConvertFilename;
     @FXML
+    private CheckBox cbAutoDetectCjkEncoding;
+    @FXML
     private CheckBox cbLineNumber;
     @FXML
     private Label lblSource;
@@ -377,6 +379,7 @@ public class OpenccJavaFxController {
         cbAutoReflow.setText(I18n.get("checkbox.autoReflowText"));
         lblBatchOptions.setText(I18n.get("label.batchOptions"));
         cbConvertFilename.setText(I18n.get("checkbox.convertFilename"));
+        cbAutoDetectCjkEncoding.setText(I18n.get("checkbox.autoDetectCjkEncoding"));
         lblTheme.setText(I18n.get("label.theme"));
         rbThemeSystem.setText(I18n.get("radio.theme.system"));
         rbThemeLight.setText(I18n.get("radio.theme.light"));
@@ -843,6 +846,8 @@ public class OpenccJavaFxController {
         // Disable Start button while running (optional)
         btnStart.setDisable(true);
 
+        // Snapshot the setting on the JavaFX thread before starting the batch.
+        boolean autoDetectCjkEncoding = cbAutoDetectCjkEncoding.isSelected();
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() {
@@ -922,9 +927,8 @@ public class OpenccJavaFxController {
 
                         } else if (FILE_EXTENSIONS.contains(ext)) {
                             // Plain text file
-                            Path sourcePath = sourceFilePath.toPath();
-//                            String contents = Files.readString(sourcePath, StandardCharsets.UTF_8);
-                            String contents = new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
+                            String contents = decodePlainText(
+                                    Files.readAllBytes(sourceFilePath.toPath()), autoDetectCjkEncoding);
                             String convertedText = batchConverter.convert(contents, cbPunctuation.isSelected());
                             Files.write(outputFilePath, convertedText.getBytes(StandardCharsets.UTF_8));
 
@@ -1252,6 +1256,13 @@ public class OpenccJavaFxController {
         return decodeText(Files.readAllBytes(file.toPath()), charset);
     }
 
+    static String decodePlainText(byte[] bytes, boolean autoDetectCjkEncoding) {
+        Charset charset = autoDetectCjkEncoding
+                ? toCharset(CjkEncodingDetector.detect(bytes).getEncoding())
+                : StandardCharsets.UTF_8;
+        return decodeText(bytes, charset);
+    }
+
     private static String decodeText(byte[] bytes, Charset charset) {
         String content = new String(bytes, charset);
 
@@ -1545,8 +1556,7 @@ public class OpenccJavaFxController {
             if (file.isFile() && FILE_EXTENSIONS.contains(fileExtension.toLowerCase())) {
                 try {
                     byte[] bytes = Files.readAllBytes(file.toPath());
-                    String content = new String(bytes, StandardCharsets.UTF_8);
-//                    textAreaPreview.setText(content);
+                    String content = decodePlainText(bytes, cbAutoDetectCjkEncoding.isSelected());
                     textAreaPreview.replaceText(content);
                     lblStatus.setText(I18n.format("status.previewSource.success", selectedItem));
                 } catch (IOException e) {

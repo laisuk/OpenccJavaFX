@@ -444,6 +444,11 @@
                                                     <Insets left="10.0" />
                                                 </padding>
                                             </CheckBox>
+                                 <CheckBox fx:id="cbAutoDetectCjkEncoding" mnemonicParsing="false" text="Auto-Detect CJK Text Encoding">
+                                    <padding>
+                                       <Insets left="10.0" />
+                                    </padding>
+                                 </CheckBox>
                                         </children>
                                     </HBox>
                                     <HBox fx:id="hbPdfOptions" alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.rowIndex="2">
@@ -472,7 +477,7 @@
                                                     <Insets right="10.0" />
                                                 </HBox.margin>
                                             </CheckBox>
-                                            <CheckBox fx:id="cbAutoReflow" mnemonicParsing="false" selected="true" styleClass="fluent-check" text="Auto-Reflow Text">
+                                            <CheckBox fx:id="cbAutoReflow" mnemonicParsing="false" styleClass="fluent-check" text="Auto-Reflow Text">
                                                 <font>
                                                     <Font size="14.0" />
                                                 </font>
