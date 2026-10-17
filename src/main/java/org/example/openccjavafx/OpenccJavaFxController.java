@@ -1431,6 +1431,10 @@ public class OpenccJavaFxController {
             btnStart.setDisable(false);
             isStartDisabled = false;
         }
+        // Main tab
+        if (lblFilename != null) {
+            lblFilename.setVisible(true);
+        }
     }
 
     public void onTabBatchSelectionChanged() {
@@ -1443,6 +1447,18 @@ public class OpenccJavaFxController {
             btnStart.setDisable(false);
             isStartDisabled = false;
         }
+        lblFilename.setVisible(false);
+    }
+
+    public void onTabDictionarySelectionChanged() {
+        if (!tabDictionary.isSelected()) {
+            return;
+        }
+        btnOpenFile.setDisable(true);
+        isOpenFileDisabled = true;
+        btnStart.setDisable(true);
+        isStartDisabled = true;
+        lblFilename.setVisible(false);
     }
 
     public void onTabSettingsSelectionChanged() {
@@ -1453,6 +1469,7 @@ public class OpenccJavaFxController {
         isOpenFileDisabled = true;
         btnStart.setDisable(true);
         isStartDisabled = true;
+        lblFilename.setVisible(false);
     }
 
     public void onBtnAddClicked() {
