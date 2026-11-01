@@ -658,11 +658,32 @@ public class OfficeHelper {
                 textConverter
         );
 
-        for (Map.Entry<String, String> entry : fontMap.entrySet()) {
-            converted = converted.replace(entry.getKey(), entry.getValue());
+        if (fontMap.isEmpty()) {
+            return converted;
         }
 
-        return converted;
+        final String markerPrefix = "__F_O_N_T_";
+        StringBuilder restored = new StringBuilder(converted.length());
+        int cursor = 0;
+        int start;
+        while ((start = converted.indexOf(markerPrefix, cursor)) >= 0) {
+            restored.append(converted, cursor, start);
+            int prefixEnd = start + markerPrefix.length();
+            int end = converted.indexOf("__", prefixEnd);
+            String font = end < 0 ? null : fontMap.get(converted.substring(start, end + 2));
+            if (font != null) {
+                restored.append(font);
+                cursor = end + 2;
+            } else {
+                // Preserve unknown/incomplete tokens, allowing a later known marker
+                // to be found. Always advance in the original converted text.
+                restored.append(markerPrefix);
+                cursor = prefixEnd;
+            }
+        }
+        restored.append(converted, cursor, converted.length());
+        // Inserted font values are never scanned again (no recursive replacement).
+        return restored.toString();
     }
 
     /**

@@ -17,6 +17,48 @@ import static org.junit.jupiter.api.Assertions.*;
 class OfficeHelperTest {
 
     @Test
+    void restoresKnownRepeatedAndAdjacentFontMarkers() throws IOException {
+        assertEquals("preArialFont A / Font Apost", convertFonts(
+                "<w:rFonts w:ascii=\"Font A\" w:eastAsia=\"Arial\"/>",
+                text -> "pre__F_O_N_T_1____F_O_N_T_0__ / __F_O_N_T_0__post"));
+    }
+
+    @Test
+    void preservesUnknownAndIncompleteMarkersAndFindsLaterKnownOnes() throws IOException {
+        assertEquals("__F_O_N_T_99__ __F_O_N_T_badFont A __F_O_N_T_Font A __F_O_N_T_", convertFonts(
+                "<w:rFonts w:ascii=\"Font A\"/>",
+                text -> "__F_O_N_T_99__ __F_O_N_T_bad__F_O_N_T_0__ __F_O_N_T___F_O_N_T_0__ __F_O_N_T_"));
+    }
+
+    @Test
+    void fontRestorationDoesNotRescanInsertedFontValues() throws IOException {
+        String xml = "<w:rFonts w:ascii=\"__F_O_N_T_1__\" w:eastAsia=\"__F_O_N_T_0__\"/>";
+        assertEquals(xml, convertFonts(xml, text -> text));
+    }
+
+    @Test
+    void fontRestorationPreservesEmptyAndUnmarkedText() throws IOException {
+        String xml = "<w:rFonts w:ascii=\"Font A\"/>";
+        assertEquals("", convertFonts(xml, text -> ""));
+        assertEquals("plain text", convertFonts(xml, text -> "plain text"));
+        assertEquals("__F_O_N_T_0__", convertFonts("<w:t/>", text -> "__F_O_N_T_0__"));
+    }
+
+    private static String convertFonts(String xml, TextConverter converter) throws IOException {
+        ByteArrayOutputStream input = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(input, StandardCharsets.UTF_8)) {
+            zip.putNextEntry(new ZipEntry("word/document.xml"));
+            zip.write(xml.getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+        }
+        OfficeHelper.MemoryResult result = OfficeHelper.convert(input.toByteArray(), "docx", converter, true);
+        assertTrue(result.success, result.message);
+        assertNotNull(result.data);
+        return unzipEntry(result.data, "word/document.xml");
+    }
+
+
+    @Test
     void convertsInlineStringsInXlsxWorksheetWithoutTouchingFormulas() throws IOException {
         byte[] workbook = createInlineStringWorkbook();
 

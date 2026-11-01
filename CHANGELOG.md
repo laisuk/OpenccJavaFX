@@ -69,6 +69,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
       `HkVariantsPair`.
 - Updated dictionary JSON serialization and `dictgen` to use stable field order, optional sorted keys, and the complete
   dictionary slot list including `TWVariantsPhrases.txt` and `HKVariantsPhrases.txt`.
+- Optimized font placeholder restoration during Office and EPUB document conversion.
 
 ---
 
