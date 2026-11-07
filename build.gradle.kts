@@ -50,7 +50,7 @@ tasks.withType<JavaExec> {
 }
 
 javafx {
-    version = "21.0.12"
+    version = "21.0.13"
     modules("javafx.controls", "javafx.fxml")
 }
 
@@ -73,7 +73,7 @@ dependencies {
 //    implementation("commons-logging:commons-logging:1.3.5")
 
     // JSoup
-    implementation("org.jsoup:jsoup:1.22.1")
+    implementation("org.jsoup:jsoup:1.23.2")
 }
 
 sourceSets {
