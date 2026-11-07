@@ -84,7 +84,10 @@ final class MiniDictJson {
     /**
      * Parses a JSON snapshot from an {@link InputStream}.
      *
-     * <p>The stream is read as UTF-8 and fully buffered into memory before parsing.</p>
+     * <p>The stream is read as UTF-8 and fully buffered into memory before parsing.
+     * The character buffer grows from a modest initial capacity rather than reserving
+     * space for a large snapshot. Closing the reader closes the supplied stream,
+     * including when reading or parsing fails.</p>
      *
      * @param in input stream containing UTF-8 JSON
      * @return a map from top-level key to {@link DictionaryMaxlength.DictEntry}
@@ -93,7 +96,7 @@ final class MiniDictJson {
      */
     static Map<String, DictionaryMaxlength.DictEntry> parseToMap(InputStream in) throws IOException {
         try (Reader r = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-            StringBuilder b = new StringBuilder(1 << 20);
+            StringBuilder b = new StringBuilder(8192);
             char[] buf = new char[8192];
             int n;
             while ((n = r.read(buf)) != -1) b.append(buf, 0, n);
@@ -103,6 +106,10 @@ final class MiniDictJson {
 
     /**
      * Parses a JSON snapshot from a {@link String}.
+     *
+     * <p>No leading Unicode BOM is accepted, consistently with the file and stream
+     * overloads. Dictionary insertion order and duplicate-key last-wins semantics
+     * are preserved.</p>
      *
      * @param json complete JSON document
      * @return a map from top-level key to {@link DictionaryMaxlength.DictEntry}
@@ -229,19 +236,35 @@ final class MiniDictJson {
     }
 
     /**
-     * Reads a JSON string token, decoding escape sequences including {@code \\uXXXX}.
+     * Reads a string at the cursor and advances past its closing quote.
+     *
+     * <p>Unescaped tokens use a source substring. A builder is allocated only at
+     * the first escape and receives the complete preceding prefix. Supports JSON
+     * quotation mark, backslash, slash, backspace, form feed, newline, carriage
+     * return, tab, and four-digit Unicode escapes. Literal and escaped UTF-16
+     * code units are preserved, including surrogate pairs, without validating
+     * pairing or normalizing Unicode.</p>
      *
      * @return the decoded Java {@link String}
-     * @throws IllegalArgumentException if the string is unterminated or contains bad escapes
+     * @throws IllegalArgumentException if the string is unterminated, contains bad escapes,
+     *                                  or contains an unescaped U+0000 through U+001F
      */
     private String readString() {
         expect('"');
-        StringBuilder b = new StringBuilder(32);
+        int start = i;
+        StringBuilder b = null;
         while (true) {
             if (eof()) throw err("Unterminated string");
             char c = s.charAt(i++);
-            if (c == '"') break;
+            if (c == '"') {
+                return b == null ? s.substring(start, i - 1) : b.toString();
+            }
+            if (c < 0x20) throw err("Unescaped control character");
             if (c == '\\') {
+                if (b == null) {
+                    b = new StringBuilder();
+                    b.append(s, start, i - 1);
+                }
                 if (eof()) throw err("Bad escape");
                 char e = s.charAt(i++);
                 switch (e) {
@@ -277,28 +300,35 @@ final class MiniDictJson {
                         throw err("Bad escape: \\" + e);
                 }
 
-            } else {
+            } else if (b != null) {
                 b.append(c);
             }
         }
-        return b.toString();
     }
 
     /**
-     * Reads a non-negative integer.
+     * Reads a non-negative ASCII integer without allocating a temporary string.
      *
-     * @return the parsed integer value
-     * @throws IllegalArgumentException if no digits are present or the number overflows {@link Integer}
+     * <p>The cursor advances over digits and stops at the first non-digit; the
+     * enclosing schema reader validates the following delimiter. Leading zeros
+     * remain accepted for snapshot compatibility. Overflow is checked before each
+     * multiplication and addition, without exception-based numeric conversion.</p>
+     *
+     * @return the parsed value, from zero through {@link Integer#MAX_VALUE}
+     * @throws IllegalArgumentException if no ASCII digit is present or the value overflows
      */
     private int readInt() {
-        if (!has() || !Character.isDigit(s.charAt(i))) throw err("Expected integer");
-        int start = i;
-        while (has() && Character.isDigit(s.charAt(i))) i++;
-        try {
-            return Integer.parseInt(s.substring(start, i));
-        } catch (NumberFormatException ex) {
-            throw err("Invalid integer");
+        if (!has() || s.charAt(i) < '0' || s.charAt(i) > '9') throw err("Expected integer");
+        int value = 0;
+        while (has()) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') break;
+            int digit = c - '0';
+            if (value > (Integer.MAX_VALUE - digit) / 10) throw err("Integer overflow");
+            value = value * 10 + digit;
+            i++;
         }
+        return value;
     }
 
     // ---- Utils --------------------------------------------------------------
