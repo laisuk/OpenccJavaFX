@@ -27,6 +27,40 @@ class DictionaryLibTest {
     }
 
     @Test
+    void strictInMemoryParserUsesCoreTokenRulesAndReportsPhysicalLines() {
+        Map<String, String> pairs = DictionaryMaxlength.parseDictionaryPairs(
+                "\uFEFF# comment\r\n\r\n // comment\r\n 汉字\t自訂 second\r\n汉字\t最後 其他\r\n𠀀\t甲");
+        assertEquals(2, pairs.size());
+        assertEquals("最後", pairs.get("汉字"));
+        assertEquals("甲", pairs.get("𠀀"));
+        assertThrows(UnsupportedOperationException.class, () -> pairs.put("a", "b"));
+        for (String invalid : Arrays.asList("broken", "\t目标", "source\t", "\tfoo\tbar")) {
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                    () -> DictionaryMaxlength.parseDictionaryPairs("# comment\n" + invalid));
+            assertTrue(error.getMessage().contains("Line 2"));
+        }
+        assertTrue(DictionaryMaxlength.parseDictionaryPairs("# comments only\n\n").isEmpty());
+    }
+
+    @Test
+    void shortOverridePhrasesConvertAndLeaveBaseUntouched() {
+        Map<String, String> pairs = new LinkedHashMap<>();
+        pairs.put("汉字", "自訂");
+        OpenCC custom = new OpenCC("s2t", Collections.singletonList(
+                CustomDictSpec.fromPairs(DictSlot.STPhrases, pairs, CustomDictMode.Override)));
+        assertEquals("自訂頭發", custom.convert("汉字头发"));
+        assertEquals("漢字頭髮", new OpenCC("s2t").convert("汉字头发"));
+    }
+
+    @Test
+    void supplementaryCharacterOverrideRemainsSingleCodePointLookup() {
+        OpenCC custom = new OpenCC("s2t", Collections.singletonList(
+                CustomDictSpec.fromPairs(DictSlot.STCharacters,
+                        Collections.singletonMap("𠀀", "甲"), CustomDictMode.Override)));
+        assertEquals("甲", custom.convert("𠀀"));
+    }
+
+    @Test
     void testFromDictsLoadsAllFields() {
         assertNotNull(original);
         assertFalse(original.st_characters.dict.isEmpty(), "st_characters should be non-empty");

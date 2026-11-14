@@ -863,6 +863,29 @@ public class DictionaryMaxlength {
      * @throws IOException if an I/O error occurs while reading
      */
     private static DictEntry loadDictionaryMaxlength(BufferedReader br) throws IOException {
+        return loadDictionaryMaxlength(br, false);
+    }
+
+    /**
+     * Parses in-memory OpenCC dictionary text using the file parser's token rules,
+     * rejecting malformed non-comment lines instead of warning and skipping them.
+     * Blank text returns an empty map; repeated source keys use the last target.
+     *
+     * @param text dictionary entries with real TAB separators
+     * @return an unmodifiable mapping suitable for {@link CustomDictSpec#fromPairs}
+     * @throws IllegalArgumentException on malformed entries, with a physical line number
+     * @throws NullPointerException     if text is null
+     */
+    public static Map<String, String> parseDictionaryPairs(String text) {
+        Objects.requireNonNull(text, "text");
+        try (BufferedReader reader = new BufferedReader(new StringReader(text))) {
+            return Collections.unmodifiableMap(loadDictionaryMaxlength(reader, true).dict);
+        } catch (IOException error) {
+            throw new IllegalArgumentException("Cannot read dictionary text", error);
+        }
+    }
+
+    private static DictEntry loadDictionaryMaxlength(BufferedReader br, boolean strict) throws IOException {
         Map<String, String> dict = new HashMap<>();
         int maxLength = 1;
         int minLength = Integer.MAX_VALUE;
@@ -900,6 +923,14 @@ public class DictionaryMaxlength {
                 continue;
             }
 
+            if (strict) {
+                // Preserve a leading delimiter so an empty source cannot become a
+                // different valid entry after whitespace trimming.
+                start = lineNo == 1 && raw.charAt(0) == '\uFEFF' ? 1 : 0;
+                while (start < end && raw.charAt(start) != '\t'
+                        && Character.isWhitespace(raw.charAt(start))) start++;
+            }
+
             int tab = -1;
             for (int i = start; i < end; i++) {
                 if (raw.charAt(i) == '\t') {
@@ -909,6 +940,8 @@ public class DictionaryMaxlength {
             }
 
             if (tab < 0) {
+                if (strict)
+                    throw new IllegalArgumentException("Line " + lineNo + ": missing TAB separator or empty target");
                 System.err.println(
                         "Warning: malformed (no TAB) at line " +
                                 lineNo + ": " + raw
@@ -918,6 +951,7 @@ public class DictionaryMaxlength {
 
             int keyStart = start;
             if (keyStart >= tab) {
+                if (strict) throw new IllegalArgumentException("Line " + lineNo + ": empty source or target");
                 System.err.println(
                         "Warning: empty key/value at line " +
                                 lineNo + ": " + raw
@@ -937,6 +971,7 @@ public class DictionaryMaxlength {
             }
 
             if (valueStart >= end) {
+                if (strict) throw new IllegalArgumentException("Line " + lineNo + ": empty source or target");
                 System.err.println(
                         "Warning: empty key/value at line " +
                                 lineNo + ": " + raw
@@ -954,6 +989,7 @@ public class DictionaryMaxlength {
             }
 
             if (valueEnd <= valueStart) {
+                if (strict) throw new IllegalArgumentException("Line " + lineNo + ": empty source or target");
                 System.err.println(
                         "Warning: empty key/value at line " +
                                 lineNo + ": " + raw

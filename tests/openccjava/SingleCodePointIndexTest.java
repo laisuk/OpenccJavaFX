@@ -52,8 +52,11 @@ class SingleCodePointIndexTest {
         Map<String, String> singles = new HashMap<>();
         singles.put("汉字", "must not match");
         singles.put("汉", "漢");
-        DictRefs refs = new DictRefs(Collections.singletonList(entry(singles)), null);
-        assertEquals("漢字", refs.applySegmentReplace("汉字", new OpenCC("s2t")::segmentReplaceWithUnion));
+        // Test the fallback index directly: the partitioner now correctly routes
+        // dictionaries containing two-BMP keys through phrase matching.
+        SingleCodePointIndex index = SingleCodePointIndex.build(Collections.singletonList(entry(singles)));
+        assertEquals("漢", index.get('汉'));
+        assertNull(index.get('字'));
     }
 
     @Test

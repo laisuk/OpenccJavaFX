@@ -159,7 +159,7 @@ public class DictRefs {
             if (e.maxLength > roundMax) {
                 roundMax = e.maxLength;
             }
-            if (e.maxLength >= 3) {
+            if (e.maxLength >= 3 || containsTwoUnitPhrase(e)) {
                 phrase.add(e);
                 if (e.maxLength > phraseMax) {
                     phraseMax = e.maxLength;
@@ -184,6 +184,17 @@ public class DictRefs {
                 roundMax,
                 union
         );
+    }
+
+    // A two-unit key can be two BMP characters or one supplementary code point.
+    // Small override dictionaries must retain phrase matching for the former.
+    private static boolean containsTwoUnitPhrase(DictEntry entry) {
+        if (entry.maxLength != 2) return false;
+        for (String key : entry.dict.keySet()) {
+            if (key != null && key.length() == 2 && !Character.isSurrogatePair(key.charAt(0), key.charAt(1)))
+                return true;
+        }
+        return false;
     }
 
     /**
