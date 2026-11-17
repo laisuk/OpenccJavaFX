@@ -7,7 +7,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.3.0] - Unreleased
+## \[1.3.0] - Unreleased
 
 ### Added
 
@@ -42,6 +42,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Changed
 
+- Synced OpenccJava with upstream v1.6.0.
 - Synced the embedded OpenccJava core with upstream commit `84774ccf9442d63ea29a8d2f333f7162845e5ac9` (1.5.1 refinements).
   Cached single-code-point fallback lookups and indexed phrase dictionary access reduce hot-path allocations;
   runtime per-starter length bounds fix matching for dictionary keys of 64 or more UTF-16 units.
@@ -73,7 +74,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.2.2] - 2026-04-26
+## \[1.2.2] - 2026-04-26
 
 ### Changed
 
@@ -90,7 +91,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.2.1] - 2026-04-07
+## \[1.2.1] - 2026-04-07
 
 ### Changed
 
@@ -104,7 +105,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.1.1] - 2025-11-25
+## \[1.1.1] - 2025-11-25
 
 ### Changed
 
@@ -115,7 +116,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.1.0] - 2025-10.02
+## \[1.1.0] - 2025-10.02
 
 ### Added
 
@@ -161,12 +162,12 @@ int result = cc.zhoCheckInstance("汉字");
 
 ```
 
-> ⚠️ Note: The dictionary is now shared across all OpenCC instances.  
+> ⚠️ Note: The dictionary is now shared across all `OpenCC` instances.  
 > Any modification to the dictionary object will affect all instances in the JVM.
 
 ---
 
-## [1.0.0] – 2025-07-30
+## \[1.0.0] – 2025-07-30
 
 ### Added
 

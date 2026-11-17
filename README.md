@@ -73,7 +73,7 @@ cd OpenccJavaFX
 
 ### Dictionary tab
 
-Add custom UTF-8 OpenCC text dictionaries, choose an active slot and Append or Override,
+Add custom UTF-8 `OpenCC` text dictionaries, choose an active slot and Append or Override,
 then select **Apply custom slots**. Each apply starts from the default dictionary;
 remove all rows and apply to restore it. Rows are saved automatically, and the startup
 checkbox optionally reapplies them on launch. Invalid configurations leave the active
