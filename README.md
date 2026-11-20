@@ -144,7 +144,6 @@ Support most **text base** file types.
 ### Batch Mode
 
 ![image02](./assets/image02.png)
-![image03](./assets/image03.png)
 
 Support most **text base** file types, **Office documents** (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`) and
 EPUB (`.epub`).
@@ -153,6 +152,10 @@ EPUB (`.epub`).
 2. Select the desired conversion configuration.
 3. Set the output folder.
 4. Click the **Start** button to begin batch conversion.
+
+### Custom Dictionary
+
+![image03](./assets/image03.png)
 
 ---
 
